@@ -1,0 +1,59 @@
+basePath: /
+definitions:
+  model.AttendanceRequest:
+    properties:
+      karyawan_id:
+        type: integer
+    required:
+    - karyawan_id
+    type: object
+host: localhost:8080
+info:
+  contact: {}
+  description: API documentation for HRD Attendance System
+  title: HRD Attendance API
+  version: "1.0"
+paths:
+  /api/v1/attendance/checkin:
+    post:
+      consumes:
+      - application/json
+      description: Endpoint untuk mencatat kehadiran karyawan
+      parameters:
+      - description: Data Karyawan ID
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.AttendanceRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Check-in Absensi
+      tags:
+      - Attendance
+  /api/v1/ping:
+    get:
+      description: Endpoint untuk mengecek status API
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Hello Test
+      tags:
+      - Health
+swagger: "2.0"
