@@ -5,6 +5,7 @@ import (
 
 	"go-attendance-api/internal/model"
 	"go-attendance-api/internal/service"
+	"go-attendance-api/internal/utils"
 
 	"github.com/gin-gonic/gin"
 )
@@ -45,12 +46,11 @@ func (h *userHandler) GetAllUsers(c *gin.Context) {
 
 	users, err := h.service.GetAllUsers(filter)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal mengambil data pengguna"})
+		response := utils.BuildErrorResponse("Gagal mengambil data pengguna", http.StatusInternalServerError, "error", err.Error())
+		c.JSON(http.StatusInternalServerError, response)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"message": "Berhasil mengambil data pengguna",
-		"data":    users,
-	})
+	response := utils.BuildResponse("Berhasil mengambil data pengguna", http.StatusOK, "success", users)
+	c.JSON(http.StatusOK, response)
 }
