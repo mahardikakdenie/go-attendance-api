@@ -221,6 +221,9 @@
                 },
                 "longitude": {
                     "type": "number"
+                },
+                "media_url": {
+                    "type": "string"
                 }
             }
         },

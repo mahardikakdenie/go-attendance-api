@@ -228,6 +228,9 @@ const docTemplate = `{
                 },
                 "longitude": {
                     "type": "number"
+                },
+                "media_url": {
+                    "type": "string"
                 }
             }
         },
