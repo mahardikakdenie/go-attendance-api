@@ -18,10 +18,10 @@ type AuthService interface {
 }
 
 type authService struct {
-	repo repository.UserRepository
+	repo repository.AuthRepository
 }
 
-func NewAuthService(repo repository.UserRepository) AuthService {
+func NewAuthService(repo repository.AuthRepository) AuthService {
 	return &authService{
 		repo: repo,
 	}
