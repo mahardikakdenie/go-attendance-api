@@ -9,6 +9,7 @@ import (
 	"go-attendance-api/internal/handler"
 	"go-attendance-api/internal/model"
 	"go-attendance-api/internal/repository"
+	"go-attendance-api/internal/seeder"
 	"go-attendance-api/internal/service"
 
 	"github.com/gin-gonic/gin"
@@ -34,12 +35,21 @@ func InitDB() *gorm.DB {
 		log.Fatalf("Gagal koneksi ke database: %v", err)
 	}
 
-	if os.Getenv("RUN_MIGRATION") == "true" {
+	if os.Getenv("RESET_DB") == "true" {
+		db.Migrator().DropTable(&model.Attendance{}, &model.User{})
+		log.Println("Tabel berhasil direset (Drop Table)")
+	}
+
+	if os.Getenv("RUN_MIGRATION") == "true" || os.Getenv("RESET_DB") == "true" {
 		err = db.AutoMigrate(&model.User{}, &model.Attendance{})
 		if err != nil {
 			log.Fatalf("Gagal melakukan migrasi database: %v", err)
 		}
 		log.Println("Migrasi database berhasil dieksekusi")
+	}
+
+	if os.Getenv("RUN_SEEDER") == "true" {
+		seeder.SeedUsers(db)
 	}
 
 	return db
@@ -67,12 +77,22 @@ func main() {
 	attendanceService := service.NewAttendanceService(attendanceRepo)
 	attendanceHandler := handler.NewAttendanceHandler(attendanceService)
 
+	userRepo := repository.NewUserRepository(db)
+	authService := service.NewAuthService(userRepo)
+	authHandler := handler.NewAuthHandler(authService)
+
 	r := gin.Default()
 
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
 	api := r.Group("/api/v1")
 	{
+		auth := api.Group("/auth")
+		{
+			auth.POST("/register", authHandler.Register)
+			auth.POST("/login", authHandler.Login)
+		}
+
 		api.GET("/ping", attendanceHandler.HelloTest)
 		api.POST("/attendance", attendanceHandler.RecordAttendance)
 	}
