@@ -48,7 +48,7 @@ func (s *attendanceService) RecordAttendance(req model.AttendanceRequest) (model
 		}
 
 		return model.AttendanceResponse{
-			ID:               int(data.ID),
+			ID:               data.ID, // FIX: Langsung masukkan data.ID karena tipenya sudah sama-sama uuid.UUID
 			EmployeeID:       int(data.UserID),
 			ClockInTime:      data.ClockInTime,
 			ClockInLatitude:  data.ClockInLatitude,
@@ -72,7 +72,7 @@ func (s *attendanceService) RecordAttendance(req model.AttendanceRequest) (model
 		}
 
 		return model.AttendanceResponse{
-			ID:                int(data.ID),
+			ID:                data.ID, // FIX: Langsung masukkan data.ID
 			EmployeeID:        int(data.UserID),
 			ClockInTime:       data.ClockInTime,
 			ClockOutTime:      data.ClockOutTime,
