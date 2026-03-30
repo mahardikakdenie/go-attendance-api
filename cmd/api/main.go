@@ -5,12 +5,11 @@ import (
 	"log"
 	"os"
 
+	"go-attendance-api/docs"
 	"go-attendance-api/internal/handler"
 	"go-attendance-api/internal/model"
 	"go-attendance-api/internal/repository"
 	"go-attendance-api/internal/service"
-
-	_ "go-attendance-api/docs"
 
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
@@ -49,12 +48,18 @@ func InitDB() *gorm.DB {
 // @title HRD Attendance API
 // @version 1.0
 // @description API documentation for HRD Attendance System
-// @host localhost:8085
 // @BasePath /
 func main() {
 	if err := godotenv.Load(); err != nil {
 		log.Println("Peringatan: File .env tidak ditemukan")
 	}
+
+	appPort := os.Getenv("APP_PORT")
+	if appPort == "" {
+		appPort = "8080"
+	}
+
+	docs.SwaggerInfo.Host = fmt.Sprintf("localhost:%s", appPort)
 
 	db := InitDB()
 
@@ -70,11 +75,6 @@ func main() {
 	{
 		api.GET("/ping", attendanceHandler.HelloTest)
 		api.POST("/attendance", attendanceHandler.RecordAttendance)
-	}
-
-	appPort := os.Getenv("APP_PORT")
-	if appPort == "" {
-		appPort = "8085"
 	}
 
 	if err := r.Run(":" + appPort); err != nil {
