@@ -11,6 +11,7 @@ type AttendanceRequest struct {
 	Action     string  `json:"action" binding:"required"`
 	Latitude   float64 `json:"latitude" binding:"required"`
 	Longitude  float64 `json:"longitude" binding:"required"`
+	MediaUrl   string  `json:"media_url"`
 }
 
 type AttendanceResponse struct {
@@ -23,6 +24,7 @@ type AttendanceResponse struct {
 	ClockOutLatitude  *float64   `json:"clock_out_latitude,omitempty"`
 	ClockOutLongitude *float64   `json:"clock_out_longitude,omitempty"`
 	Status            string     `json:"status"`
+	MediaUrl          string     `json:"media_url"`
 }
 
 type Attendance struct {
@@ -39,4 +41,6 @@ type Attendance struct {
 	ClockOutLongitude *float64   `json:"clock_out_longitude"`
 
 	Status string `gorm:"type:varchar(50)" json:"status"`
+
+	MediaUrl string `gorm:"type:varchar(255)" json:"media_url"`
 }
