@@ -6,26 +6,26 @@ import (
 	"gorm.io/gorm"
 )
 
-type UserRepository interface {
+type AuthRepository interface {
 	Create(user *model.User) error
 	FindByEmail(email string) (model.User, error)
 }
 
-type userRepository struct {
+type authRepository struct {
 	db *gorm.DB
 }
 
-func NewUserRepository(db *gorm.DB) UserRepository {
-	return &userRepository{
+func NewAuthRepository(db *gorm.DB) AuthRepository {
+	return &authRepository{
 		db: db,
 	}
 }
 
-func (r *userRepository) Create(user *model.User) error {
+func (r *authRepository) Create(user *model.User) error {
 	return r.db.Create(user).Error
 }
 
-func (r *userRepository) FindByEmail(email string) (model.User, error) {
+func (r *authRepository) FindByEmail(email string) (model.User, error) {
 	var user model.User
 	err := r.db.Where("email = ?", email).First(&user).Error
 	return user, err
