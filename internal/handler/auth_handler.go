@@ -5,6 +5,7 @@ import (
 
 	"go-attendance-api/internal/model"
 	"go-attendance-api/internal/service"
+	"go-attendance-api/internal/utils"
 
 	"github.com/gin-gonic/gin"
 )
@@ -34,20 +35,20 @@ func NewAuthHandler(service service.AuthService) AuthHandler {
 func (h *authHandler) Register(c *gin.Context) {
 	var req model.RegisterRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid input data"})
+		response := utils.BuildErrorResponse("Invalid input data", http.StatusBadRequest, "error", err.Error())
+		c.JSON(http.StatusBadRequest, response)
 		return
 	}
 
 	user, err := h.service.Register(req)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		response := utils.BuildErrorResponse("Failed to register user", http.StatusBadRequest, "error", err.Error())
+		c.JSON(http.StatusBadRequest, response)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"message": "Registration successful",
-		"data":    user,
-	})
+	response := utils.BuildResponse("Registration successful", http.StatusOK, "success", user)
+	c.JSON(http.StatusOK, response)
 }
 
 // @Summary Login employee
@@ -60,18 +61,18 @@ func (h *authHandler) Register(c *gin.Context) {
 func (h *authHandler) Login(c *gin.Context) {
 	var req model.LoginRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid input data"})
+		response := utils.BuildErrorResponse("Invalid input data", http.StatusBadRequest, "error", err.Error())
+		c.JSON(http.StatusBadRequest, response)
 		return
 	}
 
 	res, err := h.service.Login(req)
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+		response := utils.BuildErrorResponse("Login failed", http.StatusUnauthorized, "error", err.Error())
+		c.JSON(http.StatusUnauthorized, response)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"message": "Login successful",
-		"data":    res,
-	})
+	response := utils.BuildResponse("Login successful", http.StatusOK, "success", res)
+	c.JSON(http.StatusOK, response)
 }
