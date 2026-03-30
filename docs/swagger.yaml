@@ -2,25 +2,57 @@ basePath: /
 definitions:
   model.AttendanceRequest:
     properties:
-      karyawan_id:
+      action:
+        type: string
+      employee_id:
         type: integer
+      latitude:
+        type: number
+      longitude:
+        type: number
     required:
-    - karyawan_id
+    - action
+    - employee_id
+    - latitude
+    - longitude
     type: object
-host: localhost:8080
+  model.LoginRequest:
+    properties:
+      email:
+        type: string
+      password:
+        type: string
+    required:
+    - email
+    - password
+    type: object
+  model.RegisterRequest:
+    properties:
+      email:
+        type: string
+      name:
+        type: string
+      password:
+        minLength: 6
+        type: string
+    required:
+    - email
+    - name
+    - password
+    type: object
 info:
   contact: {}
   description: API documentation for HRD Attendance System
   title: HRD Attendance API
   version: "1.0"
 paths:
-  /api/v1/attendance/checkin:
+  /api/v1/attendance:
     post:
       consumes:
       - application/json
-      description: Endpoint untuk mencatat kehadiran karyawan
+      description: Endpoint to record employee clock-in and clock-out with geolocation
       parameters:
-      - description: Data Karyawan ID
+      - description: 'Attendance Data (Action: clock_in/clock_out)'
         in: body
         name: request
         required: true
@@ -39,12 +71,20 @@ paths:
           schema:
             additionalProperties: true
             type: object
-      summary: Check-in Absensi
+      summary: Record Attendance
       tags:
       - Attendance
-  /api/v1/ping:
-    get:
-      description: Endpoint untuk mengecek status API
+  /api/v1/auth/login:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Login Data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.LoginRequest'
       produces:
       - application/json
       responses:
@@ -53,7 +93,43 @@ paths:
           schema:
             additionalProperties: true
             type: object
-      summary: Hello Test
+      summary: Login employee
+      tags:
+      - Auth
+  /api/v1/auth/register:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Register Data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.RegisterRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Register new employee
+      tags:
+      - Auth
+  /api/v1/ping:
+    get:
+      description: Endpoint to check API status
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Health Check
       tags:
       - Health
 swagger: "2.0"
