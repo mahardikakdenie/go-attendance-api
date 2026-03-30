@@ -1,6 +1,10 @@
 package model
 
-import "time"
+import (
+	"time"
+
+	"github.com/google/uuid"
+)
 
 type AttendanceRequest struct {
 	EmployeeID int     `json:"employee_id" binding:"required"`
@@ -10,7 +14,7 @@ type AttendanceRequest struct {
 }
 
 type AttendanceResponse struct {
-	ID                int        `json:"id"`
+	ID                uuid.UUID  `json:"id"`
 	EmployeeID        int        `json:"employee_id"`
 	ClockInTime       time.Time  `json:"clock_in_time"`
 	ClockOutTime      *time.Time `json:"clock_out_time,omitempty"`
@@ -22,9 +26,9 @@ type AttendanceResponse struct {
 }
 
 type Attendance struct {
-	ID     uint `gorm:"primaryKey" json:"id"`
-	UserID uint `gorm:"not null" json:"user_id"`
-	User   User `gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"user,omitempty"`
+	ID     uuid.UUID `gorm:"type:uuid;default:gen_random_uuid();primaryKey" json:"id"`
+	UserID uint      `gorm:"not null" json:"user_id"`
+	User   User      `gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"user,omitempty"`
 
 	ClockInTime      time.Time `gorm:"not null" json:"clock_in_time"`
 	ClockInLatitude  float64   `gorm:"not null" json:"clock_in_latitude"`
