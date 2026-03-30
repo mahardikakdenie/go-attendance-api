@@ -5,6 +5,7 @@ import (
 
 	"go-attendance-api/internal/model"
 	"go-attendance-api/internal/service"
+	"go-attendance-api/internal/utils"
 
 	"github.com/gin-gonic/gin"
 )
@@ -30,6 +31,7 @@ func NewAttendanceHandler(service service.AttendanceService) AttendanceHandler {
 // @Accept json
 // @Produce json
 // @Param request body model.AttendanceRequest true "Attendance Data (Action: clock_in/clock_out)"
+// @Security BearerAuth
 // @Success 200 {object} map[string]interface{}
 // @Failure 400 {object} map[string]interface{}
 // @Router /api/v1/attendance [post]
@@ -37,20 +39,20 @@ func (h *attendanceHandler) RecordAttendance(c *gin.Context) {
 	var req model.AttendanceRequest
 
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request format: " + err.Error()})
+		response := utils.BuildErrorResponse("Invalid request format", http.StatusBadRequest, "error", err.Error())
+		c.JSON(http.StatusBadRequest, response)
 		return
 	}
 
-	response, err := h.service.RecordAttendance(req)
+	res, err := h.service.RecordAttendance(req)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		response := utils.BuildErrorResponse("Failed to record attendance", http.StatusBadRequest, "error", err.Error())
+		c.JSON(http.StatusBadRequest, response)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"message": "Attendance recorded successfully",
-		"data":    response,
-	})
+	response := utils.BuildResponse("Attendance recorded successfully", http.StatusOK, "success", res)
+	c.JSON(http.StatusOK, response)
 }
 
 // @Summary Health Check
@@ -60,8 +62,6 @@ func (h *attendanceHandler) RecordAttendance(c *gin.Context) {
 // @Success 200 {object} map[string]interface{}
 // @Router /api/v1/ping [get]
 func (h *attendanceHandler) HelloTest(c *gin.Context) {
-	response := gin.H{
-		"data": "Hello from the clean architecture Handler!",
-	}
+	response := utils.BuildResponse("Health check success", http.StatusOK, "success", "Hello from the clean architecture Handler!")
 	c.JSON(http.StatusOK, response)
 }
