@@ -7,6 +7,7 @@ import (
 
 	"go-attendance-api/docs"
 	"go-attendance-api/internal/handler"
+	"go-attendance-api/internal/middleware"
 	"go-attendance-api/internal/model"
 	"go-attendance-api/internal/repository"
 	"go-attendance-api/internal/seeder"
@@ -59,6 +60,9 @@ func InitDB() *gorm.DB {
 // @version 1.0
 // @description API documentation for HRD Attendance System
 // @BasePath /
+// @securityDefinitions.apikey BearerAuth
+// @in header
+// @name Authorization
 func main() {
 	if err := godotenv.Load(); err != nil {
 		log.Println("Peringatan: File .env tidak ditemukan")
@@ -77,9 +81,13 @@ func main() {
 	attendanceService := service.NewAttendanceService(attendanceRepo)
 	attendanceHandler := handler.NewAttendanceHandler(attendanceService)
 
-	userRepo := repository.NewUserRepository(db)
-	authService := service.NewAuthService(userRepo)
+	authRepo := repository.NewAuthRepository(db)
+	authService := service.NewAuthService(authRepo)
 	authHandler := handler.NewAuthHandler(authService)
+
+	userRepo := repository.NewUserRepository(db)
+	userService := service.NewUserService(userRepo)
+	userHandler := handler.NewUserHandler(userService)
 
 	r := gin.Default()
 
@@ -94,7 +102,13 @@ func main() {
 		}
 
 		api.GET("/ping", attendanceHandler.HelloTest)
-		api.POST("/attendance", attendanceHandler.RecordAttendance)
+
+		protected := api.Group("")
+		protected.Use(middleware.JWTAuth())
+		{
+			protected.POST("/attendance", attendanceHandler.RecordAttendance)
+			protected.GET("/users", userHandler.GetAllUsers)
+		}
 	}
 
 	if err := r.Run(":" + appPort); err != nil {
