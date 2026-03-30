@@ -41,6 +41,7 @@ func (s *attendanceService) RecordAttendance(req model.AttendanceRequest) (model
 			ClockInLatitude:  req.Latitude,
 			ClockInLongitude: req.Longitude,
 			Status:           status,
+			MediaUrl:         req.MediaUrl,
 		}
 
 		if err := s.repo.Save(&data); err != nil {
