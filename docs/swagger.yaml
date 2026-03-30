@@ -71,6 +71,8 @@ paths:
           schema:
             additionalProperties: true
             type: object
+      security:
+      - BearerAuth: []
       summary: Record Attendance
       tags:
       - Attendance
@@ -132,4 +134,44 @@ paths:
       summary: Health Check
       tags:
       - Health
+  /api/v1/users:
+    get:
+      consumes:
+      - application/json
+      description: Get list of users with dynamic filter and sorting
+      parameters:
+      - description: Filter by Name
+        in: query
+        name: name
+        type: string
+      - description: Filter by Email
+        in: query
+        name: email
+        type: string
+      - description: Order by field (e.g., name, created_at)
+        in: query
+        name: order_by
+        type: string
+      - description: Sort direction (asc or desc)
+        in: query
+        name: sort
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get All Users
+      tags:
+      - Users
+securityDefinitions:
+  BearerAuth:
+    in: header
+    name: Authorization
+    type: apiKey
 swagger: "2.0"
