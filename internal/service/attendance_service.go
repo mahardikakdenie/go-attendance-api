@@ -9,7 +9,7 @@ import (
 )
 
 type AttendanceService interface {
-	CheckIn(req model.AttendanceRequest) (model.AttendanceResponse, error)
+	RecordAttendance(req model.AttendanceRequest) (model.AttendanceResponse, error)
 }
 
 type attendanceService struct {
@@ -22,35 +22,67 @@ func NewAttendanceService(repo repository.AttendanceRepository) AttendanceServic
 	}
 }
 
-func (s *attendanceService) CheckIn(req model.AttendanceRequest) (model.AttendanceResponse, error) {
-	if req.KaryawanID <= 0 {
-		return model.AttendanceResponse{}, errors.New("ID Karyawan tidak valid")
+func (s *attendanceService) RecordAttendance(req model.AttendanceRequest) (model.AttendanceResponse, error) {
+	if req.EmployeeID <= 0 {
+		return model.AttendanceResponse{}, errors.New("invalid employee ID")
 	}
 
 	now := time.Now()
-	status := "Tepat Waktu"
 
-	if now.Hour() >= 8 {
-		status = "Telat"
+	if req.Action == "clock_in" {
+		status := "On Time"
+		if now.Hour() >= 8 {
+			status = "Late"
+		}
+
+		data := model.Attendance{
+			UserID:           uint(req.EmployeeID),
+			ClockInTime:      now,
+			ClockInLatitude:  req.Latitude,
+			ClockInLongitude: req.Longitude,
+			Status:           status,
+		}
+
+		if err := s.repo.Save(&data); err != nil {
+			return model.AttendanceResponse{}, err
+		}
+
+		return model.AttendanceResponse{
+			ID:               int(data.ID),
+			EmployeeID:       int(data.UserID),
+			ClockInTime:      data.ClockInTime,
+			ClockInLatitude:  data.ClockInLatitude,
+			ClockInLongitude: data.ClockInLongitude,
+			Status:           data.Status,
+		}, nil
 	}
 
-	attendanceData := model.Attendance{
-		UserID:     uint(req.KaryawanID),
-		WaktuMasuk: now,
-		Status:     status,
+	if req.Action == "clock_out" {
+		data, err := s.repo.FindTodayByUser(uint(req.EmployeeID))
+		if err != nil {
+			return model.AttendanceResponse{}, errors.New("clock in record not found for today")
+		}
+
+		data.ClockOutTime = &now
+		data.ClockOutLatitude = &req.Latitude
+		data.ClockOutLongitude = &req.Longitude
+
+		if err := s.repo.Update(&data); err != nil {
+			return model.AttendanceResponse{}, err
+		}
+
+		return model.AttendanceResponse{
+			ID:                int(data.ID),
+			EmployeeID:        int(data.UserID),
+			ClockInTime:       data.ClockInTime,
+			ClockOutTime:      data.ClockOutTime,
+			ClockInLatitude:   data.ClockInLatitude,
+			ClockInLongitude:  data.ClockInLongitude,
+			ClockOutLatitude:  data.ClockOutLatitude,
+			ClockOutLongitude: data.ClockOutLongitude,
+			Status:            data.Status,
+		}, nil
 	}
 
-	err := s.repo.Save(&attendanceData)
-	if err != nil {
-		return model.AttendanceResponse{}, err
-	}
-
-	response := model.AttendanceResponse{
-		ID:         int(attendanceData.ID),
-		KaryawanID: int(attendanceData.UserID),
-		WaktuMasuk: attendanceData.WaktuMasuk,
-		Status:     attendanceData.Status,
-	}
-
-	return response, nil
+	return model.AttendanceResponse{}, errors.New("invalid action type")
 }
