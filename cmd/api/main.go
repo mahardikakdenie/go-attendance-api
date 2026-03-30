@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"log"
+	"os"
 
 	"go-attendance-api/internal/handler"
 	"go-attendance-api/internal/model"
@@ -12,6 +13,7 @@ import (
 	_ "go-attendance-api/docs"
 
 	"github.com/gin-gonic/gin"
+	"github.com/joho/godotenv"
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
 	"gorm.io/driver/postgres"
@@ -19,11 +21,11 @@ import (
 )
 
 func InitDB() *gorm.DB {
-	host := "127.0.0.1"
-	user := "postgres"
-	password := "1234"
-	dbName := "attendance-db"
-	port := "5432"
+	host := os.Getenv("DB_HOST")
+	user := os.Getenv("DB_USER")
+	password := os.Getenv("DB_PASSWORD")
+	dbName := os.Getenv("DB_NAME")
+	port := os.Getenv("DB_PORT")
 
 	dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%s sslmode=disable TimeZone=Asia/Jakarta",
 		host, user, password, dbName, port)
@@ -44,9 +46,13 @@ func InitDB() *gorm.DB {
 // @title HRD Attendance API
 // @version 1.0
 // @description API documentation for HRD Attendance System
-// @host localhost:808
+// @host localhost:8085
 // @BasePath /
 func main() {
+	if err := godotenv.Load(); err != nil {
+		log.Println("Peringatan: File .env tidak ditemukan, menggunakan environment variable bawaan sistem")
+	}
+
 	db := InitDB()
 
 	attendanceRepo := repository.NewAttendanceRepository(db)
@@ -63,7 +69,13 @@ func main() {
 		api.POST("/attendance/checkin", attendanceHandler.CheckIn)
 	}
 
-	if err := r.Run(":8085"); err != nil {
+	appPort := os.Getenv("APP_PORT")
+	if appPort == "" {
+		appPort = "8085"
+	}
+
+	log.Printf("Server HRD berjalan di port :%s", appPort)
+	if err := r.Run(":" + appPort); err != nil {
 		log.Fatalf("Gagal menjalankan server: %v", err)
 	}
 }
