@@ -21,8 +21,10 @@ definitions:
   model.LoginRequest:
     properties:
       email:
+        example: admin@yopmail.com
         type: string
       password:
+        example: "123456"
         type: string
     required:
     - email
@@ -49,6 +51,26 @@ info:
   version: "1.0"
 paths:
   /api/v1/attendance:
+    get:
+      description: Endpoint to retrieve all attendance records
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get All Attendance Data
+      tags:
+      - Attendance
     post:
       consumes:
       - application/json
