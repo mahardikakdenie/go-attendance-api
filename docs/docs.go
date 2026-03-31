@@ -30,6 +30,20 @@ const docTemplate = `{
                     "Attendance"
                 ],
                 "summary": "Get All Attendance Data",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Filter by User ID",
+                        "name": "user_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by Status (e.g., On Time, Late)",
+                        "name": "status",
+                        "in": "query"
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "OK",

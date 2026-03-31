@@ -53,6 +53,15 @@ paths:
   /api/v1/attendance:
     get:
       description: Endpoint to retrieve all attendance records
+      parameters:
+      - description: Filter by User ID
+        in: query
+        name: user_id
+        type: integer
+      - description: Filter by Status (e.g., On Time, Late)
+        in: query
+        name: status
+        type: string
       produces:
       - application/json
       responses:
