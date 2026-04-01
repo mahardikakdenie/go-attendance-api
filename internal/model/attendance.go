@@ -44,3 +44,8 @@ type Attendance struct {
 
 	MediaUrl string `gorm:"type:varchar(255)" json:"media_url"`
 }
+
+type AttendanceFilter struct {
+	UserID int
+	Status string
+}
