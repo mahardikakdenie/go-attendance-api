@@ -10,6 +10,7 @@ import (
 
 type AttendanceService interface {
 	RecordAttendance(req model.AttendanceRequest) (model.AttendanceResponse, error)
+	GetAllData(filters ...model.AttendanceFilter) ([]model.Attendance, error)
 }
 
 type attendanceService struct {
@@ -86,4 +87,13 @@ func (s *attendanceService) RecordAttendance(req model.AttendanceRequest) (model
 	}
 
 	return model.AttendanceResponse{}, errors.New("invalid action type")
+}
+
+func (s *attendanceService) GetAllData(filters ...model.AttendanceFilter) ([]model.Attendance, error) {
+	data, err := s.repo.FindAll(filters...)
+	if err != nil {
+		return nil, err
+	}
+
+	return data, nil
 }
