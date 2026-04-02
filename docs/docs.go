@@ -220,6 +220,65 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/tenant-setting": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "Tenant Setting"
+                ],
+                "summary": "Get Tenant Setting",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            },
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Tenant Setting"
+                ],
+                "summary": "Update Tenant Setting",
+                "parameters": [
+                    {
+                        "description": "Tenant Setting",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.TenantSetting"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/tenants": {
             "get": {
                 "produces": [
@@ -461,6 +520,72 @@ const docTemplate = `{
                 },
                 "name": {
                     "type": "string"
+                },
+                "updatedAt": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.TenantSetting": {
+            "type": "object",
+            "properties": {
+                "allowMultipleCheck": {
+                    "type": "boolean",
+                    "example": false
+                },
+                "allowRemote": {
+                    "type": "boolean",
+                    "example": false
+                },
+                "clockInEndTime": {
+                    "type": "string",
+                    "example": "09:00"
+                },
+                "clockInStartTime": {
+                    "type": "string",
+                    "example": "07:00"
+                },
+                "clockOutEndTime": {
+                    "type": "string",
+                    "example": "23:00"
+                },
+                "clockOutStartTime": {
+                    "type": "string",
+                    "example": "16:00"
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "lateAfterMinute": {
+                    "type": "integer",
+                    "example": 480
+                },
+                "maxRadiusMeter": {
+                    "type": "number",
+                    "example": 100
+                },
+                "officeLatitude": {
+                    "type": "number",
+                    "example": -6.1339179
+                },
+                "officeLongitude": {
+                    "type": "number",
+                    "example": 106.8329504
+                },
+                "requireLocation": {
+                    "type": "boolean",
+                    "example": true
+                },
+                "requireSelfie": {
+                    "type": "boolean",
+                    "example": true
+                },
+                "tenantID": {
+                    "type": "integer",
+                    "example": 1
                 },
                 "updatedAt": {
                     "type": "string"

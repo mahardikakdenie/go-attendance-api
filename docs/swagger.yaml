@@ -70,6 +70,54 @@ definitions:
       updatedAt:
         type: string
     type: object
+  model.TenantSetting:
+    properties:
+      allowMultipleCheck:
+        example: false
+        type: boolean
+      allowRemote:
+        example: false
+        type: boolean
+      clockInEndTime:
+        example: "09:00"
+        type: string
+      clockInStartTime:
+        example: "07:00"
+        type: string
+      clockOutEndTime:
+        example: "23:00"
+        type: string
+      clockOutStartTime:
+        example: "16:00"
+        type: string
+      createdAt:
+        type: string
+      id:
+        type: integer
+      lateAfterMinute:
+        example: 480
+        type: integer
+      maxRadiusMeter:
+        example: 100
+        type: number
+      officeLatitude:
+        example: -6.1339179
+        type: number
+      officeLongitude:
+        example: 106.8329504
+        type: number
+      requireLocation:
+        example: true
+        type: boolean
+      requireSelfie:
+        example: true
+        type: boolean
+      tenantID:
+        example: 1
+        type: integer
+      updatedAt:
+        type: string
+    type: object
 info:
   contact: {}
   description: API documentation for HRD Attendance System
@@ -209,6 +257,42 @@ paths:
       summary: Health Check
       tags:
       - Health
+  /api/v1/tenant-setting:
+    get:
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get Tenant Setting
+      tags:
+      - Tenant Setting
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: Tenant Setting
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.TenantSetting'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Update Tenant Setting
+      tags:
+      - Tenant Setting
   /api/v1/tenants:
     get:
       produces:
