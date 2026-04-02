@@ -56,9 +56,9 @@ DB_PASSWORD=1234
 DB_NAME=attendance-db
 APP_PORT=8085
 JWT_SECRET=supersecretkey
-RUN_MIGRATION=false
+RUN_MIGRATION=true
 RESET_DB=false
-RUN_SEEDER=false
+RUN_SEEDER=true
 ```
 
 Notes:
@@ -68,20 +68,68 @@ Notes:
 - `RUN_SEEDER=true` seeds tenants, users, and tenant settings.
 - If `APP_PORT` is empty, the app defaults to `8080`.
 
-## Run Locally
+## Installation
 
-1. Install Go and PostgreSQL.
-2. Create the database defined in `DB_NAME`.
-3. Copy `.env.example` to `.env` and adjust the values.
-4. Run the API:
+1. Install Go, PostgreSQL, and the Swagger CLI.
 
 ```bash
+go install github.com/swaggo/swag/cmd/swag@latest
+```
+
+2. Create a PostgreSQL database for the project.
+3. Copy `.env.example` to `.env`.
+4. Update `.env` so migration and seeder are enabled:
+
+```env
+DB_HOST=127.0.0.1
+DB_PORT=5432
+DB_USER=postgres
+DB_PASSWORD=1234
+DB_NAME=attendance-db
+APP_PORT=8085
+JWT_SECRET=supersecretkey
+RUN_MIGRATION=true
+RESET_DB=false
+RUN_SEEDER=true
+```
+
+5. Generate Swagger docs from the main entrypoint:
+
+```bash
+swag init -g cmd/api/main.go
+```
+
+6. Run the API:
+
+```bash
+go run cmd/api/main.go
+```
+
+7. Open Swagger:
+
+```text
+http://localhost:8085/swagger/index.html
+```
+
+## Run Locally
+
+Quick start after `.env` is configured:
+
+```bash
+swag init -g cmd/api/main.go
 go run cmd/api/main.go
 ```
 
 The API will start on `http://localhost:<APP_PORT>`.
 
 ## Docker
+
+The included [Dockerfile](C:\Users\FS-User\Documents\go-attendance-api\Dockerfile) sets:
+
+- `APP_PORT=8080`
+- `RUN_MIGRATION=true`
+- `RUN_SEEDER=true`
+- `RESET_DB=false`
 
 Build and run:
 
@@ -90,7 +138,16 @@ docker build -t go-attendance-api .
 docker run --env-file .env -p 8080:8080 go-attendance-api
 ```
 
-Note: the container exposes port `8080`, so align `APP_PORT` with that if you want the app inside the container to listen on `8080`.
+For Docker, use `APP_PORT=8080` in `.env` so the container port and application port match.
+
+Recommended Docker `.env` values:
+
+```env
+APP_PORT=8080
+RUN_MIGRATION=true
+RUN_SEEDER=true
+RESET_DB=false
+```
 
 ## Swagger
 
@@ -202,5 +259,6 @@ The tenant seed currently includes:
 ## Notes
 
 - Swagger files in `docs/` are generated artifacts and should be refreshed when annotations change.
+- Regenerate docs with `swag init -g cmd/api/main.go` after updating Swagger annotations.
 - JWT is required for protected routes.
 - The codebase currently mixes English and Indonesian response messages.
