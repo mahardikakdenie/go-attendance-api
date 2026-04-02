@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"errors"
 	"time"
 
@@ -9,8 +10,12 @@ import (
 )
 
 type AttendanceService interface {
-	RecordAttendance(req model.AttendanceRequest) (model.AttendanceResponse, error)
-	GetAllData(filters ...model.AttendanceFilter) ([]model.Attendance, error)
+	RecordAttendance(
+		ctx context.Context,
+		userID uint,
+		req model.AttendanceRequest,
+	) (model.AttendanceResponse, error)
+	GetAllData(ctx context.Context, filter model.AttendanceFilter, limit, offset int) ([]model.Attendance, int64, error)
 }
 
 type attendanceService struct {
@@ -23,77 +28,106 @@ func NewAttendanceService(repo repository.AttendanceRepository) AttendanceServic
 	}
 }
 
-func (s *attendanceService) RecordAttendance(req model.AttendanceRequest) (model.AttendanceResponse, error) {
-	if req.EmployeeID <= 0 {
-		return model.AttendanceResponse{}, errors.New("invalid employee ID")
+func (s *attendanceService) RecordAttendance(
+	ctx context.Context,
+	userID uint,
+	req model.AttendanceRequest,
+) (model.AttendanceResponse, error) {
+
+	if userID == 0 {
+		return model.AttendanceResponse{}, errors.New("invalid user")
 	}
 
 	now := time.Now()
 
-	if req.Action == "clock_in" {
-		status := "On Time"
+	todayAttendance, err := s.repo.FindTodayByUser(ctx, userID)
+	if err != nil {
+		return model.AttendanceResponse{}, err
+	}
+
+	switch req.Action {
+
+	case model.ClockIn:
+		if todayAttendance != nil {
+			return model.AttendanceResponse{}, errors.New("already clocked in today")
+		}
+
+		status := model.StatusWorking
 		if now.Hour() >= 8 {
-			status = "Late"
+			status = model.StatusLate
 		}
 
 		data := model.Attendance{
-			UserID:           uint(req.EmployeeID),
+			UserID:           userID,
 			ClockInTime:      now,
 			ClockInLatitude:  req.Latitude,
 			ClockInLongitude: req.Longitude,
+			ClockInMediaUrl:  req.MediaUrl,
 			Status:           status,
-			MediaUrl:         req.MediaUrl,
 		}
 
-		if err := s.repo.Save(&data); err != nil {
+		if err := s.repo.Save(ctx, &data); err != nil {
 			return model.AttendanceResponse{}, err
 		}
 
-		return model.AttendanceResponse{
-			ID:               data.ID,
-			EmployeeID:       int(data.UserID),
-			ClockInTime:      data.ClockInTime,
-			ClockInLatitude:  data.ClockInLatitude,
-			ClockInLongitude: data.ClockInLongitude,
-			Status:           data.Status,
-		}, nil
-	}
+		return mapToResponse(&data), nil
 
-	if req.Action == "clock_out" {
-		data, err := s.repo.FindTodayByUser(uint(req.EmployeeID))
-		if err != nil {
-			return model.AttendanceResponse{}, errors.New("clock in record not found for today")
+	case model.ClockOut:
+		if todayAttendance == nil {
+			return model.AttendanceResponse{}, errors.New("you have not clocked in today")
 		}
 
-		data.ClockOutTime = &now
-		data.ClockOutLatitude = &req.Latitude
-		data.ClockOutLongitude = &req.Longitude
+		if todayAttendance.ClockOutTime != nil {
+			return model.AttendanceResponse{}, errors.New("already clocked out today")
+		}
 
-		if err := s.repo.Update(&data); err != nil {
+		todayAttendance.ClockOutTime = &now
+		todayAttendance.ClockOutLatitude = &req.Latitude
+		todayAttendance.ClockOutLongitude = &req.Longitude
+
+		if req.MediaUrl != "" {
+			todayAttendance.ClockOutMediaUrl = &req.MediaUrl
+		}
+
+		todayAttendance.Status = model.StatusDone
+
+		if err := s.repo.Update(ctx, todayAttendance); err != nil {
 			return model.AttendanceResponse{}, err
 		}
 
-		return model.AttendanceResponse{
-			ID:                data.ID,
-			EmployeeID:        int(data.UserID),
-			ClockInTime:       data.ClockInTime,
-			ClockOutTime:      data.ClockOutTime,
-			ClockInLatitude:   data.ClockInLatitude,
-			ClockInLongitude:  data.ClockInLongitude,
-			ClockOutLatitude:  data.ClockOutLatitude,
-			ClockOutLongitude: data.ClockOutLongitude,
-			Status:            data.Status,
-		}, nil
-	}
+		return mapToResponse(todayAttendance), nil
 
-	return model.AttendanceResponse{}, errors.New("invalid action type")
+	default:
+		return model.AttendanceResponse{}, errors.New("invalid action")
+	}
 }
 
-func (s *attendanceService) GetAllData(filters ...model.AttendanceFilter) ([]model.Attendance, error) {
-	data, err := s.repo.FindAll(filters...)
+func (s *attendanceService) GetAllData(
+	ctx context.Context,
+	filter model.AttendanceFilter,
+	limit, offset int,
+) ([]model.Attendance, int64, error) {
+
+	data, total, err := s.repo.FindAll(ctx, filter, limit, offset)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 
-	return data, nil
+	return data, total, nil
+}
+
+func mapToResponse(a *model.Attendance) model.AttendanceResponse {
+	return model.AttendanceResponse{
+		ID:                a.ID,
+		UserID:            a.UserID,
+		ClockInTime:       a.ClockInTime,
+		ClockOutTime:      a.ClockOutTime,
+		ClockInLatitude:   a.ClockInLatitude,
+		ClockInLongitude:  a.ClockInLongitude,
+		ClockOutLatitude:  a.ClockOutLatitude,
+		ClockOutLongitude: a.ClockOutLongitude,
+		ClockInMediaUrl:   a.ClockInMediaUrl,
+		ClockOutMediaUrl:  a.ClockOutMediaUrl,
+		Status:            a.Status,
+	}
 }

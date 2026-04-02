@@ -15,25 +15,49 @@
                         "BearerAuth": []
                     }
                 ],
-                "description": "Endpoint to retrieve all attendance records",
+                "description": "Get attendance list with filter \u0026 pagination",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "Attendance"
                 ],
-                "summary": "Get All Attendance Data",
+                "summary": "Get All Attendance",
                 "parameters": [
                     {
                         "type": "integer",
-                        "description": "Filter by User ID",
+                        "description": "User ID",
                         "name": "user_id",
                         "in": "query"
                     },
                     {
                         "type": "string",
-                        "description": "Filter by Status (e.g., On Time, Late)",
+                        "description": "Status (working, done, late)",
                         "name": "status",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Start date (YYYY-MM-DD)",
+                        "name": "date_from",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "End date (YYYY-MM-DD)",
+                        "name": "date_to",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Limit (default 10)",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Offset (default 0)",
+                        "name": "offset",
                         "in": "query"
                     }
                 ],
@@ -60,7 +84,7 @@
                         "BearerAuth": []
                     }
                 ],
-                "description": "Endpoint to record employee clock-in and clock-out with geolocation",
+                "description": "Record clock-in / clock-out with face \u0026 location",
                 "consumes": [
                     "application/json"
                 ],
@@ -73,7 +97,7 @@
                 "summary": "Record Attendance",
                 "parameters": [
                     {
-                        "description": "Attendance Data (Action: clock_in/clock_out)",
+                        "description": "Attendance Data",
                         "name": "request",
                         "in": "body",
                         "required": true,
@@ -170,7 +194,7 @@
         },
         "/api/v1/ping": {
             "get": {
-                "description": "Endpoint to check API status",
+                "description": "Check API status",
                 "produces": [
                     "application/json"
                 ],
@@ -178,6 +202,94 @@
                     "Health"
                 ],
                 "summary": "Health Check",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/tenants": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Tenant"
+                ],
+                "summary": "Get All Tenants",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            },
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Tenant"
+                ],
+                "summary": "Create Tenant",
+                "parameters": [
+                    {
+                        "description": "Tenant Data",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.Tenant"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/tenants/{id}": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Tenant"
+                ],
+                "summary": "Get Tenant By ID",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Tenant ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -246,29 +358,48 @@
         }
     },
     "definitions": {
+        "model.AttendanceAction": {
+            "type": "string",
+            "enum": [
+                "clock_in",
+                "clock_out"
+            ],
+            "x-enum-varnames": [
+                "ClockIn",
+                "ClockOut"
+            ]
+        },
         "model.AttendanceRequest": {
             "type": "object",
             "required": [
                 "action",
-                "employee_id",
                 "latitude",
                 "longitude"
             ],
             "properties": {
                 "action": {
-                    "type": "string"
-                },
-                "employee_id": {
-                    "type": "integer"
+                    "enum": [
+                        "clock_in",
+                        "clock_out"
+                    ],
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/model.AttendanceAction"
+                        }
+                    ],
+                    "example": "clock_in"
                 },
                 "latitude": {
-                    "type": "number"
+                    "type": "number",
+                    "example": -6.1339179
                 },
                 "longitude": {
-                    "type": "number"
+                    "type": "number",
+                    "example": 106.8329504
                 },
                 "media_url": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "https://i.pinimg.com/control1/736x/41/e7/99/41e799436291fdfb4c969b80913a19fe.jpg"
                 }
             }
         },
@@ -306,6 +437,26 @@
                 "password": {
                     "type": "string",
                     "minLength": 6
+                }
+            }
+        },
+        "model.Tenant": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "string"
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "updatedAt": {
+                    "type": "string"
                 }
             }
         }

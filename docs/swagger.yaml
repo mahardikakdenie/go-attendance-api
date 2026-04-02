@@ -1,20 +1,33 @@
 basePath: /
 definitions:
+  model.AttendanceAction:
+    enum:
+    - clock_in
+    - clock_out
+    type: string
+    x-enum-varnames:
+    - ClockIn
+    - ClockOut
   model.AttendanceRequest:
     properties:
       action:
-        type: string
-      employee_id:
-        type: integer
+        allOf:
+        - $ref: '#/definitions/model.AttendanceAction'
+        enum:
+        - clock_in
+        - clock_out
+        example: clock_in
       latitude:
+        example: -6.1339179
         type: number
       longitude:
+        example: 106.8329504
         type: number
       media_url:
+        example: https://i.pinimg.com/control1/736x/41/e7/99/41e799436291fdfb4c969b80913a19fe.jpg
         type: string
     required:
     - action
-    - employee_id
     - latitude
     - longitude
     type: object
@@ -44,6 +57,19 @@ definitions:
     - name
     - password
     type: object
+  model.Tenant:
+    properties:
+      code:
+        type: string
+      createdAt:
+        type: string
+      id:
+        type: integer
+      name:
+        type: string
+      updatedAt:
+        type: string
+    type: object
 info:
   contact: {}
   description: API documentation for HRD Attendance System
@@ -52,16 +78,32 @@ info:
 paths:
   /api/v1/attendance:
     get:
-      description: Endpoint to retrieve all attendance records
+      description: Get attendance list with filter & pagination
       parameters:
-      - description: Filter by User ID
+      - description: User ID
         in: query
         name: user_id
         type: integer
-      - description: Filter by Status (e.g., On Time, Late)
+      - description: Status (working, done, late)
         in: query
         name: status
         type: string
+      - description: Start date (YYYY-MM-DD)
+        in: query
+        name: date_from
+        type: string
+      - description: End date (YYYY-MM-DD)
+        in: query
+        name: date_to
+        type: string
+      - description: Limit (default 10)
+        in: query
+        name: limit
+        type: integer
+      - description: Offset (default 0)
+        in: query
+        name: offset
+        type: integer
       produces:
       - application/json
       responses:
@@ -77,15 +119,15 @@ paths:
             type: object
       security:
       - BearerAuth: []
-      summary: Get All Attendance Data
+      summary: Get All Attendance
       tags:
       - Attendance
     post:
       consumes:
       - application/json
-      description: Endpoint to record employee clock-in and clock-out with geolocation
+      description: Record clock-in / clock-out with face & location
       parameters:
-      - description: 'Attendance Data (Action: clock_in/clock_out)'
+      - description: Attendance Data
         in: body
         name: request
         required: true
@@ -155,7 +197,7 @@ paths:
       - Auth
   /api/v1/ping:
     get:
-      description: Endpoint to check API status
+      description: Check API status
       produces:
       - application/json
       responses:
@@ -167,6 +209,64 @@ paths:
       summary: Health Check
       tags:
       - Health
+  /api/v1/tenants:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Get All Tenants
+      tags:
+      - Tenant
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Tenant Data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.Tenant'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Create Tenant
+      tags:
+      - Tenant
+  /api/v1/tenants/{id}:
+    get:
+      parameters:
+      - description: Tenant ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Get Tenant By ID
+      tags:
+      - Tenant
   /api/v1/users:
     get:
       consumes:

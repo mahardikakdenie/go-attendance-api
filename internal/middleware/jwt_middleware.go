@@ -9,42 +9,71 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
+type JWTClaims struct {
+	UserID uint `json:"user_id"`
+	jwt.RegisteredClaims
+}
+
 func JWTAuth() gin.HandlerFunc {
 	return func(c *gin.Context) {
+
 		authHeader := c.GetHeader("Authorization")
 		if authHeader == "" {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Akses ditolak: Token tidak ditemukan"})
-			c.Abort()
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
+				"error": "Unauthorized: token required",
+			})
 			return
 		}
 
 		parts := strings.Split(authHeader, " ")
 		if len(parts) != 2 || parts[0] != "Bearer" {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Format token tidak valid. Gunakan format: Bearer <token>"})
-			c.Abort()
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
+				"error": "Invalid token format (Bearer <token>)",
+			})
 			return
 		}
 
 		tokenString := parts[1]
+
 		secret := os.Getenv("JWT_SECRET")
 		if secret == "" {
-			secret = "supersecretkey"
+			c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
+				"error": "JWT secret not configured",
+			})
+			return
 		}
 
-		token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
+		token, err := jwt.ParseWithClaims(tokenString, &JWTClaims{}, func(token *jwt.Token) (interface{}, error) {
 			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-				return nil, http.ErrAbortHandler
+				return nil, jwt.ErrTokenSignatureInvalid
 			}
 			return []byte(secret), nil
 		})
 
-		if err != nil || !token.Valid {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Token tidak valid atau sudah kedaluwarsa"})
-			c.Abort()
+		if err != nil {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
+				"error": "Invalid or expired token",
+			})
 			return
 		}
 
-		// Jika token valid, izinkan request dilanjutkan ke Handler
+		claims, ok := token.Claims.(*JWTClaims)
+		if !ok || !token.Valid {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
+				"error": "Invalid token claims",
+			})
+			return
+		}
+
+		if claims.UserID == 0 {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
+				"error": "Invalid user in token",
+			})
+			return
+		}
+
+		c.Set("user_id", claims.UserID)
+
 		c.Next()
 	}
 }
