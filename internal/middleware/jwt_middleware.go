@@ -1,85 +1,32 @@
 package middleware
 
 import (
-	"errors"
 	"net/http"
-	"os"
+
+	"go-attendance-api/internal/service"
 
 	"github.com/gin-gonic/gin"
-	"github.com/golang-jwt/jwt/v5"
 )
 
-type JWTClaims struct {
-	UserID   uint `json:"user_id"`
-	TenantID uint `json:"tenant_id"`
-	jwt.RegisteredClaims
-}
-
-func JWTAuth() gin.HandlerFunc {
+func CookieAuth(authService service.AuthService) gin.HandlerFunc {
 	return func(c *gin.Context) {
-
-		// 🔥 Ambil token dari cookie (BUKAN header lagi)
-		tokenString, err := c.Cookie("token")
-		if err != nil || tokenString == "" {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
-				"error": "Unauthorized: token required",
-			})
-			return
-		}
-
-		secret := os.Getenv("JWT_SECRET")
-		if secret == "" {
-			c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
-				"error": "JWT secret not configured",
-			})
-			return
-		}
-
-		token, err := jwt.ParseWithClaims(tokenString, &JWTClaims{}, func(token *jwt.Token) (interface{}, error) {
-			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-				return nil, errors.New("invalid signing method")
-			}
-			return []byte(secret), nil
-		})
-
+		token, err := c.Cookie("access_token")
 		if err != nil {
-			if errors.Is(err, jwt.ErrTokenExpired) {
-				c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
-					"error": "Token expired",
-				})
-				return
-			}
-
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
-				"error": "Invalid token",
-			})
+			c.JSON(http.StatusUnauthorized, gin.H{"message": "Unauthorized"})
+			c.Abort()
 			return
 		}
 
-		claims, ok := token.Claims.(*JWTClaims)
-		if !ok || !token.Valid {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
-				"error": "Invalid token claims",
-			})
+		user, err := authService.GetMe(token)
+		if err != nil {
+			c.JSON(http.StatusUnauthorized, gin.H{"message": "Invalid session"})
+			c.Abort()
 			return
 		}
 
-		if claims.UserID == 0 {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
-				"error": "Invalid user in token",
-			})
-			return
-		}
-
-		if claims.TenantID == 0 {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
-				"error": "Invalid tenant in token",
-			})
-			return
-		}
-
-		c.Set("user_id", claims.UserID)
-		c.Set("tenant_id", claims.TenantID)
+		c.Set("user_id", user.ID)
+		c.Set("tenant_id", user.TenantID)
+		c.Set("role", user.Role)
 
 		c.Next()
 	}
