@@ -8,6 +8,12 @@ definitions:
     x-enum-varnames:
     - ClockIn
     - ClockOut
+  model.AttendanceListResponse:
+    properties:
+      data: {}
+      meta:
+        $ref: '#/definitions/model.Meta'
+    type: object
   model.AttendanceRequest:
     properties:
       action:
@@ -31,6 +37,16 @@ definitions:
     - latitude
     - longitude
     type: object
+  model.BaseResponse:
+    properties:
+      code:
+        type: integer
+      data: {}
+      message:
+        type: string
+      status:
+        type: string
+    type: object
   model.LoginRequest:
     properties:
       email:
@@ -43,19 +59,35 @@ definitions:
     - email
     - password
     type: object
+  model.Meta:
+    properties:
+      limit:
+        type: integer
+      offset:
+        type: integer
+      total:
+        type: integer
+    type: object
   model.RegisterRequest:
     properties:
       email:
+        example: budi@company.com
         type: string
       name:
+        example: Budi Santoso
         type: string
       password:
+        example: "123456"
         minLength: 6
         type: string
+      tenant_id:
+        example: 1
+        type: integer
     required:
     - email
     - name
     - password
+    - tenant_id
     type: object
   model.Tenant:
     properties:
@@ -158,13 +190,16 @@ paths:
         "200":
           description: OK
           schema:
-            additionalProperties: true
-            type: object
+            allOf:
+            - $ref: '#/definitions/model.BaseResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.AttendanceListResponse'
+              type: object
         "500":
           description: Internal Server Error
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/model.BaseResponse'
       security:
       - BearerAuth: []
       summary: Get All Attendance
@@ -187,13 +222,15 @@ paths:
         "200":
           description: OK
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/model.BaseResponse'
         "400":
           description: Bad Request
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/model.BaseResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/model.BaseResponse'
       security:
       - BearerAuth: []
       summary: Record Attendance
@@ -252,8 +289,7 @@ paths:
         "200":
           description: OK
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/model.BaseResponse'
       summary: Health Check
       tags:
       - Health
@@ -353,9 +389,7 @@ paths:
       - Tenant
   /api/v1/users:
     get:
-      consumes:
-      - application/json
-      description: Get list of users with dynamic filter and sorting
+      description: Get list of users with filter, sorting, and pagination
       parameters:
       - description: Filter by Name
         in: query
@@ -365,11 +399,23 @@ paths:
         in: query
         name: email
         type: string
-      - description: Order by field (e.g., name, created_at)
+      - description: Filter by Role (admin, manager, employee)
+        in: query
+        name: role
+        type: string
+      - description: Limit (default 10)
+        in: query
+        name: limit
+        type: integer
+      - description: Offset (default 0)
+        in: query
+        name: offset
+        type: integer
+      - description: Order by field
         in: query
         name: order_by
         type: string
-      - description: Sort direction (asc or desc)
+      - description: Sort direction (asc/desc)
         in: query
         name: sort
         type: string
@@ -384,6 +430,28 @@ paths:
       security:
       - BearerAuth: []
       summary: Get All Users
+      tags:
+      - Users
+  /api/v1/users/{id}:
+    get:
+      description: Get single user detail
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get User By ID
       tags:
       - Users
 securityDefinitions:
