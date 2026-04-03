@@ -5,6 +5,7 @@ import (
 	"errors"
 
 	"go-attendance-api/internal/model"
+	"go-attendance-api/internal/utils"
 
 	"gorm.io/gorm"
 )
@@ -12,9 +13,9 @@ import (
 var ErrUserNotFound = errors.New("user not found")
 
 type UserRepository interface {
-	FindAll(ctx context.Context, filter model.UserFilter) ([]model.User, int64, error)
-	FindByID(ctx context.Context, id uint) (*model.User, error)
-	GetMe(ctx context.Context, userID uint) (*model.User, error)
+	FindAll(ctx context.Context, filter model.UserFilter, includes []string) ([]model.User, int64, error)
+	FindByID(ctx context.Context, id uint, includes []string) (*model.User, error)
+	GetMe(ctx context.Context, userID uint, includes []string) (*model.User, error)
 }
 
 type userRepository struct {
@@ -27,15 +28,19 @@ func NewUserRepository(db *gorm.DB) UserRepository {
 	}
 }
 
-// ======================
-// FIND BY ID (FIX ERROR LO 🔥)
-// ======================
-func (r *userRepository) FindByID(ctx context.Context, id uint) (*model.User, error) {
+var userPreloadMap = map[string]string{
+	"tenant":           "Tenant",
+	"attendances":      "Attendances",
+	"attendances.user": "Attendances.User",
+}
+
+func (r *userRepository) FindByID(ctx context.Context, id uint, includes []string) (*model.User, error) {
 	var user model.User
 
-	err := r.db.WithContext(ctx).
-		First(&user, id).Error
+	query := r.db.WithContext(ctx)
+	query = utils.ApplyPreloads(query, includes, userPreloadMap)
 
+	err := query.First(&user, id).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, ErrUserNotFound
@@ -46,16 +51,18 @@ func (r *userRepository) FindByID(ctx context.Context, id uint) (*model.User, er
 	return &user, nil
 }
 
-// ======================
-// FIND ALL (FILTER + PAGINATION)
-// ======================
-func (r *userRepository) FindAll(ctx context.Context, filter model.UserFilter) ([]model.User, int64, error) {
+func (r *userRepository) FindAll(
+	ctx context.Context,
+	filter model.UserFilter,
+	includes []string,
+) ([]model.User, int64, error) {
+
 	var users []model.User
 	var total int64
 
 	query := r.db.WithContext(ctx).Model(&model.User{})
+	query = utils.ApplyPreloads(query, includes, userPreloadMap)
 
-	// 🔥 FILTER
 	if filter.Name != "" {
 		query = query.Where("name ILIKE ?", "%"+filter.Name+"%")
 	}
@@ -72,12 +79,10 @@ func (r *userRepository) FindAll(ctx context.Context, filter model.UserFilter) (
 		query = query.Where("tenant_id = ?", filter.TenantID)
 	}
 
-	// 🔥 COUNT TOTAL
 	if err := query.Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
 
-	// 🔥 SORTING
 	if filter.OrderBy != "" {
 		sortDir := "ASC"
 		if filter.Sort == "desc" || filter.Sort == "DESC" {
@@ -86,7 +91,6 @@ func (r *userRepository) FindAll(ctx context.Context, filter model.UserFilter) (
 		query = query.Order(filter.OrderBy + " " + sortDir)
 	}
 
-	// 🔥 PAGINATION
 	if filter.Limit > 0 {
 		query = query.Limit(filter.Limit)
 	}
@@ -95,7 +99,6 @@ func (r *userRepository) FindAll(ctx context.Context, filter model.UserFilter) (
 		query = query.Offset(filter.Offset)
 	}
 
-	// 🔥 EXECUTE
 	if err := query.Find(&users).Error; err != nil {
 		return nil, 0, err
 	}
@@ -103,13 +106,13 @@ func (r *userRepository) FindAll(ctx context.Context, filter model.UserFilter) (
 	return users, total, nil
 }
 
-// ======================
-// GET ME
-// ======================
-func (r *userRepository) GetMe(ctx context.Context, userID uint) (*model.User, error) {
+func (r *userRepository) GetMe(ctx context.Context, userID uint, includes []string) (*model.User, error) {
 	var user model.User
 
-	err := r.db.WithContext(ctx).
+	query := r.db.WithContext(ctx)
+	query = utils.ApplyPreloads(query, includes, userPreloadMap)
+
+	err := query.
 		Where("id = ?", userID).
 		First(&user).Error
 
