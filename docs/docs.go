@@ -19,7 +19,7 @@ const docTemplate = `{
             "get": {
                 "security": [
                     {
-                        "BearerAuth": []
+                        "CookieAuth": []
                     }
                 ],
                 "description": "Get attendance list with filter \u0026 pagination",
@@ -39,7 +39,7 @@ const docTemplate = `{
                     },
                     {
                         "type": "string",
-                        "description": "Status (working, done, late)",
+                        "description": "Status",
                         "name": "status",
                         "in": "query"
                     },
@@ -57,14 +57,20 @@ const docTemplate = `{
                     },
                     {
                         "type": "integer",
-                        "description": "Limit (default 10)",
+                        "description": "Limit",
                         "name": "limit",
                         "in": "query"
                     },
                     {
                         "type": "integer",
-                        "description": "Offset (default 0)",
+                        "description": "Offset",
                         "name": "offset",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Relations: user,tenant,setting",
+                        "name": "include",
                         "in": "query"
                     }
                 ],
@@ -74,13 +80,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/model.BaseResponse"
+                                    "$ref": "#/definitions/modelDto.BaseResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/model.AttendanceListResponse"
+                                            "$ref": "#/definitions/modelDto.AttendanceListResponse"
                                         }
                                     }
                                 }
@@ -90,7 +96,7 @@ const docTemplate = `{
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/model.BaseResponse"
+                            "$ref": "#/definitions/modelDto.BaseResponse"
                         }
                     }
                 }
@@ -98,7 +104,7 @@ const docTemplate = `{
             "post": {
                 "security": [
                     {
-                        "BearerAuth": []
+                        "CookieAuth": []
                     }
                 ],
                 "description": "Record clock-in / clock-out with face \u0026 location",
@@ -127,19 +133,19 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/model.BaseResponse"
+                            "$ref": "#/definitions/modelDto.BaseResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/model.BaseResponse"
+                            "$ref": "#/definitions/modelDto.BaseResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/model.BaseResponse"
+                            "$ref": "#/definitions/modelDto.BaseResponse"
                         }
                     }
                 }
@@ -264,14 +270,7 @@ const docTemplate = `{
                     "Health"
                 ],
                 "summary": "Health Check",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/model.BaseResponse"
-                        }
-                    }
-                }
+                "responses": {}
             }
         },
         "/api/v1/tenant-setting": {
@@ -428,7 +427,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Get list of users with filter, sorting, and pagination",
+                "description": "Get list of users with filter, sorting, pagination, and dynamic includes",
                 "produces": [
                     "application/json"
                 ],
@@ -478,6 +477,12 @@ const docTemplate = `{
                         "description": "Sort direction (asc/desc)",
                         "name": "sort",
                         "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Relations (comma separated: tenant,attendances,attendances.user)",
+                        "name": "includes",
+                        "in": "query"
                     }
                 ],
                 "responses": {
@@ -498,7 +503,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Get authenticated user profile from token (httpOnly cookie)",
+                "description": "Get authenticated user profile from token (httpOnly cookie) with optional includes",
                 "produces": [
                     "application/json"
                 ],
@@ -506,6 +511,14 @@ const docTemplate = `{
                     "Users"
                 ],
                 "summary": "Get current user",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Relations (comma separated: tenant,attendances)",
+                        "name": "includes",
+                        "in": "query"
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -538,7 +551,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Get single user detail",
+                "description": "Get single user detail with optional includes",
                 "produces": [
                     "application/json"
                 ],
@@ -553,6 +566,12 @@ const docTemplate = `{
                         "name": "id",
                         "in": "path",
                         "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Relations (comma separated: tenant,attendances)",
+                        "name": "includes",
+                        "in": "query"
                     }
                 ],
                 "responses": {
@@ -578,15 +597,6 @@ const docTemplate = `{
                 "ClockIn",
                 "ClockOut"
             ]
-        },
-        "model.AttendanceListResponse": {
-            "type": "object",
-            "properties": {
-                "data": {},
-                "meta": {
-                    "$ref": "#/definitions/model.Meta"
-                }
-            }
         },
         "model.AttendanceRequest": {
             "type": "object",
@@ -622,21 +632,6 @@ const docTemplate = `{
                 }
             }
         },
-        "model.BaseResponse": {
-            "type": "object",
-            "properties": {
-                "code": {
-                    "type": "integer"
-                },
-                "data": {},
-                "message": {
-                    "type": "string"
-                },
-                "status": {
-                    "type": "string"
-                }
-            }
-        },
         "model.LoginRequest": {
             "type": "object",
             "required": [
@@ -651,20 +646,6 @@ const docTemplate = `{
                 "password": {
                     "type": "string",
                     "example": "123456"
-                }
-            }
-        },
-        "model.Meta": {
-            "type": "object",
-            "properties": {
-                "limit": {
-                    "type": "integer"
-                },
-                "offset": {
-                    "type": "integer"
-                },
-                "total": {
-                    "type": "integer"
                 }
             }
         },
@@ -773,12 +754,53 @@ const docTemplate = `{
                     "type": "boolean",
                     "example": true
                 },
+                "tenant": {
+                    "$ref": "#/definitions/model.Tenant"
+                },
                 "tenantID": {
                     "type": "integer",
                     "example": 1
                 },
                 "updatedAt": {
                     "type": "string"
+                }
+            }
+        },
+        "modelDto.AttendanceListResponse": {
+            "type": "object",
+            "properties": {
+                "data": {},
+                "meta": {
+                    "$ref": "#/definitions/modelDto.Meta"
+                }
+            }
+        },
+        "modelDto.BaseResponse": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "integer"
+                },
+                "data": {},
+                "message": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                }
+            }
+        },
+        "modelDto.Meta": {
+            "type": "object",
+            "properties": {
+                "limit": {
+                    "type": "integer"
+                },
+                "offset": {
+                    "type": "integer"
+                },
+                "total": {
+                    "type": "integer"
                 }
             }
         }
