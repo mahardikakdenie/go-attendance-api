@@ -1,5 +1,7 @@
 package model
 
+import "time"
+
 type RegisterRequest struct {
 	Name     string `json:"name" binding:"required" example:"Budi Santoso"`
 	Email    string `json:"email" binding:"required,email" example:"budi@company.com"`
@@ -15,4 +17,13 @@ type LoginRequest struct {
 type LoginResponse struct {
 	Token string       `json:"token" example:"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.xxx"`
 	User  UserResponse `json:"user"`
+}
+
+type Token struct {
+	ID        uint `gorm:"primaryKey"`
+	UserID    uint
+	Token     string `gorm:"uniqueIndex"`
+	IsRevoked bool   `gorm:"default:false"`
+	CreatedAt time.Time
+	RevokedAt *time.Time
 }
