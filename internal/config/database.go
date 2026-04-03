@@ -31,11 +31,9 @@ func InitDB() *gorm.DB {
 
 	log.Println("✅ Database connected")
 
-	// ======================
-	// RESET DB (DROP TABLE)
-	// ======================
 	if os.Getenv("RESET_DB") == "true" {
 		err := db.Migrator().DropTable(
+			&model.Token{},
 			&model.Attendance{},
 			&model.User{},
 			&model.TenantSetting{},
@@ -47,9 +45,6 @@ func InitDB() *gorm.DB {
 		log.Println("⚠️ Semua tabel berhasil di-reset")
 	}
 
-	// ======================
-	// AUTO MIGRATE
-	// ======================
 	if os.Getenv("RUN_MIGRATION") == "true" || os.Getenv("RESET_DB") == "true" {
 
 		err = db.AutoMigrate(
@@ -57,6 +52,7 @@ func InitDB() *gorm.DB {
 			&model.User{},
 			&model.TenantSetting{},
 			&model.Attendance{},
+			&model.Token{},
 		)
 
 		if err != nil {
@@ -66,9 +62,6 @@ func InitDB() *gorm.DB {
 		log.Println("✅ Migrasi database berhasil")
 	}
 
-	// ======================
-	// SEEDER
-	// ======================
 	if os.Getenv("RUN_SEEDER") == "true" {
 		log.Println("🌱 Running seeder...")
 
