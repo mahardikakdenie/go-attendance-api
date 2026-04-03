@@ -9,3 +9,8 @@ type Tenant struct {
 	CreatedAt time.Time
 	UpdatedAt time.Time
 }
+
+type TenantResponse struct {
+	ID   uint   `json:"id"`
+	Name string `json:"name"`
+}
