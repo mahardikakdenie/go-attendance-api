@@ -14,14 +14,6 @@ import (
 
 func SetupRoutes(r *gin.Engine, db *gorm.DB) {
 
-	// ======================
-	// INIT DEPENDENCIES
-	// ======================
-
-	attendanceRepo := repository.NewAttendanceRepository(db)
-	attendanceService := service.NewAttendanceService(attendanceRepo)
-	attendanceHandler := handler.NewAttendanceHandler(attendanceService)
-
 	authRepo := repository.NewAuthRepository(db)
 	authService := service.NewAuthService(authRepo)
 	authHandler := handler.NewAuthHandler(authService)
@@ -38,52 +30,43 @@ func SetupRoutes(r *gin.Engine, db *gorm.DB) {
 	tenantSettingService := service.NewTenantSettingService(tenantSettingRepo)
 	tenantSettingHandler := handler.NewTenantSettingHandler(tenantSettingService)
 
-	// ======================
-	// SWAGGER
-	// ======================
+	attendanceRepo := repository.NewAttendanceRepository(db)
+	attendanceService := service.NewAttendanceService(attendanceRepo, userRepo, tenantSettingRepo, tenantRepo)
+	attendanceHandler := handler.NewAttendanceHandler(attendanceService)
 
-	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
-
-	// ======================
-	// API GROUP
-	// ======================
+	// Swagger (only dev)
+	if gin.Mode() != gin.ReleaseMode {
+		r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+	}
 
 	api := r.Group("/api/v1")
 
-	// ======================
-	// PUBLIC ROUTES
-	// ======================
-
+	// PUBLIC
 	auth := api.Group("/auth")
 	{
 		auth.POST("/register", authHandler.Register)
 		auth.POST("/login", authHandler.Login)
+		// auth.POST("/logout", authHandler.Logout)
 	}
 
 	api.GET("/ping", attendanceHandler.HelloTest)
 
-	// ======================
-	// PROTECTED ROUTES
-	// ======================
-
-	protected := api.Group("/")
+	// PROTECTED
+	protected := api.Group("")
 	protected.Use(middleware.JWTAuth())
-
 	{
-		// Attendance
 		protected.POST("/attendance", attendanceHandler.RecordAttendance)
 		protected.GET("/attendance", attendanceHandler.GetAllAttendance)
 
-		// Tenant
 		protected.GET("/tenants", tenantHandler.GetAllTenant)
 		protected.GET("/tenants/:id", tenantHandler.GetTenantByID)
 		protected.POST("/tenants", tenantHandler.CreateTenant)
 
-		// Tenant Settings
 		protected.GET("/tenant-setting", tenantSettingHandler.GetSetting)
 		protected.PUT("/tenant-setting", tenantSettingHandler.UpdateSetting)
 
-		// Users
 		protected.GET("/users", userHandler.GetAllUsers)
+		protected.GET("/users/me", userHandler.GetMe)
+
 	}
 }
