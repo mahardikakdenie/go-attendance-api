@@ -2,9 +2,6 @@ package model
 
 import "time"
 
-// ======================
-// USER ROLE (ENUM)
-// ======================
 type UserRole string
 
 const (
@@ -13,12 +10,11 @@ const (
 	RoleEmployee UserRole = "employee"
 )
 
-// ======================
-// USER ENTITY (DB)
-// ======================
 type User struct {
 	ID       uint `gorm:"primaryKey" json:"id"`
 	TenantID uint `gorm:"index;not null" json:"tenant_id" example:"1"`
+
+	Tenant *Tenant `gorm:"foreignKey:TenantID" json:"tenant,omitempty"`
 
 	Name     string `gorm:"type:varchar(100);not null" json:"name" example:"Budi Santoso"`
 	Email    string `gorm:"type:varchar(100);unique;not null" json:"email" example:"budi@company.com"`
@@ -32,25 +28,19 @@ type User struct {
 	UpdatedAt time.Time `json:"updated_at"`
 }
 
-// ======================
-// FILTER (QUERY)
-// ======================
 type UserFilter struct {
 	Name     string
 	Email    string
 	Role     UserRole
 	TenantID uint
 
-	OrderBy string // created_at, name, email
-	Sort    string // asc / desc
+	OrderBy string
+	Sort    string
 
 	Limit  int
 	Offset int
 }
 
-// ======================
-// REQUEST DTO
-// ======================
 type CreateUserRequest struct {
 	Name     string   `json:"name" binding:"required" example:"Budi Santoso"`
 	Email    string   `json:"email" binding:"required,email" example:"budi@company.com"`
@@ -58,9 +48,6 @@ type CreateUserRequest struct {
 	Role     UserRole `json:"role" example:"employee"`
 }
 
-// ======================
-// RESPONSE DTO
-// ======================
 type UserResponse struct {
 	ID        uint      `json:"id" example:"1"`
 	Name      string    `json:"name" example:"Budi Santoso"`
@@ -68,4 +55,7 @@ type UserResponse struct {
 	Role      UserRole  `json:"role" example:"employee"`
 	TenantID  uint      `json:"tenant_id" example:"1"`
 	CreatedAt time.Time `json:"created_at"`
+
+	Tenant      *TenantResponse      `json:"tenant,omitempty"`
+	Attendances []AttendanceResponse `json:"attendances,omitempty"`
 }
