@@ -17,14 +17,19 @@ type AttendanceService interface {
 		req model.AttendanceRequest,
 	) (model.AttendanceResponse, error)
 
-	GetAllData(ctx context.Context, filter model.AttendanceFilter, limit, offset int) ([]model.Attendance, int64, error)
+	GetAllData(
+		ctx context.Context,
+		filter model.AttendanceFilter,
+		includes []string,
+		limit, offset int,
+	) ([]model.Attendance, int64, error)
 }
 
 type attendanceService struct {
 	repo        repository.AttendanceRepository
 	userRepo    repository.UserRepository
 	settingRepo repository.TenantSettingRepository
-	tenantRepo  repository.TenantRepository // 🔥 TAMBAHAN
+	tenantRepo  repository.TenantRepository
 }
 
 func NewAttendanceService(
@@ -51,10 +56,7 @@ func (s *attendanceService) RecordAttendance(
 		return model.AttendanceResponse{}, errors.New("invalid user")
 	}
 
-	// ======================
-	// GET USER
-	// ======================
-	user, err := s.userRepo.FindByID(ctx, userID)
+	user, err := s.userRepo.FindByID(ctx, userID, []string{""})
 	if err != nil {
 		return model.AttendanceResponse{}, errors.New("user not found")
 	}
@@ -63,17 +65,11 @@ func (s *attendanceService) RecordAttendance(
 		return model.AttendanceResponse{}, errors.New("user tenant is invalid")
 	}
 
-	// ======================
-	// 🔥 VALIDATE TENANT EXIST (FIX FK ERROR)
-	// ======================
 	tenant, err := s.tenantRepo.FindByID(ctx, user.TenantID)
 	if err != nil || tenant == nil {
 		return model.AttendanceResponse{}, errors.New("tenant not found")
 	}
 
-	// ======================
-	// GET TENANT SETTING
-	// ======================
 	setting, err := s.settingRepo.FindByTenantID(ctx, user.TenantID)
 	if err != nil {
 		return model.AttendanceResponse{}, errors.New("tenant setting not found")
@@ -81,17 +77,11 @@ func (s *attendanceService) RecordAttendance(
 
 	now := time.Now()
 
-	// ======================
-	// SAFE FIND TODAY
-	// ======================
 	todayAttendance, err := s.repo.FindTodayByUser(ctx, userID)
 	if err != nil {
 		return model.AttendanceResponse{}, err
 	}
 
-	// ======================
-	// GEO VALIDATION
-	// ======================
 	if setting.RequireLocation && !setting.AllowRemote {
 		distance := calculateDistance(
 			setting.OfficeLatitude,
@@ -105,9 +95,6 @@ func (s *attendanceService) RecordAttendance(
 		}
 	}
 
-	// ======================
-	// SELFIE VALIDATION
-	// ======================
 	if setting.RequireSelfie && req.MediaUrl == "" {
 		return model.AttendanceResponse{}, errors.New("selfie is required")
 	}
@@ -132,7 +119,7 @@ func (s *attendanceService) RecordAttendance(
 
 		data := model.Attendance{
 			UserID:           userID,
-			TenantID:         user.TenantID, // 🔥 sekarang aman
+			TenantID:         user.TenantID,
 			ClockInTime:      now,
 			ClockInLatitude:  req.Latitude,
 			ClockInLongitude: req.Longitude,
@@ -182,20 +169,15 @@ func (s *attendanceService) RecordAttendance(
 	}
 }
 
-// ======================
-// GET ALL
-// ======================
 func (s *attendanceService) GetAllData(
 	ctx context.Context,
 	filter model.AttendanceFilter,
+	includes []string,
 	limit, offset int,
 ) ([]model.Attendance, int64, error) {
-	return s.repo.FindAll(ctx, filter, limit, offset)
+	return s.repo.FindAll(ctx, filter, includes, limit, offset)
 }
 
-// ======================
-// HELPER
-// ======================
 func isWithinTimeRange(now time.Time, start, end string) (bool, error) {
 	layout := "15:04"
 
