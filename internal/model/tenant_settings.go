@@ -3,8 +3,9 @@ package model
 import "time"
 
 type TenantSetting struct {
-	ID       uint `gorm:"primaryKey"`
-	TenantID uint `gorm:"uniqueIndex" example:"1"`
+	ID       uint   `gorm:"primaryKey"`
+	TenantID uint   `gorm:"uniqueIndex" example:"1"`
+	Tenant   Tenant `gorm:"foreignKey:TenantID" json:"tenant"`
 
 	OfficeLatitude  float64 `example:"-6.1339179"`
 	OfficeLongitude float64 `example:"106.8329504"`
