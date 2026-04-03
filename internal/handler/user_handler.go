@@ -2,6 +2,7 @@ package handler
 
 import (
 	"net/http"
+	"strconv"
 
 	"go-attendance-api/internal/model"
 	"go-attendance-api/internal/service"
@@ -12,6 +13,8 @@ import (
 
 type UserHandler interface {
 	GetAllUsers(c *gin.Context)
+	GetUserByID(c *gin.Context)
+	GetMe(c *gin.Context)
 }
 
 type userHandler struct {
@@ -25,32 +28,131 @@ func NewUserHandler(service service.UserService) UserHandler {
 }
 
 // @Summary Get All Users
-// @Description Get list of users with dynamic filter and sorting
+// @Description Get list of users with filter, sorting, and pagination
 // @Tags Users
-// @Accept json
 // @Produce json
 // @Param name query string false "Filter by Name"
 // @Param email query string false "Filter by Email"
-// @Param order_by query string false "Order by field (e.g., name, created_at)"
-// @Param sort query string false "Sort direction (asc or desc)"
+// @Param role query string false "Filter by Role (admin, manager, employee)"
+// @Param limit query int false "Limit (default 10)"
+// @Param offset query int false "Offset (default 0)"
+// @Param order_by query string false "Order by field"
+// @Param sort query string false "Sort direction (asc/desc)"
 // @Security BearerAuth
 // @Success 200 {object} map[string]interface{}
 // @Router /api/v1/users [get]
 func (h *userHandler) GetAllUsers(c *gin.Context) {
-	filter := model.UserFilter{
-		Name:    c.Query("name"),
-		Email:   c.Query("email"),
-		OrderBy: c.Query("order_by"),
-		Sort:    c.Query("sort"),
+	var filter model.UserFilter
+
+	ctx := c.Request.Context()
+
+	// 🔥 QUERY PARAM
+	filter.Name = c.Query("name")
+	filter.Email = c.Query("email")
+	filter.OrderBy = c.Query("order_by")
+	filter.Sort = c.Query("sort")
+
+	if role := c.Query("role"); role != "" {
+		filter.Role = model.UserRole(role)
 	}
 
-	users, err := h.service.GetAllUsers(filter)
+	if l := c.Query("limit"); l != "" {
+		if val, err := strconv.Atoi(l); err == nil {
+			filter.Limit = val
+		}
+	}
+
+	if o := c.Query("offset"); o != "" {
+		if val, err := strconv.Atoi(o); err == nil {
+			filter.Offset = val
+		}
+	}
+
+	// 🔥 MULTI-TENANT (WAJIB)
+	if tenantIDVal, exists := c.Get("tenant_id"); exists {
+		if tenantID, ok := tenantIDVal.(uint); ok {
+			filter.TenantID = tenantID
+		}
+	}
+
+	data, total, err := h.service.GetAllUsers(ctx, filter)
 	if err != nil {
-		response := utils.BuildErrorResponse("Gagal mengambil data pengguna", http.StatusInternalServerError, "error", err.Error())
-		c.JSON(http.StatusInternalServerError, response)
+		c.JSON(http.StatusInternalServerError,
+			utils.BuildErrorResponse("Failed to fetch users", 500, "error", err.Error()),
+		)
 		return
 	}
 
-	response := utils.BuildResponse("Berhasil mengambil data pengguna", http.StatusOK, "success", users)
-	c.JSON(http.StatusOK, response)
+	meta := map[string]interface{}{
+		"total":  total,
+		"limit":  filter.Limit,
+		"offset": filter.Offset,
+	}
+
+	c.JSON(http.StatusOK,
+		utils.BuildResponse("Users fetched successfully", 200, "success", gin.H{
+			"data": data,
+			"meta": meta,
+		}),
+	)
+}
+
+// @Summary Get User By ID
+// @Description Get single user detail
+// @Tags Users
+// @Produce json
+// @Param id path int true "User ID"
+// @Security BearerAuth
+// @Success 200 {object} map[string]interface{}
+// @Router /api/v1/users/{id} [get]
+func (h *userHandler) GetUserByID(c *gin.Context) {
+	ctx := c.Request.Context()
+
+	idParam := c.Param("id")
+	id, err := strconv.Atoi(idParam)
+	if err != nil {
+		c.JSON(400, utils.BuildErrorResponse("Invalid ID", 400, "error", err.Error()))
+		return
+	}
+
+	user, err := h.service.GetByID(ctx, uint(id))
+	if err != nil {
+		c.JSON(404, utils.BuildErrorResponse("User not found", 404, "error", err.Error()))
+		return
+	}
+
+	c.JSON(200, utils.BuildResponse("Success", 200, "success", user))
+}
+
+// @Summary Get current user
+// @Description Get authenticated user profile from token (httpOnly cookie)
+// @Tags Auth
+// @Produce json
+// @Security BearerAuth
+// @Success 200 {object} map[string]interface{}
+// @Failure 401 {object} map[string]interface{}
+// @Failure 404 {object} map[string]interface{}
+// @Router /api/v1/auth/me [get]
+func (h *userHandler) GetMe(c *gin.Context) {
+	userIDVal, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(401, gin.H{
+			"message": "Unauthorized",
+		})
+		return
+	}
+
+	userID := userIDVal.(uint)
+
+	user, err := h.service.GetMe(c.Request.Context(), userID)
+	if err != nil {
+		c.JSON(404, gin.H{
+			"message": "User not found",
+		})
+		return
+	}
+
+	c.JSON(200, gin.H{
+		"data": user,
+	})
 }
