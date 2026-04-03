@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"time"
 
+	responseModel "go-attendance-api/internal/dto"
 	"go-attendance-api/internal/model"
 	"go-attendance-api/internal/service"
 	"go-attendance-api/internal/utils"
@@ -29,6 +30,10 @@ func NewAttendanceHandler(service service.AttendanceService) AttendanceHandler {
 	}
 }
 
+// =======================
+// RECORD ATTENDANCE
+// =======================
+
 // @Summary Record Attendance
 // @Description Record clock-in / clock-out with face & location
 // @Tags Attendance
@@ -36,20 +41,21 @@ func NewAttendanceHandler(service service.AttendanceService) AttendanceHandler {
 // @Produce json
 // @Param request body model.AttendanceRequest true "Attendance Data"
 // @Security BearerAuth
-// @Success 200 {object} map[string]interface{}
-// @Failure 400 {object} map[string]interface{}
+// @Success 200 {object} model.BaseResponse
+// @Failure 400 {object} model.BaseResponse
+// @Failure 401 {object} model.BaseResponse
 // @Router /api/v1/attendance [post]
 func (h *attendanceHandler) RecordAttendance(c *gin.Context) {
 	var req model.AttendanceRequest
 
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(400, utils.BuildErrorResponse("Invalid request", 400, "error", err.Error()))
+		c.JSON(http.StatusBadRequest, utils.BuildErrorResponse("Invalid request", http.StatusBadRequest, "error", err.Error()))
 		return
 	}
 
 	userIDVal, exists := c.Get("user_id")
 	if !exists {
-		c.JSON(401, utils.BuildErrorResponse("Unauthorized", 401, "error", nil))
+		c.JSON(http.StatusUnauthorized, utils.BuildErrorResponse("Unauthorized", http.StatusUnauthorized, "error", nil))
 		return
 	}
 
@@ -57,12 +63,16 @@ func (h *attendanceHandler) RecordAttendance(c *gin.Context) {
 
 	res, err := h.service.RecordAttendance(c.Request.Context(), userID, req)
 	if err != nil {
-		c.JSON(400, utils.BuildErrorResponse("Failed", 400, "error", err.Error()))
+		c.JSON(http.StatusBadRequest, utils.BuildErrorResponse("Failed", http.StatusBadRequest, "error", err.Error()))
 		return
 	}
 
-	c.JSON(200, utils.BuildResponse("Success", 200, "success", res))
+	c.JSON(http.StatusOK, utils.BuildResponse("Success", http.StatusOK, "success", res))
 }
+
+// =======================
+// GET ALL ATTENDANCE
+// =======================
 
 // @Summary Get All Attendance
 // @Description Get attendance list with filter & pagination
@@ -75,8 +85,8 @@ func (h *attendanceHandler) RecordAttendance(c *gin.Context) {
 // @Param limit query int false "Limit (default 10)"
 // @Param offset query int false "Offset (default 0)"
 // @Security BearerAuth
-// @Success 200 {object} map[string]interface{}
-// @Failure 500 {object} map[string]interface{}
+// @Success 200 {object} model.BaseResponse{data=model.AttendanceListResponse}
+// @Failure 500 {object} model.BaseResponse
 // @Router /api/v1/attendance [get]
 func (h *attendanceHandler) GetAllAttendance(c *gin.Context) {
 	var filter model.AttendanceFilter
@@ -127,25 +137,34 @@ func (h *attendanceHandler) GetAllAttendance(c *gin.Context) {
 		return
 	}
 
-	meta := map[string]interface{}{
-		"total":  total,
-		"limit":  limit,
-		"offset": offset,
+	meta := responseModel.Meta{
+		Total:  total,
+		Limit:  limit,
+		Offset: offset,
 	}
 
-	response := utils.BuildResponse("Attendance data fetched successfully", http.StatusOK, "success", gin.H{
-		"data": data,
-		"meta": meta,
-	})
+	response := utils.BuildResponse(
+		"Attendance data fetched successfully",
+		http.StatusOK,
+		"success",
+		responseModel.AttendanceListResponse{
+			Data: data,
+			Meta: meta,
+		},
+	)
 
 	c.JSON(http.StatusOK, response)
 }
+
+// =======================
+// HEALTH CHECK
+// =======================
 
 // @Summary Health Check
 // @Description Check API status
 // @Tags Health
 // @Produce json
-// @Success 200 {object} map[string]interface{}
+// @Success 200 {object} model.BaseResponse
 // @Router /api/v1/ping [get]
 func (h *attendanceHandler) HelloTest(c *gin.Context) {
 	response := utils.BuildResponse("Health check success", http.StatusOK, "success", "API is running 🚀")
