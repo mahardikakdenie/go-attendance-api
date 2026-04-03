@@ -1,6 +1,7 @@
 package model
 
 import (
+	"errors"
 	"time"
 
 	"github.com/google/uuid"
@@ -71,3 +72,5 @@ type AttendanceFilter struct {
 	DateFrom *time.Time
 	DateTo   *time.Time
 }
+
+var ErrNotFound = errors.New("data not found")
