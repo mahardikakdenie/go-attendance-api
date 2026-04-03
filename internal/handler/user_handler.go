@@ -126,13 +126,13 @@ func (h *userHandler) GetUserByID(c *gin.Context) {
 
 // @Summary Get current user
 // @Description Get authenticated user profile from token (httpOnly cookie)
-// @Tags Auth
+// @Tags Users
 // @Produce json
 // @Security BearerAuth
 // @Success 200 {object} map[string]interface{}
 // @Failure 401 {object} map[string]interface{}
 // @Failure 404 {object} map[string]interface{}
-// @Router /api/v1/auth/me [get]
+// @Router /api/v1/users/me [get]
 func (h *userHandler) GetMe(c *gin.Context) {
 	userIDVal, exists := c.Get("user_id")
 	if !exists {
