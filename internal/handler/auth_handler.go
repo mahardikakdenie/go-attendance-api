@@ -13,6 +13,7 @@ import (
 type AuthHandler interface {
 	Register(c *gin.Context)
 	Login(c *gin.Context)
+	Logout(c *gin.Context)
 }
 
 type authHandler struct {
@@ -31,6 +32,7 @@ func NewAuthHandler(service service.AuthService) AuthHandler {
 // @Produce json
 // @Param request body model.RegisterRequest true "Register Data"
 // @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} map[string]interface{}
 // @Router /api/v1/auth/register [post]
 func (h *authHandler) Register(c *gin.Context) {
 	var req model.RegisterRequest
@@ -58,6 +60,8 @@ func (h *authHandler) Register(c *gin.Context) {
 // @Produce json
 // @Param request body model.LoginRequest true "Login Data"
 // @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} map[string]interface{}
+// @Failure 401 {object} map[string]interface{}
 // @Router /api/v1/auth/login [post]
 func (h *authHandler) Login(c *gin.Context) {
 	var req model.LoginRequest
@@ -76,15 +80,39 @@ func (h *authHandler) Login(c *gin.Context) {
 	}
 
 	http.SetCookie(c.Writer, &http.Cookie{
-		Name:     "token",
+		Name:     "access_token",
 		Value:    token,
 		Path:     "/",
-		HttpOnly: true,
+		HttpOnly: false,
 		Secure:   false,
 		SameSite: http.SameSiteLaxMode,
 		MaxAge:   86400,
 	})
 
 	response := utils.BuildResponse("Login successful", http.StatusOK, "success", user)
+	c.JSON(http.StatusOK, response)
+}
+
+// @Summary Logout user
+// @Tags Auth
+// @Produce json
+// @Success 200 {object} map[string]interface{}
+// @Router /api/v1/auth/logout [post]
+func (h *authHandler) Logout(c *gin.Context) {
+	token, _ := c.Cookie("access_token")
+
+	_ = h.service.Logout(token)
+
+	http.SetCookie(c.Writer, &http.Cookie{
+		Name:     "access_token",
+		Value:    "",
+		Path:     "/",
+		HttpOnly: true,
+		Secure:   false,
+		SameSite: http.SameSiteLaxMode,
+		MaxAge:   -1,
+	})
+
+	response := utils.BuildResponse("Logout successful", http.StatusOK, "success", nil)
 	c.JSON(http.StatusOK, response)
 }
