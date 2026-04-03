@@ -34,6 +34,7 @@ func NewAuthHandler(service service.AuthService) AuthHandler {
 // @Router /api/v1/auth/register [post]
 func (h *authHandler) Register(c *gin.Context) {
 	var req model.RegisterRequest
+
 	if err := c.ShouldBindJSON(&req); err != nil {
 		response := utils.BuildErrorResponse("Invalid input data", http.StatusBadRequest, "error", err.Error())
 		c.JSON(http.StatusBadRequest, response)
@@ -60,19 +61,30 @@ func (h *authHandler) Register(c *gin.Context) {
 // @Router /api/v1/auth/login [post]
 func (h *authHandler) Login(c *gin.Context) {
 	var req model.LoginRequest
+
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response := utils.BuildErrorResponse("Invalid input data", http.StatusBadRequest, "error", err.Error())
+		response := utils.BuildErrorResponse("Invalid request", http.StatusBadRequest, "error", err.Error())
 		c.JSON(http.StatusBadRequest, response)
 		return
 	}
 
-	res, err := h.service.Login(req)
+	token, user, err := h.service.Login(req)
 	if err != nil {
 		response := utils.BuildErrorResponse("Login failed", http.StatusUnauthorized, "error", err.Error())
 		c.JSON(http.StatusUnauthorized, response)
 		return
 	}
 
-	response := utils.BuildResponse("Login successful", http.StatusOK, "success", res)
+	http.SetCookie(c.Writer, &http.Cookie{
+		Name:     "token",
+		Value:    token,
+		Path:     "/",
+		HttpOnly: true,
+		Secure:   false,
+		SameSite: http.SameSiteLaxMode,
+		MaxAge:   86400,
+	})
+
+	response := utils.BuildResponse("Login successful", http.StatusOK, "success", user)
 	c.JSON(http.StatusOK, response)
 }
