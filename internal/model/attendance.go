@@ -69,6 +69,9 @@ type AttendanceResponse struct {
 type AttendanceFilter struct {
 	UserID   uint
 	Status   AttendanceStatus
+	limit    int
+	offset   int
+	includes []string
 	DateFrom *time.Time
 	DateTo   *time.Time
 }
