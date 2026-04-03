@@ -72,15 +72,25 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/model.BaseResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/model.AttendanceListResponse"
+                                        }
+                                    }
+                                }
+                            ]
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/model.BaseResponse"
                         }
                     }
                 }
@@ -117,15 +127,19 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/model.BaseResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/model.BaseResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/model.BaseResponse"
                         }
                     }
                 }
@@ -213,8 +227,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/model.BaseResponse"
                         }
                     }
                 }
@@ -374,10 +387,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Get list of users with dynamic filter and sorting",
-                "consumes": [
-                    "application/json"
-                ],
+                "description": "Get list of users with filter, sorting, and pagination",
                 "produces": [
                     "application/json"
                 ],
@@ -400,15 +410,68 @@ const docTemplate = `{
                     },
                     {
                         "type": "string",
-                        "description": "Order by field (e.g., name, created_at)",
+                        "description": "Filter by Role (admin, manager, employee)",
+                        "name": "role",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Limit (default 10)",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Offset (default 0)",
+                        "name": "offset",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Order by field",
                         "name": "order_by",
                         "in": "query"
                     },
                     {
                         "type": "string",
-                        "description": "Sort direction (asc or desc)",
+                        "description": "Sort direction (asc/desc)",
                         "name": "sort",
                         "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/users/{id}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Get single user detail",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Users"
+                ],
+                "summary": "Get User By ID",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "User ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
                     }
                 ],
                 "responses": {
@@ -434,6 +497,15 @@ const docTemplate = `{
                 "ClockIn",
                 "ClockOut"
             ]
+        },
+        "model.AttendanceListResponse": {
+            "type": "object",
+            "properties": {
+                "data": {},
+                "meta": {
+                    "$ref": "#/definitions/model.Meta"
+                }
+            }
         },
         "model.AttendanceRequest": {
             "type": "object",
@@ -469,6 +541,21 @@ const docTemplate = `{
                 }
             }
         },
+        "model.BaseResponse": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "integer"
+                },
+                "data": {},
+                "message": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                }
+            }
+        },
         "model.LoginRequest": {
             "type": "object",
             "required": [
@@ -486,23 +573,45 @@ const docTemplate = `{
                 }
             }
         },
+        "model.Meta": {
+            "type": "object",
+            "properties": {
+                "limit": {
+                    "type": "integer"
+                },
+                "offset": {
+                    "type": "integer"
+                },
+                "total": {
+                    "type": "integer"
+                }
+            }
+        },
         "model.RegisterRequest": {
             "type": "object",
             "required": [
                 "email",
                 "name",
-                "password"
+                "password",
+                "tenant_id"
             ],
             "properties": {
                 "email": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "budi@company.com"
                 },
                 "name": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "Budi Santoso"
                 },
                 "password": {
                     "type": "string",
-                    "minLength": 6
+                    "minLength": 6,
+                    "example": "123456"
+                },
+                "tenant_id": {
+                    "type": "integer",
+                    "example": 1
                 }
             }
         },
