@@ -1,4 +1,4 @@
-package model
+package modelDto
 
 type Meta struct {
 	Total  int64 `json:"total"`
