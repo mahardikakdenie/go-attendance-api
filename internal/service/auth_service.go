@@ -14,7 +14,7 @@ import (
 
 type AuthService interface {
 	Register(req model.RegisterRequest) (model.User, error)
-	Login(req model.LoginRequest) (model.LoginResponse, error)
+	Login(req model.LoginRequest) (string, model.UserResponse, error)
 }
 
 type authService struct {
@@ -27,7 +27,14 @@ func NewAuthService(repo repository.AuthRepository) AuthService {
 	}
 }
 
+// ======================
+// REGISTER
+// ======================
 func (s *authService) Register(req model.RegisterRequest) (model.User, error) {
+	if req.Email == "" || req.Password == "" || req.Name == "" {
+		return model.User{}, errors.New("name, email, password required")
+	}
+
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
 	if err != nil {
 		return model.User{}, err
@@ -37,6 +44,8 @@ func (s *authService) Register(req model.RegisterRequest) (model.User, error) {
 		Name:     req.Name,
 		Email:    req.Email,
 		Password: string(hashedPassword),
+		Role:     model.RoleEmployee,
+		TenantID: req.TenantID,
 	}
 
 	if err := s.repo.Create(&user); err != nil {
@@ -46,33 +55,46 @@ func (s *authService) Register(req model.RegisterRequest) (model.User, error) {
 	return user, nil
 }
 
-func (s *authService) Login(req model.LoginRequest) (model.LoginResponse, error) {
+// ======================
+// LOGIN (UPDATED)
+// ======================
+func (s *authService) Login(req model.LoginRequest) (string, model.UserResponse, error) {
 	user, err := s.repo.FindByEmail(req.Email)
 	if err != nil {
-		return model.LoginResponse{}, errors.New("invalid email or password")
+		return "", model.UserResponse{}, errors.New("invalid email or password")
 	}
 
 	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(req.Password)); err != nil {
-		return model.LoginResponse{}, errors.New("invalid email or password")
+		return "", model.UserResponse{}, errors.New("invalid email or password")
 	}
 
 	secret := os.Getenv("JWT_SECRET")
 	if secret == "" {
-		secret = "supersecretkey"
+		return "", model.UserResponse{}, errors.New("JWT secret not configured")
 	}
 
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"user_id": user.ID,
-		"exp":     time.Now().Add(time.Hour * 24).Unix(),
-	})
+	claims := jwt.MapClaims{
+		"user_id":   user.ID,
+		"tenant_id": user.TenantID,
+		"role":      user.Role,
+		"exp":       time.Now().Add(24 * time.Hour).Unix(),
+		"iat":       time.Now().Unix(),
+	}
+
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 
 	tokenString, err := token.SignedString([]byte(secret))
 	if err != nil {
-		return model.LoginResponse{}, errors.New("failed to generate token")
+		return "", model.UserResponse{}, errors.New("failed to generate token")
 	}
 
-	return model.LoginResponse{
-		Token: tokenString,
-		User:  user,
-	}, nil
+	userResponse := model.UserResponse{
+		ID:       user.ID,
+		Name:     user.Name,
+		Email:    user.Email,
+		Role:     user.Role,
+		TenantID: user.TenantID,
+	}
+
+	return tokenString, userResponse, nil
 }
