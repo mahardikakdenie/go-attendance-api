@@ -1,12 +1,12 @@
 package handler
 
 import (
-	"context"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
-	responseModel "go-attendance-api/internal/dto"
+	modelDto "go-attendance-api/internal/dto"
 	"go-attendance-api/internal/model"
 	"go-attendance-api/internal/service"
 	"go-attendance-api/internal/utils"
@@ -30,20 +30,16 @@ func NewAttendanceHandler(service service.AttendanceService) AttendanceHandler {
 	}
 }
 
-// =======================
-// RECORD ATTENDANCE
-// =======================
-
 // @Summary Record Attendance
 // @Description Record clock-in / clock-out with face & location
 // @Tags Attendance
 // @Accept json
 // @Produce json
 // @Param request body model.AttendanceRequest true "Attendance Data"
-// @Security BearerAuth
-// @Success 200 {object} model.BaseResponse
-// @Failure 400 {object} model.BaseResponse
-// @Failure 401 {object} model.BaseResponse
+// @Security CookieAuth
+// @Success 200 {object} modelDto.BaseResponse
+// @Failure 400 {object} modelDto.BaseResponse
+// @Failure 401 {object} modelDto.BaseResponse
 // @Router /api/v1/attendance [post]
 func (h *attendanceHandler) RecordAttendance(c *gin.Context) {
 	var req model.AttendanceRequest
@@ -70,28 +66,25 @@ func (h *attendanceHandler) RecordAttendance(c *gin.Context) {
 	c.JSON(http.StatusOK, utils.BuildResponse("Success", http.StatusOK, "success", res))
 }
 
-// =======================
-// GET ALL ATTENDANCE
-// =======================
-
 // @Summary Get All Attendance
 // @Description Get attendance list with filter & pagination
 // @Tags Attendance
 // @Produce json
 // @Param user_id query int false "User ID"
-// @Param status query string false "Status (working, done, late)"
+// @Param status query string false "Status"
 // @Param date_from query string false "Start date (YYYY-MM-DD)"
 // @Param date_to query string false "End date (YYYY-MM-DD)"
-// @Param limit query int false "Limit (default 10)"
-// @Param offset query int false "Offset (default 0)"
-// @Security BearerAuth
-// @Success 200 {object} model.BaseResponse{data=model.AttendanceListResponse}
-// @Failure 500 {object} model.BaseResponse
+// @Param limit query int false "Limit"
+// @Param offset query int false "Offset"
+// @Param include query string false "Relations: user,tenant,setting"
+// @Security CookieAuth
+// @Success 200 {object} modelDto.BaseResponse{data=modelDto.AttendanceListResponse}
+// @Failure 500 {object} modelDto.BaseResponse
 // @Router /api/v1/attendance [get]
 func (h *attendanceHandler) GetAllAttendance(c *gin.Context) {
 	var filter model.AttendanceFilter
 
-	ctx := context.Background()
+	ctx := c.Request.Context()
 
 	if userIDStr := c.Query("user_id"); userIDStr != "" {
 		if userID, err := strconv.Atoi(userIDStr); err == nil {
@@ -130,14 +123,19 @@ func (h *attendanceHandler) GetAllAttendance(c *gin.Context) {
 		}
 	}
 
-	data, total, err := h.service.GetAllData(ctx, filter, limit, offset)
+	var includes []string
+	if inc := c.Query("include"); inc != "" {
+		includes = strings.Split(inc, ",")
+	}
+
+	data, total, err := h.service.GetAllData(ctx, filter, includes, limit, offset)
 	if err != nil {
 		response := utils.BuildErrorResponse("Failed to fetch attendance data", http.StatusInternalServerError, "error", err.Error())
 		c.JSON(http.StatusInternalServerError, response)
 		return
 	}
 
-	meta := responseModel.Meta{
+	meta := modelDto.Meta{
 		Total:  total,
 		Limit:  limit,
 		Offset: offset,
@@ -147,7 +145,7 @@ func (h *attendanceHandler) GetAllAttendance(c *gin.Context) {
 		"Attendance data fetched successfully",
 		http.StatusOK,
 		"success",
-		responseModel.AttendanceListResponse{
+		modelDto.AttendanceListResponse{
 			Data: data,
 			Meta: meta,
 		},
@@ -156,15 +154,10 @@ func (h *attendanceHandler) GetAllAttendance(c *gin.Context) {
 	c.JSON(http.StatusOK, response)
 }
 
-// =======================
-// HEALTH CHECK
-// =======================
-
 // @Summary Health Check
 // @Description Check API status
 // @Tags Health
 // @Produce json
-// @Success 200 {object} model.BaseResponse
 // @Router /api/v1/ping [get]
 func (h *attendanceHandler) HelloTest(c *gin.Context) {
 	response := utils.BuildResponse("Health check success", http.StatusOK, "success", "API is running 🚀")
