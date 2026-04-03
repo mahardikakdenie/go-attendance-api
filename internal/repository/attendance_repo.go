@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"go-attendance-api/internal/model"
+	"go-attendance-api/internal/utils"
 
 	"gorm.io/gorm"
 )
@@ -14,7 +15,7 @@ type AttendanceRepository interface {
 	Save(ctx context.Context, attendance *model.Attendance) error
 	Update(ctx context.Context, attendance *model.Attendance) error
 	FindTodayByUser(ctx context.Context, userID uint) (*model.Attendance, error)
-	FindAll(ctx context.Context, filter model.AttendanceFilter, limit, offset int) ([]model.Attendance, int64, error)
+	FindAll(ctx context.Context, filter model.AttendanceFilter, includes []string, limit, offset int) ([]model.Attendance, int64, error)
 }
 
 type attendanceRepository struct {
@@ -56,9 +57,16 @@ func (r *attendanceRepository) FindTodayByUser(ctx context.Context, userID uint)
 	return &attendance, nil
 }
 
+var attendancePreloadMap = map[string]string{
+	"user":    "User",
+	"tenant":  "Tenant",
+	"setting": "TenantSetting",
+}
+
 func (r *attendanceRepository) FindAll(
 	ctx context.Context,
 	filter model.AttendanceFilter,
+	includes []string,
 	limit, offset int,
 ) ([]model.Attendance, int64, error) {
 
@@ -66,8 +74,9 @@ func (r *attendanceRepository) FindAll(
 	var total int64
 
 	query := r.db.WithContext(ctx).
-		Model(&model.Attendance{}).
-		Preload("User")
+		Model(&model.Attendance{})
+
+	query = utils.ApplyPreloads(query, includes, attendancePreloadMap)
 
 	if filter.UserID != 0 {
 		query = query.Where("user_id = ?", filter.UserID)
@@ -94,7 +103,6 @@ func (r *attendanceRepository) FindAll(
 	}
 
 	err := query.Order("clock_in_time DESC").Find(&attendances).Error
-
 	if err != nil {
 		return nil, 0, err
 	}
