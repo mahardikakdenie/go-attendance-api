@@ -1,39 +1,31 @@
 package middleware
 
 import (
+	"errors"
 	"net/http"
 	"os"
-	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
 )
 
 type JWTClaims struct {
-	UserID uint `json:"user_id"`
+	UserID   uint `json:"user_id"`
+	TenantID uint `json:"tenant_id"`
 	jwt.RegisteredClaims
 }
 
 func JWTAuth() gin.HandlerFunc {
 	return func(c *gin.Context) {
 
-		authHeader := c.GetHeader("Authorization")
-		if authHeader == "" {
+		// 🔥 Ambil token dari cookie (BUKAN header lagi)
+		tokenString, err := c.Cookie("token")
+		if err != nil || tokenString == "" {
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
 				"error": "Unauthorized: token required",
 			})
 			return
 		}
-
-		parts := strings.Split(authHeader, " ")
-		if len(parts) != 2 || parts[0] != "Bearer" {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
-				"error": "Invalid token format (Bearer <token>)",
-			})
-			return
-		}
-
-		tokenString := parts[1]
 
 		secret := os.Getenv("JWT_SECRET")
 		if secret == "" {
@@ -45,14 +37,21 @@ func JWTAuth() gin.HandlerFunc {
 
 		token, err := jwt.ParseWithClaims(tokenString, &JWTClaims{}, func(token *jwt.Token) (interface{}, error) {
 			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-				return nil, jwt.ErrTokenSignatureInvalid
+				return nil, errors.New("invalid signing method")
 			}
 			return []byte(secret), nil
 		})
 
 		if err != nil {
+			if errors.Is(err, jwt.ErrTokenExpired) {
+				c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
+					"error": "Token expired",
+				})
+				return
+			}
+
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
-				"error": "Invalid or expired token",
+				"error": "Invalid token",
 			})
 			return
 		}
@@ -72,7 +71,15 @@ func JWTAuth() gin.HandlerFunc {
 			return
 		}
 
+		if claims.TenantID == 0 {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
+				"error": "Invalid tenant in token",
+			})
+			return
+		}
+
 		c.Set("user_id", claims.UserID)
+		c.Set("tenant_id", claims.TenantID)
 
 		c.Next()
 	}
