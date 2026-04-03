@@ -14,7 +14,14 @@ func SeedUsers(db *gorm.DB) {
 	db.Model(&model.User{}).Count(&count)
 
 	if count > 0 {
+		log.Println("Seeder: User sudah ada, skip...")
 		return
+	}
+
+	// Ambil tenant pertama (WAJIB kalau ada FK)
+	var tenant model.Tenant
+	if err := db.First(&tenant).Error; err != nil {
+		log.Fatalf("Seeder: Tenant tidak ditemukan, jalankan seeder tenant dulu: %v", err)
 	}
 
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte("123456"), bcrypt.DefaultCost)
@@ -23,14 +30,15 @@ func SeedUsers(db *gorm.DB) {
 	}
 
 	user := model.User{
-		Name:     "admin",
+		Name:     "Admin",
 		Email:    "admin@yopmail.com",
 		Password: string(hashedPassword),
+		TenantID: tenant.ID, // 🔥 FIX penting (foreign key)
 	}
 
 	if err := db.Create(&user).Error; err != nil {
 		log.Fatalf("Gagal menjalankan seeder user: %v", err)
 	}
 
-	log.Println("Seeder: Berhasil menambahkan Karyawan Teladan")
+	log.Println("Seeder: Berhasil menambahkan Admin")
 }
