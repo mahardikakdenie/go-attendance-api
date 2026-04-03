@@ -8,12 +8,6 @@ definitions:
     x-enum-varnames:
     - ClockIn
     - ClockOut
-  model.AttendanceListResponse:
-    properties:
-      data: {}
-      meta:
-        $ref: '#/definitions/model.Meta'
-    type: object
   model.AttendanceRequest:
     properties:
       action:
@@ -37,16 +31,6 @@ definitions:
     - latitude
     - longitude
     type: object
-  model.BaseResponse:
-    properties:
-      code:
-        type: integer
-      data: {}
-      message:
-        type: string
-      status:
-        type: string
-    type: object
   model.LoginRequest:
     properties:
       email:
@@ -58,15 +42,6 @@ definitions:
     required:
     - email
     - password
-    type: object
-  model.Meta:
-    properties:
-      limit:
-        type: integer
-      offset:
-        type: integer
-      total:
-        type: integer
     type: object
   model.RegisterRequest:
     properties:
@@ -144,11 +119,38 @@ definitions:
       requireSelfie:
         example: true
         type: boolean
+      tenant:
+        $ref: '#/definitions/model.Tenant'
       tenantID:
         example: 1
         type: integer
       updatedAt:
         type: string
+    type: object
+  modelDto.AttendanceListResponse:
+    properties:
+      data: {}
+      meta:
+        $ref: '#/definitions/modelDto.Meta'
+    type: object
+  modelDto.BaseResponse:
+    properties:
+      code:
+        type: integer
+      data: {}
+      message:
+        type: string
+      status:
+        type: string
+    type: object
+  modelDto.Meta:
+    properties:
+      limit:
+        type: integer
+      offset:
+        type: integer
+      total:
+        type: integer
     type: object
 info:
   contact: {}
@@ -164,7 +166,7 @@ paths:
         in: query
         name: user_id
         type: integer
-      - description: Status (working, done, late)
+      - description: Status
         in: query
         name: status
         type: string
@@ -176,14 +178,18 @@ paths:
         in: query
         name: date_to
         type: string
-      - description: Limit (default 10)
+      - description: Limit
         in: query
         name: limit
         type: integer
-      - description: Offset (default 0)
+      - description: Offset
         in: query
         name: offset
         type: integer
+      - description: 'Relations: user,tenant,setting'
+        in: query
+        name: include
+        type: string
       produces:
       - application/json
       responses:
@@ -191,17 +197,17 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/model.BaseResponse'
+            - $ref: '#/definitions/modelDto.BaseResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/model.AttendanceListResponse'
+                  $ref: '#/definitions/modelDto.AttendanceListResponse'
               type: object
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/model.BaseResponse'
+            $ref: '#/definitions/modelDto.BaseResponse'
       security:
-      - BearerAuth: []
+      - CookieAuth: []
       summary: Get All Attendance
       tags:
       - Attendance
@@ -222,17 +228,17 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/model.BaseResponse'
+            $ref: '#/definitions/modelDto.BaseResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/model.BaseResponse'
+            $ref: '#/definitions/modelDto.BaseResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/model.BaseResponse'
+            $ref: '#/definitions/modelDto.BaseResponse'
       security:
-      - BearerAuth: []
+      - CookieAuth: []
       summary: Record Attendance
       tags:
       - Attendance
@@ -313,11 +319,7 @@ paths:
       description: Check API status
       produces:
       - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/model.BaseResponse'
+      responses: {}
       summary: Health Check
       tags:
       - Health
@@ -417,7 +419,8 @@ paths:
       - Tenant
   /api/v1/users:
     get:
-      description: Get list of users with filter, sorting, and pagination
+      description: Get list of users with filter, sorting, pagination, and dynamic
+        includes
       parameters:
       - description: Filter by Name
         in: query
@@ -447,6 +450,10 @@ paths:
         in: query
         name: sort
         type: string
+      - description: 'Relations (comma separated: tenant,attendances,attendances.user)'
+        in: query
+        name: includes
+        type: string
       produces:
       - application/json
       responses:
@@ -462,13 +469,17 @@ paths:
       - Users
   /api/v1/users/{id}:
     get:
-      description: Get single user detail
+      description: Get single user detail with optional includes
       parameters:
       - description: User ID
         in: path
         name: id
         required: true
         type: integer
+      - description: 'Relations (comma separated: tenant,attendances)'
+        in: query
+        name: includes
+        type: string
       produces:
       - application/json
       responses:
@@ -484,7 +495,13 @@ paths:
       - Users
   /api/v1/users/me:
     get:
-      description: Get authenticated user profile from token (httpOnly cookie)
+      description: Get authenticated user profile from token (httpOnly cookie) with
+        optional includes
+      parameters:
+      - description: 'Relations (comma separated: tenant,attendances)'
+        in: query
+        name: includes
+        type: string
       produces:
       - application/json
       responses:
