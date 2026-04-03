@@ -34,39 +34,48 @@ func SetupRoutes(r *gin.Engine, db *gorm.DB) {
 	attendanceService := service.NewAttendanceService(attendanceRepo, userRepo, tenantSettingRepo, tenantRepo)
 	attendanceHandler := handler.NewAttendanceHandler(attendanceService)
 
-	// Swagger (only dev)
 	if gin.Mode() != gin.ReleaseMode {
 		r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 	}
 
 	api := r.Group("/api/v1")
 
-	// PUBLIC
 	auth := api.Group("/auth")
 	{
 		auth.POST("/register", authHandler.Register)
 		auth.POST("/login", authHandler.Login)
-		// auth.POST("/logout", authHandler.Logout)
 	}
 
 	api.GET("/ping", attendanceHandler.HelloTest)
 
-	// PROTECTED
 	protected := api.Group("")
-	protected.Use(middleware.JWTAuth())
+	protected.Use(middleware.CookieAuth(authService))
 	{
-		protected.POST("/attendance", attendanceHandler.RecordAttendance)
-		protected.GET("/attendance", attendanceHandler.GetAllAttendance)
+		attendance := protected.Group("/attendance")
+		{
+			attendance.POST("", attendanceHandler.RecordAttendance)
+			attendance.GET("", attendanceHandler.GetAllAttendance)
+		}
 
-		protected.GET("/tenants", tenantHandler.GetAllTenant)
-		protected.GET("/tenants/:id", tenantHandler.GetTenantByID)
-		protected.POST("/tenants", tenantHandler.CreateTenant)
+		tenants := protected.Group("/tenants")
+		{
+			tenants.GET("", tenantHandler.GetAllTenant)
+			tenants.GET("/:id", tenantHandler.GetTenantByID)
+			tenants.POST("", tenantHandler.CreateTenant)
+		}
 
-		protected.GET("/tenant-setting", tenantSettingHandler.GetSetting)
-		protected.PUT("/tenant-setting", tenantSettingHandler.UpdateSetting)
+		tenantSetting := protected.Group("/tenant-setting")
+		{
+			tenantSetting.GET("", tenantSettingHandler.GetSetting)
+			tenantSetting.PUT("", tenantSettingHandler.UpdateSetting)
+		}
 
-		protected.GET("/users", userHandler.GetAllUsers)
-		protected.GET("/users/me", userHandler.GetMe)
+		users := protected.Group("/users")
+		{
+			users.GET("", userHandler.GetAllUsers)
+			users.GET("/me", userHandler.GetMe)
+		}
 
+		protected.POST("/auth/logout", authHandler.Logout)
 	}
 }
