@@ -34,6 +34,7 @@ func InitDB() *gorm.DB {
 	if os.Getenv("RESET_DB") == "true" {
 		err := db.Migrator().DropTable(
 			&model.Token{},
+			&model.Media{},
 			&model.Attendance{},
 			&model.User{},
 			&model.TenantSetting{},
@@ -53,6 +54,7 @@ func InitDB() *gorm.DB {
 			&model.TenantSetting{},
 			&model.Attendance{},
 			&model.Token{},
+			&model.Media{},
 		)
 
 		if err != nil {

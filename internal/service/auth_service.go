@@ -151,11 +151,19 @@ func (s *authService) GetMe(token string) (model.UserResponse, error) {
 		return model.UserResponse{}, errors.New("user not found")
 	}
 
+	var tenantResponse *model.TenantResponse
+	if user.Tenant != nil {
+		tenantResponse = &model.TenantResponse{
+			ID:   user.Tenant.ID,
+			Name: user.Tenant.Name,
+		}
+	}
 	return model.UserResponse{
 		ID:       user.ID,
 		Name:     user.Name,
 		Email:    user.Email,
 		Role:     user.Role,
 		TenantID: user.TenantID,
+		Tenant:   tenantResponse,
 	}, nil
 }

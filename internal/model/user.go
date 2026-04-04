@@ -24,6 +24,8 @@ type User struct {
 
 	Attendances []Attendance `gorm:"foreignKey:UserID" json:"attendances,omitempty"`
 
+	MediaUrl string `gorm:"type:varchar(50);" json:"media_url"`
+
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 }

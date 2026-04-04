@@ -39,7 +39,7 @@ func (r *authRepository) FindByEmail(email string) (model.User, error) {
 
 func (r *authRepository) FindByID(id uint) (model.User, error) {
 	var user model.User
-	err := r.db.First(&user, id).Error
+	err := r.db.Preload("Tenant").First(&user, id).Error
 	return user, err
 }
 

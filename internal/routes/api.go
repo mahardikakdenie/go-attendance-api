@@ -30,6 +30,10 @@ func SetupRoutes(r *gin.Engine, db *gorm.DB) {
 	tenantSettingService := service.NewTenantSettingService(tenantSettingRepo)
 	tenantSettingHandler := handler.NewTenantSettingHandler(tenantSettingService)
 
+	mediaRepo := repository.NewMediaRepository(db)
+	mediaService := service.NewMediaService(mediaRepo)
+	mediaHandler := handler.NewMediaHandler(mediaService)
+
 	attendanceRepo := repository.NewAttendanceRepository(db)
 	attendanceService := service.NewAttendanceService(attendanceRepo, userRepo, tenantSettingRepo, tenantRepo)
 	attendanceHandler := handler.NewAttendanceHandler(attendanceService)
@@ -76,6 +80,7 @@ func SetupRoutes(r *gin.Engine, db *gorm.DB) {
 			users.GET("/me", userHandler.GetMe)
 		}
 
+		protected.POST("/media/upload", mediaHandler.Upload)
 		protected.POST("/auth/logout", authHandler.Logout)
 	}
 }

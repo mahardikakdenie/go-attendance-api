@@ -314,6 +314,47 @@ paths:
       summary: Register new employee
       tags:
       - Auth
+  /api/v1/media/upload:
+    post:
+      consumes:
+      - multipart/form-data
+      description: Upload image file and store metadata to database
+      parameters:
+      - description: Upload file (file/image/media)
+        in: formData
+        name: file
+        type: file
+      - description: Upload image
+        in: formData
+        name: image
+        type: file
+      - description: Upload media
+        in: formData
+        name: media
+        type: file
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Upload image to imgbb
+      tags:
+      - Media
   /api/v1/ping:
     get:
       description: Check API status
