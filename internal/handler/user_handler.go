@@ -11,6 +11,14 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+func parseIncludeParams(c *gin.Context) []string {
+	if include := c.Query("includes"); include != "" {
+		return utils.ParseIncludes(include)
+	}
+
+	return utils.ParseIncludes(c.Query("include"))
+}
+
 type UserHandler interface {
 	GetAllUsers(c *gin.Context)
 	GetUserByID(c *gin.Context)
@@ -74,7 +82,7 @@ func (h *userHandler) GetAllUsers(c *gin.Context) {
 		}
 	}
 
-	includes := utils.ParseIncludes(c.Query("includes"))
+	includes := parseIncludeParams(c)
 
 	data, total, err := h.service.GetAllUsers(ctx, filter, includes)
 	if err != nil {
@@ -118,7 +126,7 @@ func (h *userHandler) GetUserByID(c *gin.Context) {
 		return
 	}
 
-	includes := utils.ParseIncludes(c.Query("includes"))
+	includes := parseIncludeParams(c)
 
 	user, err := h.service.GetByID(ctx, uint(id), includes)
 	if err != nil {
@@ -153,7 +161,7 @@ func (h *userHandler) GetMe(c *gin.Context) {
 
 	userID := userIDVal.(uint)
 
-	includes := utils.ParseIncludes(c.Query("includes"))
+	includes := parseIncludeParams(c)
 
 	user, err := h.service.GetMe(c.Request.Context(), userID, includes)
 	if err != nil {
