@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"errors"
+	"fmt"
 	"math"
 	"time"
 
@@ -76,6 +77,7 @@ func (s *attendanceService) RecordAttendance(
 	}
 
 	now := time.Now()
+	nowStr := now.Format("15:04:05")
 
 	todayAttendance, err := s.repo.FindTodayByUser(ctx, userID)
 	if err != nil {
@@ -91,7 +93,11 @@ func (s *attendanceService) RecordAttendance(
 		)
 
 		if distance > setting.MaxRadiusMeter {
-			return model.AttendanceResponse{}, errors.New("outside allowed radius")
+			return model.AttendanceResponse{}, fmt.Errorf(
+				"lokasi anda %.2fm dari kantor, maksimal %.2fm",
+				distance,
+				setting.MaxRadiusMeter,
+			)
 		}
 	}
 
@@ -104,12 +110,17 @@ func (s *attendanceService) RecordAttendance(
 	case model.ClockIn:
 
 		if todayAttendance != nil && !setting.AllowMultipleCheck {
-			return model.AttendanceResponse{}, errors.New("already clocked in today")
+			return model.AttendanceResponse{}, errors.New("anda sudah clock-in hari ini")
 		}
 
 		ok, err := isWithinTimeRange(now, setting.ClockInStartTime, setting.ClockInEndTime)
 		if err != nil || !ok {
-			return model.AttendanceResponse{}, errors.New("outside clock-in time window")
+			return model.AttendanceResponse{}, fmt.Errorf(
+				"clock-in gagal, anda melakukan pada %s, batas clock-in %s - %s",
+				nowStr,
+				normalizeTime(setting.ClockInStartTime),
+				normalizeTime(setting.ClockInEndTime),
+			)
 		}
 
 		status := model.StatusWorking
@@ -136,16 +147,21 @@ func (s *attendanceService) RecordAttendance(
 	case model.ClockOut:
 
 		if todayAttendance == nil {
-			return model.AttendanceResponse{}, errors.New("you have not clocked in today")
+			return model.AttendanceResponse{}, errors.New("anda belum melakukan clock-in hari ini")
 		}
 
 		if todayAttendance.ClockOutTime != nil {
-			return model.AttendanceResponse{}, errors.New("already clocked out today")
+			return model.AttendanceResponse{}, errors.New("anda sudah clock-out hari ini")
 		}
 
 		ok, err := isWithinTimeRange(now, setting.ClockOutStartTime, setting.ClockOutEndTime)
 		if err != nil || !ok {
-			return model.AttendanceResponse{}, errors.New("outside clock-out time window")
+			return model.AttendanceResponse{}, fmt.Errorf(
+				"clock-out gagal, anda melakukan pada %s, batas clock-out %s - %s",
+				nowStr,
+				setting.ClockOutStartTime,
+				setting.ClockOutEndTime,
+			)
 		}
 
 		todayAttendance.ClockOutTime = &now
@@ -181,6 +197,13 @@ func (s *attendanceService) GetAllData(
 func isWithinTimeRange(now time.Time, start, end string) (bool, error) {
 	layout := "15:04"
 
+	if start == "24:00" {
+		start = "00:00"
+	}
+	if end == "24:00" {
+		end = "23:59"
+	}
+
 	startTime, err := time.Parse(layout, start)
 	if err != nil {
 		return false, err
@@ -195,7 +218,11 @@ func isWithinTimeRange(now time.Time, start, end string) (bool, error) {
 	startMin := startTime.Hour()*60 + startTime.Minute()
 	endMin := endTime.Hour()*60 + endTime.Minute()
 
-	return current >= startMin && current <= endMin, nil
+	if startMin <= endMin {
+		return current >= startMin && current <= endMin, nil
+	}
+
+	return current >= startMin || current <= endMin, nil
 }
 
 func calculateDistance(lat1, lon1, lat2, lon2 float64) float64 {
@@ -212,6 +239,13 @@ func calculateDistance(lat1, lon1, lat2, lon2 float64) float64 {
 	c := 2 * math.Atan2(math.Sqrt(a), math.Sqrt(1-a))
 
 	return R * c
+}
+
+func normalizeTime(t string) string {
+	if t == "24:00" {
+		return "23:59"
+	}
+	return t
 }
 
 func mapToResponse(a *model.Attendance) model.AttendanceResponse {
