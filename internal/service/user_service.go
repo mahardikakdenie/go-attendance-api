@@ -150,6 +150,8 @@ func mapToUserResponse(user *model.User, includes []string) model.UserResponse {
 				ClockInLongitude:  att.ClockInLongitude,
 				ClockOutLatitude:  att.ClockOutLatitude,
 				ClockOutLongitude: att.ClockOutLongitude,
+				ClockInMediaUrl:   att.ClockInMediaUrl,
+				ClockOutMediaUrl:  att.ClockOutMediaUrl,
 				Status:            att.Status,
 			})
 		}
