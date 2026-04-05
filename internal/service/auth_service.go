@@ -43,7 +43,7 @@ func (s *authService) Register(req model.RegisterRequest) (model.User, error) {
 		Name:     req.Name,
 		Email:    req.Email,
 		Password: string(hashedPassword),
-		Role:     model.RoleEmployee,
+		Role:     req.Role,
 		TenantID: req.TenantID,
 	}
 
