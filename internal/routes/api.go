@@ -78,6 +78,9 @@ func SetupRoutes(r *gin.Engine, db *gorm.DB) {
 		{
 			users.GET("", userHandler.GetAllUsers)
 			users.GET("/me", userHandler.GetMe)
+
+			// ✅ NEW: update profile photo
+			users.PUT("/profile-photo", userHandler.UpdateProfilePhoto)
 		}
 
 		protected.POST("/media/upload", mediaHandler.Upload)
