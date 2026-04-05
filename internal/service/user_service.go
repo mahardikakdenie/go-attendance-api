@@ -12,6 +12,7 @@ type UserService interface {
 	GetAllUsers(ctx context.Context, filter model.UserFilter, includes []string) ([]model.UserResponse, int64, error)
 	GetByID(ctx context.Context, id uint, includes []string) (model.UserResponse, error)
 	GetMe(ctx context.Context, userID uint, includes []string) (model.UserResponse, error)
+	UpdateProfilePhoto(userID uint, mediaURL string) error
 }
 
 type userService struct {
@@ -158,4 +159,19 @@ func mapToUserResponse(user *model.User, includes []string) model.UserResponse {
 	}
 
 	return res
+}
+
+func (s *userService) UpdateProfilePhoto(userID uint, mediaURL string) error {
+	user, err := s.repo.FindByID(context.Background(), userID, []string{})
+	if err != nil {
+		return errors.New("user not found")
+	}
+
+	user.MediaUrl = mediaURL
+
+	if err := s.repo.Update(context.Background(), user); err != nil {
+		return errors.New("failed to update profile photo")
+	}
+
+	return nil
 }
