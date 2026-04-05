@@ -23,6 +23,7 @@ type UserHandler interface {
 	GetAllUsers(c *gin.Context)
 	GetUserByID(c *gin.Context)
 	GetMe(c *gin.Context)
+	UpdateProfilePhoto(c *gin.Context) // ✅ NEW
 }
 
 type userHandler struct {
@@ -34,6 +35,18 @@ func NewUserHandler(service service.UserService) UserHandler {
 		service: service,
 	}
 }
+
+//////////////////////////////////////////////////////////////
+// DTO
+//////////////////////////////////////////////////////////////
+
+type UpdateProfilePhotoRequest struct {
+	MediaURL string `json:"media_url" binding:"required"`
+}
+
+//////////////////////////////////////////////////////////////
+// HANDLERS
+//////////////////////////////////////////////////////////////
 
 // @Summary Get All Users
 // @Description Get list of users with filter, sorting, pagination, and dynamic includes
@@ -175,4 +188,53 @@ func (h *userHandler) GetMe(c *gin.Context) {
 		"data":     user,
 		"includes": includes,
 	})
+}
+
+//////////////////////////////////////////////////////////////
+// ✅ NEW ENDPOINT: UPDATE PROFILE PHOTO
+//////////////////////////////////////////////////////////////
+
+// @Summary Update Profile Photo
+// @Description Update logged-in user's profile photo
+// @Tags Users
+// @Accept json
+// @Produce json
+// @Param body body UpdateProfilePhotoRequest true "Profile Photo Payload"
+// @Security BearerAuth
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} map[string]interface{}
+// @Failure 401 {object} map[string]interface{}
+// @Failure 500 {object} map[string]interface{}
+// @Router /api/v1/users/profile-photo [put]
+func (h *userHandler) UpdateProfilePhoto(c *gin.Context) {
+	var req UpdateProfilePhotoRequest
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest,
+			utils.BuildErrorResponse("Invalid request body", 400, "error", err.Error()),
+		)
+		return
+	}
+
+	userIDVal, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(http.StatusUnauthorized,
+			utils.BuildErrorResponse("Unauthorized", 401, "error", "user not logged in"),
+		)
+		return
+	}
+
+	userID := userIDVal.(uint)
+
+	err := h.service.UpdateProfilePhoto(userID, req.MediaURL)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError,
+			utils.BuildErrorResponse("Failed to update profile photo", 500, "error", err.Error()),
+		)
+		return
+	}
+
+	c.JSON(http.StatusOK,
+		utils.BuildResponse("Profile photo updated successfully", 200, "success", nil),
+	)
 }
