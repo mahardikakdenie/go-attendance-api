@@ -16,6 +16,7 @@ type UserRepository interface {
 	FindAll(ctx context.Context, filter model.UserFilter, includes []string) ([]model.User, int64, error)
 	FindByID(ctx context.Context, id uint, includes []string) (*model.User, error)
 	GetMe(ctx context.Context, userID uint, includes []string) (*model.User, error)
+	Update(ctx context.Context, user *model.User) error
 }
 
 type userRepository struct {
@@ -124,4 +125,39 @@ func (r *userRepository) GetMe(ctx context.Context, userID uint, includes []stri
 	}
 
 	return &user, nil
+}
+
+func (r *userRepository) Update(ctx context.Context, user *model.User) error {
+	if user.ID == 0 {
+		return errors.New("invalid user id")
+	}
+
+	// pastikan user ada
+	var existing model.User
+	if err := r.db.WithContext(ctx).
+		First(&existing, user.ID).Error; err != nil {
+
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return ErrUserNotFound
+		}
+		return err
+	}
+
+	// update hanya field tertentu (biar aman)
+	updateData := map[string]interface{}{
+		"name":       user.Name,
+		"email":      user.Email,
+		"role":       user.Role,
+		"tenant_id":  user.TenantID,
+		"media_url":  user.MediaUrl,
+		"updated_at": user.UpdatedAt,
+	}
+
+	if err := r.db.WithContext(ctx).
+		Model(&existing).
+		Updates(updateData).Error; err != nil {
+		return err
+	}
+
+	return nil
 }
