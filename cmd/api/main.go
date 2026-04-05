@@ -34,6 +34,15 @@ func main() {
 
 	db := config.InitDB()
 
+	rdb := config.NewRedis()
+
+	pong, err := rdb.Ping(config.Ctx).Result()
+	if err != nil {
+		panic(err)
+	}
+
+	println("Redis connected:", pong)
+
 	r := gin.Default()
 
 	routes.SetupRoutes(r, db)

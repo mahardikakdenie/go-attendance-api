@@ -53,7 +53,7 @@ func SetupRoutes(r *gin.Engine, db *gorm.DB) {
 	api.GET("/ping", attendanceHandler.HelloTest)
 
 	protected := api.Group("")
-	protected.Use(middleware.CookieAuth(authService))
+	protected.Use(middleware.SecureAuth(authService))
 	{
 		attendance := protected.Group("/attendance")
 		{

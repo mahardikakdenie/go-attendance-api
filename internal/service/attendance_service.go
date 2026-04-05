@@ -11,6 +11,9 @@ import (
 	"go-attendance-api/internal/repository"
 )
 
+// Inisialisasi zona waktu UTC+7 (WIB) secara global untuk package service
+var WIB = time.FixedZone("WIB", 7*3600)
+
 type AttendanceService interface {
 	RecordAttendance(
 		ctx context.Context,
@@ -76,7 +79,8 @@ func (s *attendanceService) RecordAttendance(
 		return model.AttendanceResponse{}, errors.New("tenant setting not found")
 	}
 
-	now := time.Now()
+	// 🔥 FIX: Mengunci waktu saat ini ke UTC+7 (WIB)
+	now := time.Now().In(WIB)
 	nowStr := now.Format("15:04:05")
 
 	todayAttendance, err := s.repo.FindTodayByUser(ctx, userID)
@@ -113,6 +117,8 @@ func (s *attendanceService) RecordAttendance(
 			return model.AttendanceResponse{}, errors.New("anda sudah clock-in hari ini")
 		}
 
+		// Karena `now` sudah di UTC+7, pengecekan jam dan menit di fungsi ini akan langsung match
+		// dengan setting jam yang juga berasumsi waktu lokal (WIB).
 		ok, err := isWithinTimeRange(now, setting.ClockInStartTime, setting.ClockInEndTime)
 		if err != nil || !ok {
 			return model.AttendanceResponse{}, fmt.Errorf(
@@ -124,6 +130,7 @@ func (s *attendanceService) RecordAttendance(
 		}
 
 		status := model.StatusWorking
+		// now.Hour() dan now.Minute() sekarang aman dari bias UTC 0 server
 		if now.Hour()*60+now.Minute() > setting.LateAfterMinute {
 			status = model.StatusLate
 		}
@@ -131,7 +138,7 @@ func (s *attendanceService) RecordAttendance(
 		data := model.Attendance{
 			UserID:           userID,
 			TenantID:         user.TenantID,
-			ClockInTime:      now,
+			ClockInTime:      now, // Disimpan ke struct/DB dengan timezone UTC+7
 			ClockInLatitude:  req.Latitude,
 			ClockInLongitude: req.Longitude,
 			ClockInMediaUrl:  req.MediaUrl,
@@ -214,6 +221,8 @@ func isWithinTimeRange(now time.Time, start, end string) (bool, error) {
 		return false, err
 	}
 
+	// now.Hour() dan now.Minute() di sini akan mengekstrak jam lokal (UTC+7)
+	// berkat `.In(WIB)` yang kita aplikasikan di atas.
 	current := now.Hour()*60 + now.Minute()
 	startMin := startTime.Hour()*60 + startTime.Minute()
 	endMin := endTime.Hour()*60 + endTime.Minute()
@@ -222,6 +231,7 @@ func isWithinTimeRange(now time.Time, start, end string) (bool, error) {
 		return current >= startMin && current <= endMin, nil
 	}
 
+	// Kasus jika shift malam (misal start 22:00, end 06:00)
 	return current >= startMin || current <= endMin, nil
 }
 

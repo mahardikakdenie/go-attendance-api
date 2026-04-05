@@ -1,5 +1,12 @@
 basePath: /
 definitions:
+  handler.UpdateProfilePhotoRequest:
+    properties:
+      media_url:
+        type: string
+    required:
+    - media_url
+    type: object
   model.AttendanceAction:
     enum:
     - clock_in
@@ -578,6 +585,46 @@ paths:
       security:
       - BearerAuth: []
       summary: Get current user
+      tags:
+      - Users
+  /api/v1/users/profile-photo:
+    put:
+      consumes:
+      - application/json
+      description: Update logged-in user's profile photo
+      parameters:
+      - description: Profile Photo Payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/handler.UpdateProfilePhotoRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Update Profile Photo
       tags:
       - Users
 securityDefinitions:
