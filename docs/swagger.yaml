@@ -55,6 +55,10 @@ definitions:
         example: "123456"
         minLength: 6
         type: string
+      role:
+        allOf:
+        - $ref: '#/definitions/model.UserRole'
+        example: admin
       tenant_id:
         example: 1
         type: integer
@@ -127,6 +131,16 @@ definitions:
       updatedAt:
         type: string
     type: object
+  model.UserRole:
+    enum:
+    - admin
+    - manager
+    - employee
+    type: string
+    x-enum-varnames:
+    - RoleAdmin
+    - RoleManager
+    - RoleEmployee
   modelDto.AttendanceListResponse:
     properties:
       data: {}

@@ -733,6 +733,14 @@ const docTemplate = `{
                     "minLength": 6,
                     "example": "123456"
                 },
+                "role": {
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/model.UserRole"
+                        }
+                    ],
+                    "example": "admin"
+                },
                 "tenant_id": {
                     "type": "integer",
                     "example": 1
@@ -827,6 +835,19 @@ const docTemplate = `{
                     "type": "string"
                 }
             }
+        },
+        "model.UserRole": {
+            "type": "string",
+            "enum": [
+                "admin",
+                "manager",
+                "employee"
+            ],
+            "x-enum-varnames": [
+                "RoleAdmin",
+                "RoleManager",
+                "RoleEmployee"
+            ]
         },
         "modelDto.AttendanceListResponse": {
             "type": "object",
