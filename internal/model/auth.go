@@ -3,10 +3,11 @@ package model
 import "time"
 
 type RegisterRequest struct {
-	Name     string `json:"name" binding:"required" example:"Budi Santoso"`
-	Email    string `json:"email" binding:"required,email" example:"budi@company.com"`
-	Password string `json:"password" binding:"required,min=6" example:"123456"`
-	TenantID uint   `json:"tenant_id" binding:"required" example:"1"`
+	Name     string   `json:"name" binding:"required" example:"Budi Santoso"`
+	Email    string   `json:"email" binding:"required,email" example:"budi@company.com"`
+	Password string   `json:"password" binding:"required,min=6" example:"123456"`
+	TenantID uint     `json:"tenant_id" binding:"required" example:"1"`
+	Role     UserRole `json:"role" example:"admin"`
 }
 
 type LoginRequest struct {
