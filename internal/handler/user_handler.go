@@ -11,6 +11,15 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+func contains(slice []string, item string) bool {
+	for _, s := range slice {
+		if s == item {
+			return true
+		}
+	}
+	return false
+}
+
 func parseIncludeParams(c *gin.Context) []string {
 	if include := c.Query("includes"); include != "" {
 		return utils.ParseIncludes(include)
@@ -175,6 +184,14 @@ func (h *userHandler) GetMe(c *gin.Context) {
 	userID := userIDVal.(uint)
 
 	includes := parseIncludeParams(c)
+
+	// Always include tenant and tenant_settings for GetMe as requested for efficiency
+	if !contains(includes, "tenant") {
+		includes = append(includes, "tenant")
+	}
+	if !contains(includes, "tenant.tenant_settings") {
+		includes = append(includes, "tenant.tenant_settings")
+	}
 
 	user, err := h.service.GetMe(c.Request.Context(), userID, includes)
 	if err != nil {
