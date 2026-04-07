@@ -7,6 +7,11 @@ definitions:
     required:
     - media_url
     type: object
+  model.ApproveUserChangeRequest:
+    properties:
+      admin_notes:
+        type: string
+    type: object
   model.AttendanceAction:
     enum:
     - clock_in
@@ -38,6 +43,22 @@ definitions:
     - latitude
     - longitude
     type: object
+  model.CreateUserChangeRequest:
+    properties:
+      address:
+        type: string
+      department:
+        type: string
+      email:
+        type: string
+      name:
+        type: string
+      phone_number:
+        type: string
+    required:
+    - email
+    - name
+    type: object
   model.LoginRequest:
     properties:
       email:
@@ -52,6 +73,12 @@ definitions:
     type: object
   model.RegisterRequest:
     properties:
+      address:
+        example: Jl. Sudirman No. 1
+        type: string
+      department:
+        example: IT
+        type: string
       email:
         example: budi@company.com
         type: string
@@ -61,6 +88,9 @@ definitions:
       password:
         example: "123456"
         minLength: 6
+        type: string
+      phone_number:
+        example: "08123456789"
         type: string
       role:
         allOf:
@@ -85,57 +115,62 @@ definitions:
         type: integer
       name:
         type: string
+      tenant_settings:
+        $ref: '#/definitions/model.TenantSetting'
       updatedAt:
         type: string
     type: object
   model.TenantSetting:
     properties:
-      allowMultipleCheck:
+      allow_multiple_check:
         example: false
         type: boolean
-      allowRemote:
+      allow_remote:
         example: false
         type: boolean
-      clockInEndTime:
+      clock_in_end_time:
         example: "09:00"
         type: string
-      clockInStartTime:
+      clock_in_start_time:
         example: "07:00"
         type: string
-      clockOutEndTime:
+      clock_out_end_time:
         example: "23:00"
         type: string
-      clockOutStartTime:
+      clock_out_start_time:
         example: "16:00"
         type: string
-      createdAt:
+      created_at:
+        example: "2026-04-07T13:21:24Z"
         type: string
       id:
+        example: 1
         type: integer
-      lateAfterMinute:
+      late_after_minute:
         example: 480
         type: integer
-      maxRadiusMeter:
+      max_radius_meter:
         example: 100
         type: number
-      officeLatitude:
+      office_latitude:
         example: -6.1339179
         type: number
-      officeLongitude:
+      office_longitude:
         example: 106.8329504
         type: number
-      requireLocation:
+      require_location:
         example: true
         type: boolean
-      requireSelfie:
+      require_selfie:
         example: true
         type: boolean
       tenant:
         $ref: '#/definitions/model.Tenant'
-      tenantID:
+      tenant_id:
         example: 1
         type: integer
-      updatedAt:
+      updated_at:
+        example: "2026-04-07T13:21:24Z"
         type: string
     type: object
   model.UserRole:
@@ -555,6 +590,28 @@ paths:
       summary: Get User By ID
       tags:
       - Users
+  /api/v1/users/approve-change/{id}:
+    post:
+      description: Approve a pending change request
+      parameters:
+      - description: Request ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Approve Change Request
+      tags:
+      - UserChangeRequests
   /api/v1/users/me:
     get:
       description: Get authenticated user profile from token (httpOnly cookie) with
@@ -587,6 +644,22 @@ paths:
       summary: Get current user
       tags:
       - Users
+  /api/v1/users/pending-changes:
+    get:
+      description: Get all pending change requests for the tenant
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get Pending Change Requests
+      tags:
+      - UserChangeRequests
   /api/v1/users/profile-photo:
     put:
       consumes:
@@ -627,6 +700,61 @@ paths:
       summary: Update Profile Photo
       tags:
       - Users
+  /api/v1/users/reject-change/{id}:
+    post:
+      consumes:
+      - application/json
+      description: Reject a pending change request
+      parameters:
+      - description: Request ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Notes
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/model.ApproveUserChangeRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Reject Change Request
+      tags:
+      - UserChangeRequests
+  /api/v1/users/request-change:
+    post:
+      consumes:
+      - application/json
+      description: Create a request to change user data (needs approval)
+      parameters:
+      - description: Request Body
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/model.CreateUserChangeRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Create User Change Request
+      tags:
+      - UserChangeRequests
 securityDefinitions:
   BearerAuth:
     in: header
