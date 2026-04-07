@@ -156,6 +156,32 @@ func SecureAuth(authService service.AuthService) gin.HandlerFunc {
 	}
 }
 
+func RequireRole(roles ...string) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		userRoleVal, exists := c.Get("role")
+		if !exists {
+			c.AbortWithStatusJSON(401, gin.H{"message": "Unauthorized"})
+			return
+		}
+
+		userRole := fmt.Sprintf("%v", userRoleVal)
+		allowed := false
+		for _, role := range roles {
+			if userRole == role {
+				allowed = true
+				break
+			}
+		}
+
+		if !allowed {
+			c.AbortWithStatusJSON(403, gin.H{"message": "Forbidden: Insufficient permissions"})
+			return
+		}
+
+		c.Next()
+	}
+}
+
 //////////////////////////////////////////////////////////////
 // HELPERS
 //////////////////////////////////////////////////////////////
