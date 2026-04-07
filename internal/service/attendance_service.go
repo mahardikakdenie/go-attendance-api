@@ -26,7 +26,7 @@ type AttendanceService interface {
 		filter model.AttendanceFilter,
 		includes []string,
 		limit, offset int,
-	) ([]model.Attendance, int64, error)
+	) ([]model.AttendanceResponse, int64, error)
 }
 
 type attendanceService struct {
@@ -48,6 +48,31 @@ func NewAttendanceService(
 		settingRepo: settingRepo,
 		tenantRepo:  tenantRepo,
 	}
+}
+
+var allowedAttendanceIncludes = map[string]bool{
+	"user":    true,
+	"tenant":  true,
+	"setting": true,
+}
+
+func filterAttendanceIncludes(includes []string) []string {
+	var result []string
+	for _, inc := range includes {
+		if allowedAttendanceIncludes[inc] {
+			result = append(result, inc)
+		}
+	}
+	return result
+}
+
+func hasAttendanceInclude(includes []string, key string) bool {
+	for _, inc := range includes {
+		if inc == key {
+			return true
+		}
+	}
+	return false
 }
 
 func (s *attendanceService) RecordAttendance(
@@ -149,7 +174,7 @@ func (s *attendanceService) RecordAttendance(
 			return model.AttendanceResponse{}, err
 		}
 
-		return mapToResponse(&data), nil
+		return applyPreloads(&data, []string{}), nil
 
 	case model.ClockOut:
 
@@ -185,7 +210,7 @@ func (s *attendanceService) RecordAttendance(
 			return model.AttendanceResponse{}, err
 		}
 
-		return mapToResponse(todayAttendance), nil
+		return applyPreloads(todayAttendance, []string{}), nil
 
 	default:
 		return model.AttendanceResponse{}, errors.New("invalid action")
@@ -197,8 +222,20 @@ func (s *attendanceService) GetAllData(
 	filter model.AttendanceFilter,
 	includes []string,
 	limit, offset int,
-) ([]model.Attendance, int64, error) {
-	return s.repo.FindAll(ctx, filter, includes, limit, offset)
+) ([]model.AttendanceResponse, int64, error) {
+	includes = filterAttendanceIncludes(includes)
+
+	data, total, err := s.repo.FindAll(ctx, filter, includes, limit, offset)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	var responses []model.AttendanceResponse
+	for _, a := range data {
+		responses = append(responses, applyPreloads(&a, includes))
+	}
+
+	return responses, total, nil
 }
 
 func isWithinTimeRange(now time.Time, start, end string) (bool, error) {
@@ -258,8 +295,8 @@ func normalizeTime(t string) string {
 	return t
 }
 
-func mapToResponse(a *model.Attendance) model.AttendanceResponse {
-	return model.AttendanceResponse{
+func applyPreloads(a *model.Attendance, includes []string) model.AttendanceResponse {
+	res := model.AttendanceResponse{
 		ID:                a.ID,
 		UserID:            a.UserID,
 		ClockInTime:       a.ClockInTime,
@@ -272,4 +309,22 @@ func mapToResponse(a *model.Attendance) model.AttendanceResponse {
 		ClockOutMediaUrl:  a.ClockOutMediaUrl,
 		Status:            a.Status,
 	}
+
+	if hasAttendanceInclude(includes, "user") {
+		res.User = &model.UserResponse{
+			ID:          a.User.ID,
+			Name:        a.User.Name,
+			Email:       a.User.Email,
+			Role:        a.User.Role,
+			TenantID:    a.User.TenantID,
+			EmployeeID:  a.User.EmployeeID,
+			Department:  a.User.Department,
+			MediaUrl:    a.User.MediaUrl,
+			Address:     a.User.Address,
+			PhoneNumber: a.User.PhoneNumber,
+			CreatedAt:   a.User.CreatedAt,
+		}
+	}
+
+	return res
 }
