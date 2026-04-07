@@ -36,6 +36,7 @@ func InitDB() *gorm.DB {
 			&model.Token{},
 			&model.Media{},
 			&model.Attendance{},
+			&model.UserChangeRequest{},
 			&model.User{},
 			&model.TenantSetting{},
 			&model.Tenant{},
@@ -51,6 +52,7 @@ func InitDB() *gorm.DB {
 		err = db.AutoMigrate(
 			&model.Tenant{},
 			&model.User{},
+			&model.UserChangeRequest{},
 			&model.TenantSetting{},
 			&model.Attendance{},
 			&model.Token{},
