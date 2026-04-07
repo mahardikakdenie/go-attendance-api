@@ -15,6 +15,7 @@ type AuthRepository interface {
 	SaveToken(token *model.Token) error
 	RevokeToken(token string) error
 	IsTokenRevoked(token string) (bool, error)
+	CountByTenantID(tenantID uint) (int64, error)
 }
 
 type authRepository struct {
@@ -29,6 +30,12 @@ func NewAuthRepository(db *gorm.DB) AuthRepository {
 
 func (r *authRepository) Create(user *model.User) error {
 	return r.db.Create(user).Error
+}
+
+func (r *authRepository) CountByTenantID(tenantID uint) (int64, error) {
+	var count int64
+	err := r.db.Model(&model.User{}).Where("tenant_id = ?", tenantID).Count(&count).Error
+	return count, err
 }
 
 func (r *authRepository) FindByEmail(email string) (model.User, error) {

@@ -26,9 +26,10 @@ func NewUserService(repo repository.UserRepository) UserService {
 }
 
 var allowedIncludes = map[string]bool{
-	"tenant":           true,
-	"attendances":      true,
-	"attendances.user": true,
+	"tenant":                  true,
+	"tenant.tenant_settings": true,
+	"attendances":             true,
+	"attendances.user":        true,
 }
 
 func filterIncludes(includes []string) []string {
@@ -125,18 +126,24 @@ func (s *userService) GetMe(
 
 func mapToUserResponse(user *model.User, includes []string) model.UserResponse {
 	res := model.UserResponse{
-		ID:        user.ID,
-		Name:      user.Name,
-		Email:     user.Email,
-		Role:      user.Role,
-		TenantID:  user.TenantID,
-		CreatedAt: user.CreatedAt,
+		ID:          user.ID,
+		Name:        user.Name,
+		Email:       user.Email,
+		Role:        user.Role,
+		TenantID:    user.TenantID,
+		EmployeeID:  user.EmployeeID,
+		Department:  user.Department,
+		MediaUrl:    user.MediaUrl,
+		Address:     user.Address,
+		PhoneNumber: user.PhoneNumber,
+		CreatedAt:   user.CreatedAt,
 	}
 
 	if hasInclude(includes, "tenant") && user.Tenant != nil {
 		res.Tenant = &model.TenantResponse{
-			ID:   user.Tenant.ID,
-			Name: user.Tenant.Name,
+			ID:             user.Tenant.ID,
+			Name:           user.Tenant.Name,
+			TenantSettings: user.Tenant.TenantSettings,
 		}
 	}
 

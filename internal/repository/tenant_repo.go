@@ -34,7 +34,7 @@ func (r *tenantRepository) FindAll(ctx context.Context) ([]model.Tenant, error) 
 
 func (r *tenantRepository) FindByID(ctx context.Context, id uint) (*model.Tenant, error) {
 	var tenant model.Tenant
-	err := r.db.WithContext(ctx).First(&tenant, id).Error
+	err := r.db.WithContext(ctx).Preload("TenantSettings").First(&tenant, id).Error
 	if err != nil {
 		return nil, err
 	}

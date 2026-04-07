@@ -30,10 +30,15 @@ func SeedUsers(db *gorm.DB) {
 	}
 
 	user := model.User{
-		Name:     "Admin",
-		Email:    "admin@yopmail.com",
-		Password: string(hashedPassword),
-		TenantID: tenant.ID, // 🔥 FIX penting (foreign key)
+		Name:        "Admin",
+		Email:       "admin@yopmail.com",
+		Password:    string(hashedPassword),
+		TenantID:    tenant.ID, // 🔥 FIX penting (foreign key)
+		Role:        model.RoleAdmin,
+		EmployeeID:  "FT-001",
+		Department:  "Management",
+		Address:     "Head Office",
+		PhoneNumber: "08123456789",
 	}
 
 	if err := db.Create(&user).Error; err != nil {

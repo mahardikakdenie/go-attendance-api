@@ -2,6 +2,7 @@ package service
 
 import (
 	"errors"
+	"fmt"
 	"os"
 	"time"
 
@@ -39,12 +40,23 @@ func (s *authService) Register(req model.RegisterRequest) (model.User, error) {
 		return model.User{}, err
 	}
 
+	// Generate EmployeeID: FT-001, FT-002, dst.
+	count, err := s.repo.CountByTenantID(req.TenantID)
+	if err != nil {
+		return model.User{}, err
+	}
+	employeeID := fmt.Sprintf("FT-%03d", count+1)
+
 	user := model.User{
-		Name:     req.Name,
-		Email:    req.Email,
-		Password: string(hashedPassword),
-		Role:     req.Role,
-		TenantID: req.TenantID,
+		Name:        req.Name,
+		Email:       req.Email,
+		Password:    string(hashedPassword),
+		Role:        req.Role,
+		TenantID:    req.TenantID,
+		EmployeeID:  employeeID,
+		Department:  req.Department,
+		Address:     req.Address,
+		PhoneNumber: req.PhoneNumber,
 	}
 
 	if err := s.repo.Create(&user); err != nil {

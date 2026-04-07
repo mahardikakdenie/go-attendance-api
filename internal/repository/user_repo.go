@@ -30,9 +30,10 @@ func NewUserRepository(db *gorm.DB) UserRepository {
 }
 
 var userPreloadMap = map[string]string{
-	"tenant":           "Tenant",
-	"attendances":      "Attendances",
-	"attendances.user": "Attendances.User",
+	"tenant":                  "Tenant",
+	"tenant.tenant_settings": "Tenant.TenantSettings",
+	"attendances":             "Attendances",
+	"attendances.user":        "Attendances.User",
 }
 
 func (r *userRepository) FindByID(ctx context.Context, id uint, includes []string) (*model.User, error) {
@@ -78,6 +79,10 @@ func (r *userRepository) FindAll(
 
 	if filter.TenantID != 0 {
 		query = query.Where("tenant_id = ?", filter.TenantID)
+	}
+
+	if filter.EmployeeID != "" {
+		query = query.Where("employee_id ILIKE ?", "%"+filter.EmployeeID+"%")
 	}
 
 	if err := query.Count(&total).Error; err != nil {
@@ -145,12 +150,16 @@ func (r *userRepository) Update(ctx context.Context, user *model.User) error {
 
 	// update hanya field tertentu (biar aman)
 	updateData := map[string]interface{}{
-		"name":       user.Name,
-		"email":      user.Email,
-		"role":       user.Role,
-		"tenant_id":  user.TenantID,
-		"media_url":  user.MediaUrl,
-		"updated_at": user.UpdatedAt,
+		"name":         user.Name,
+		"email":        user.Email,
+		"role":         user.Role,
+		"tenant_id":    user.TenantID,
+		"media_url":    user.MediaUrl,
+		"employee_id":  user.EmployeeID,
+		"department":   user.Department,
+		"address":      user.Address,
+		"phone_number": user.PhoneNumber,
+		"updated_at":   user.UpdatedAt,
 	}
 
 	if err := r.db.WithContext(ctx).

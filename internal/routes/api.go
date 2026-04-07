@@ -38,6 +38,10 @@ func SetupRoutes(r *gin.Engine, db *gorm.DB) {
 	attendanceService := service.NewAttendanceService(attendanceRepo, userRepo, tenantSettingRepo, tenantRepo)
 	attendanceHandler := handler.NewAttendanceHandler(attendanceService)
 
+	ucrRepo := repository.NewUserChangeRequestRepository(db)
+	ucrService := service.NewUserChangeRequestService(ucrRepo, userRepo)
+	ucrHandler := handler.NewUserChangeRequestHandler(ucrService)
+
 	if gin.Mode() != gin.ReleaseMode {
 		r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 	}
@@ -81,6 +85,17 @@ func SetupRoutes(r *gin.Engine, db *gorm.DB) {
 
 			// ✅ NEW: update profile photo
 			users.PUT("/profile-photo", userHandler.UpdateProfilePhoto)
+
+			// ✅ NEW: Request Change System
+			users.POST("/request-change", ucrHandler.CreateRequest)
+			
+			adminOnly := users.Group("")
+			adminOnly.Use(middleware.RequireRole("admin", "manager"))
+			{
+				adminOnly.GET("/pending-changes", ucrHandler.GetPendingRequests)
+				adminOnly.POST("/approve-change/:id", ucrHandler.ApproveRequest)
+				adminOnly.POST("/reject-change/:id", ucrHandler.RejectRequest)
+			}
 		}
 
 		protected.POST("/media/upload", mediaHandler.Upload)
