@@ -558,6 +558,41 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/users/approve-change/{id}": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Approve a pending change request",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "UserChangeRequests"
+                ],
+                "summary": "Approve Change Request",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Request ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/users/me": {
             "get": {
                 "security": [
@@ -598,6 +633,32 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/users/pending-changes": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Get all pending change requests for the tenant",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "UserChangeRequests"
+                ],
+                "summary": "Get Pending Change Requests",
+                "responses": {
+                    "200": {
+                        "description": "OK",
                         "schema": {
                             "type": "object",
                             "additionalProperties": true
@@ -667,6 +728,93 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/users/reject-change/{id}": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Reject a pending change request",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "UserChangeRequests"
+                ],
+                "summary": "Reject Change Request",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Request ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Notes",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.ApproveUserChangeRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/users/request-change": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Create a request to change user data (needs approval)",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "UserChangeRequests"
+                ],
+                "summary": "Create User Change Request",
+                "parameters": [
+                    {
+                        "description": "Request Body",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.CreateUserChangeRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/users/{id}": {
             "get": {
                 "security": [
@@ -721,6 +869,14 @@ const docTemplate = `{
                 }
             }
         },
+        "model.ApproveUserChangeRequest": {
+            "type": "object",
+            "properties": {
+                "admin_notes": {
+                    "type": "string"
+                }
+            }
+        },
         "model.AttendanceAction": {
             "type": "string",
             "enum": [
@@ -766,6 +922,30 @@ const docTemplate = `{
                 }
             }
         },
+        "model.CreateUserChangeRequest": {
+            "type": "object",
+            "required": [
+                "email",
+                "name"
+            ],
+            "properties": {
+                "address": {
+                    "type": "string"
+                },
+                "department": {
+                    "type": "string"
+                },
+                "email": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "phone_number": {
+                    "type": "string"
+                }
+            }
+        },
         "model.LoginRequest": {
             "type": "object",
             "required": [
@@ -792,6 +972,14 @@ const docTemplate = `{
                 "tenant_id"
             ],
             "properties": {
+                "address": {
+                    "type": "string",
+                    "example": "Jl. Sudirman No. 1"
+                },
+                "department": {
+                    "type": "string",
+                    "example": "IT"
+                },
                 "email": {
                     "type": "string",
                     "example": "budi@company.com"
@@ -804,6 +992,10 @@ const docTemplate = `{
                     "type": "string",
                     "minLength": 6,
                     "example": "123456"
+                },
+                "phone_number": {
+                    "type": "string",
+                    "example": "08123456789"
                 },
                 "role": {
                     "allOf": [
@@ -834,6 +1026,9 @@ const docTemplate = `{
                 "name": {
                     "type": "string"
                 },
+                "tenant_settings": {
+                    "$ref": "#/definitions/model.TenantSetting"
+                },
                 "updatedAt": {
                     "type": "string"
                 }
@@ -842,69 +1037,72 @@ const docTemplate = `{
         "model.TenantSetting": {
             "type": "object",
             "properties": {
-                "allowMultipleCheck": {
+                "allow_multiple_check": {
                     "type": "boolean",
                     "example": false
                 },
-                "allowRemote": {
+                "allow_remote": {
                     "type": "boolean",
                     "example": false
                 },
-                "clockInEndTime": {
+                "clock_in_end_time": {
                     "type": "string",
                     "example": "09:00"
                 },
-                "clockInStartTime": {
+                "clock_in_start_time": {
                     "type": "string",
                     "example": "07:00"
                 },
-                "clockOutEndTime": {
+                "clock_out_end_time": {
                     "type": "string",
                     "example": "23:00"
                 },
-                "clockOutStartTime": {
+                "clock_out_start_time": {
                     "type": "string",
                     "example": "16:00"
                 },
-                "createdAt": {
-                    "type": "string"
+                "created_at": {
+                    "type": "string",
+                    "example": "2026-04-07T13:21:24Z"
                 },
                 "id": {
-                    "type": "integer"
+                    "type": "integer",
+                    "example": 1
                 },
-                "lateAfterMinute": {
+                "late_after_minute": {
                     "type": "integer",
                     "example": 480
                 },
-                "maxRadiusMeter": {
+                "max_radius_meter": {
                     "type": "number",
                     "example": 100
                 },
-                "officeLatitude": {
+                "office_latitude": {
                     "type": "number",
                     "example": -6.1339179
                 },
-                "officeLongitude": {
+                "office_longitude": {
                     "type": "number",
                     "example": 106.8329504
                 },
-                "requireLocation": {
+                "require_location": {
                     "type": "boolean",
                     "example": true
                 },
-                "requireSelfie": {
+                "require_selfie": {
                     "type": "boolean",
                     "example": true
                 },
                 "tenant": {
                     "$ref": "#/definitions/model.Tenant"
                 },
-                "tenantID": {
+                "tenant_id": {
                     "type": "integer",
                     "example": 1
                 },
-                "updatedAt": {
-                    "type": "string"
+                "updated_at": {
+                    "type": "string",
+                    "example": "2026-04-07T13:21:24Z"
                 }
             }
         },
