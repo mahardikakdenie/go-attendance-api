@@ -16,9 +16,13 @@ type User struct {
 
 	Tenant *Tenant `gorm:"foreignKey:TenantID" json:"tenant,omitempty"`
 
-	Name     string `gorm:"type:varchar(100);not null" json:"name" example:"Budi Santoso" binding:"required,min=3,max=100"`
-	Email    string `gorm:"type:varchar(100);unique;not null" json:"email" example:"budi@company.com" binding:"required,email"`
-	Password string `gorm:"type:varchar(255);not null" json:"-"` // tetap hidden
+	Name        string `gorm:"type:varchar(100);not null" json:"name" example:"Budi Santoso" binding:"required,min=3,max=100"`
+	Email       string `gorm:"type:varchar(100);unique;not null" json:"email" example:"budi@company.com" binding:"required,email"`
+	Password    string `gorm:"type:varchar(255);not null" json:"-"` // tetap hidden
+	EmployeeID  string `gorm:"type:varchar(50);uniqueIndex" json:"employee_id" example:"FT-001"`
+	Department  string `gorm:"type:varchar(100)" json:"department" example:"IT"`
+	Address     string `gorm:"type:text" json:"address" example:"Jl. Sudirman No. 1"`
+	PhoneNumber string `gorm:"type:varchar(20)" json:"phone_number" example:"08123456789"`
 
 	Role UserRole `gorm:"type:varchar(50);default:employee" json:"role" example:"employee" binding:"omitempty,oneof=admin manager employee"`
 
@@ -31,10 +35,11 @@ type User struct {
 }
 
 type UserFilter struct {
-	Name     string
-	Email    string
-	Role     UserRole
-	TenantID uint
+	Name       string
+	Email      string
+	Role       UserRole
+	TenantID   uint
+	EmployeeID string
 
 	OrderBy string
 	Sort    string
@@ -44,19 +49,27 @@ type UserFilter struct {
 }
 
 type CreateUserRequest struct {
-	Name     string   `json:"name" binding:"required" example:"Budi Santoso"`
-	Email    string   `json:"email" binding:"required,email" example:"budi@company.com"`
-	Password string   `json:"password" binding:"required,min=6" example:"123456"`
-	Role     UserRole `json:"role" example:"employee"`
+	Name        string   `json:"name" binding:"required" example:"Budi Santoso"`
+	Email       string   `json:"email" binding:"required,email" example:"budi@company.com"`
+	Password    string   `json:"password" binding:"required,min=6" example:"123456"`
+	Role        UserRole `json:"role" example:"employee"`
+	Department  string   `json:"department" example:"IT"`
+	Address     string   `json:"address" example:"Jl. Sudirman No. 1"`
+	PhoneNumber string   `json:"phone_number" example:"08123456789"`
 }
 
 type UserResponse struct {
-	ID        uint      `json:"id" example:"1"`
-	Name      string    `json:"name" example:"Budi Santoso"`
-	Email     string    `json:"email" example:"budi@company.com"`
-	Role      UserRole  `json:"role" example:"employee"`
-	TenantID  uint      `json:"tenant_id" example:"1"`
-	CreatedAt time.Time `json:"created_at"`
+	ID          uint      `json:"id" example:"1"`
+	Name        string    `json:"name" example:"Budi Santoso"`
+	Email       string    `json:"email" example:"budi@company.com"`
+	Role        UserRole  `json:"role" example:"employee"`
+	TenantID    uint      `json:"tenant_id" example:"1"`
+	EmployeeID  string    `json:"employee_id" example:"FT-001"`
+	Department  string    `json:"department" example:"IT"`
+	Address     string    `json:"address" example:"Jl. Sudirman No. 1"`
+	MediaUrl    string    `gorm:"type:varchar(255)" json:"media_url" example:"https://cdn.example.com/profile/budi.jpg" binding:"omitempty,url"`
+	PhoneNumber string    `json:"phone_number" example:"08123456789"`
+	CreatedAt   time.Time `json:"created_at"`
 
 	Tenant      *TenantResponse      `json:"tenant,omitempty"`
 	Attendances []AttendanceResponse `json:"attendances,omitempty"`
