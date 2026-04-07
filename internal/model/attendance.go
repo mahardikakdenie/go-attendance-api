@@ -51,6 +51,7 @@ type Attendance struct {
 type AttendanceResponse struct {
 	ID     uuid.UUID `json:"id"`
 	UserID uint      `json:"user_id"`
+	User   *UserResponse `json:"user,omitempty"`
 
 	ClockInTime  time.Time  `json:"clock_in_time"`
 	ClockOutTime *time.Time `json:"clock_out_time,omitempty"`
