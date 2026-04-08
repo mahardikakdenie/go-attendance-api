@@ -17,6 +17,8 @@ type UserRepository interface {
 	FindByID(ctx context.Context, id uint, includes []string) (*model.User, error)
 	GetMe(ctx context.Context, userID uint, includes []string) (*model.User, error)
 	Update(ctx context.Context, user *model.User) error
+	Create(ctx context.Context, user *model.User) error
+	CountByTenantID(ctx context.Context, tenantID uint) (int64, error)
 }
 
 type userRepository struct {
@@ -34,6 +36,8 @@ var userPreloadMap = map[string]string{
 	"tenant.tenant_settings": "Tenant.TenantSettings",
 	"attendances":             "Attendances",
 	"attendances.user":        "Attendances.User",
+	"role":                    "Role",
+	"recent_activities":       "RecentActivities",
 }
 
 func (r *userRepository) FindByID(ctx context.Context, id uint, includes []string) (*model.User, error) {
@@ -73,8 +77,8 @@ func (r *userRepository) FindAll(
 		query = query.Where("email = ?", filter.Email)
 	}
 
-	if filter.Role != "" {
-		query = query.Where("role = ?", filter.Role)
+	if filter.RoleID != 0 {
+		query = query.Where("role_id = ?", filter.RoleID)
 	}
 
 	if filter.TenantID != 0 {
@@ -152,7 +156,7 @@ func (r *userRepository) Update(ctx context.Context, user *model.User) error {
 	updateData := map[string]interface{}{
 		"name":         user.Name,
 		"email":        user.Email,
-		"role":         user.Role,
+		"role_id":      user.RoleID,
 		"tenant_id":    user.TenantID,
 		"media_url":    user.MediaUrl,
 		"employee_id":  user.EmployeeID,
@@ -169,4 +173,14 @@ func (r *userRepository) Update(ctx context.Context, user *model.User) error {
 	}
 
 	return nil
+}
+
+func (r *userRepository) Create(ctx context.Context, user *model.User) error {
+	return r.db.WithContext(ctx).Create(user).Error
+}
+
+func (r *userRepository) CountByTenantID(ctx context.Context, tenantID uint) (int64, error) {
+	var count int64
+	err := r.db.WithContext(ctx).Model(&model.User{}).Where("tenant_id = ?", tenantID).Count(&count).Error
+	return count, err
 }

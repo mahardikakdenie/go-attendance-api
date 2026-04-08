@@ -79,6 +79,15 @@ func (h *tenantHandler) GetTenantByID(c *gin.Context) {
 		return
 	}
 
+	// 🛡️ SECURITY CHECK: Non-superadmin can only see their own tenant
+	role := c.MustGet("role").(string)
+	userTenantID := c.MustGet("tenant_id").(uint)
+
+	if role != "superadmin" && userTenantID != uint(id) {
+		c.JSON(403, utils.BuildErrorResponse("Forbidden: You can only access your own tenant data", 403, "error", nil))
+		return
+	}
+
 	data, err := h.service.GetTenantByID(c.Request.Context(), uint(id))
 	if err != nil {
 		c.JSON(404, utils.BuildErrorResponse("Not found", 404, "error", err.Error()))

@@ -1,0 +1,10 @@
+tmp
+.git
+.air.toml
+.env
+.env.example
+*.log
+*.exe
+docs/docs.go
+docs/swagger.json
+docs/swagger.yaml

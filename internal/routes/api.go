@@ -18,8 +18,11 @@ func SetupRoutes(r *gin.Engine, db *gorm.DB) {
 	authService := service.NewAuthService(authRepo)
 	authHandler := handler.NewAuthHandler(authService)
 
+	roleRepo := repository.NewRoleRepository(db)
+	activityRepo := repository.NewRecentActivityRepository(db)
+
 	userRepo := repository.NewUserRepository(db)
-	userService := service.NewUserService(userRepo)
+	userService := service.NewUserService(userRepo, roleRepo, activityRepo)
 	userHandler := handler.NewUserHandler(userService)
 
 	tenantRepo := repository.NewTenantRepository(db)
@@ -42,6 +45,10 @@ func SetupRoutes(r *gin.Engine, db *gorm.DB) {
 	ucrService := service.NewUserChangeRequestService(ucrRepo, userRepo)
 	ucrHandler := handler.NewUserChangeRequestHandler(ucrService)
 
+	overtimeRepo := repository.NewOvertimeRepository(db)
+	overtimeService := service.NewOvertimeService(overtimeRepo)
+	overtimeHandler := handler.NewOvertimeHandler(overtimeService)
+
 	if gin.Mode() != gin.ReleaseMode {
 		r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 	}
@@ -55,6 +62,7 @@ func SetupRoutes(r *gin.Engine, db *gorm.DB) {
 	}
 
 	api.GET("/ping", attendanceHandler.HelloTest)
+	api.POST("/email/test", handler.SendEmailTest)
 
 	protected := api.Group("")
 	protected.Use(middleware.SecureAuth(authService))
@@ -63,13 +71,31 @@ func SetupRoutes(r *gin.Engine, db *gorm.DB) {
 		{
 			attendance.POST("", attendanceHandler.RecordAttendance)
 			attendance.GET("", attendanceHandler.GetAllAttendance)
+			attendance.GET("/summary", attendanceHandler.GetAttendanceSummary)
+		}
+
+		overtime := protected.Group("/overtime")
+		{
+			overtime.POST("", overtimeHandler.CreateRequest)
+			overtime.GET("", overtimeHandler.GetAll)
+			overtime.GET("/:id", overtimeHandler.GetByID)
+
+			adminOnly := overtime.Group("")
+			adminOnly.Use(middleware.RequireRole("superadmin", "admin", "hr"))
+			{
+				adminOnly.POST("/approve/:id", overtimeHandler.ApproveRequest)
+				adminOnly.POST("/reject/:id", overtimeHandler.RejectRequest)
+			}
 		}
 
 		tenants := protected.Group("/tenants")
 		{
-			tenants.GET("", tenantHandler.GetAllTenant)
+			// Only superadmin can list all or create tenants
+			tenants.GET("", middleware.RequireRole("superadmin"), tenantHandler.GetAllTenant)
+			tenants.POST("", middleware.RequireRole("superadmin"), tenantHandler.CreateTenant)
+			
+			// GetByID can be accessed by admin/hr but with ownership check in handler
 			tenants.GET("/:id", tenantHandler.GetTenantByID)
-			tenants.POST("", tenantHandler.CreateTenant)
 		}
 
 		tenantSetting := protected.Group("/tenant-setting")
@@ -82,6 +108,8 @@ func SetupRoutes(r *gin.Engine, db *gorm.DB) {
 		{
 			users.GET("", userHandler.GetAllUsers)
 			users.GET("/me", userHandler.GetMe)
+			users.GET("/me/activities", userHandler.GetRecentActivities)
+			users.POST("", middleware.RequireRole("superadmin", "admin"), userHandler.CreateUser)
 
 			// ✅ NEW: update profile photo
 			users.PUT("/profile-photo", userHandler.UpdateProfilePhoto)
@@ -90,7 +118,7 @@ func SetupRoutes(r *gin.Engine, db *gorm.DB) {
 			users.POST("/request-change", ucrHandler.CreateRequest)
 			
 			adminOnly := users.Group("")
-			adminOnly.Use(middleware.RequireRole("admin", "manager"))
+			adminOnly.Use(middleware.RequireRole("admin", "hr"))
 			{
 				adminOnly.GET("/pending-changes", ucrHandler.GetPendingRequests)
 				adminOnly.POST("/approve-change/:id", ucrHandler.ApproveRequest)

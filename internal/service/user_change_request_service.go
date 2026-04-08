@@ -133,13 +133,19 @@ func mapToUCRResponse(req *model.UserChangeRequest) model.UserChangeRequestRespo
 	}
 
 	if req.User != nil {
-		// reuse mapToUserResponse if possible, but it's in another package or private
-		// I'll just manually map for now to avoid circular dependency if I put it in a common place
+		var roleRes *model.RoleResponse
+		if req.User.Role != nil {
+			roleRes = &model.RoleResponse{
+				ID:   req.User.Role.ID,
+				Name: req.User.Role.Name,
+			}
+		}
+
 		res.User = &model.UserResponse{
 			ID:          req.User.ID,
 			Name:        req.User.Name,
 			Email:       req.User.Email,
-			Role:        req.User.Role,
+			Role:        roleRes,
 			TenantID:    req.User.TenantID,
 			EmployeeID:  req.User.EmployeeID,
 			Department:  req.User.Department,

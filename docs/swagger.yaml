@@ -7,6 +7,11 @@ definitions:
     required:
     - media_url
     type: object
+  model.ApproveOvertimeRequest:
+    properties:
+      admin_notes:
+        type: string
+    type: object
   model.ApproveUserChangeRequest:
     properties:
       admin_notes:
@@ -43,6 +48,40 @@ definitions:
     - latitude
     - longitude
     type: object
+  model.AttendanceSummaryResponse:
+    properties:
+      late_summary:
+        type: integer
+      late_summary_diff:
+        type: number
+      ontime_summary:
+        type: integer
+      ontime_summary_diff:
+        type: number
+      total_record:
+        type: integer
+      total_record_diff:
+        type: number
+    type: object
+  model.CreateOvertimeRequest:
+    properties:
+      date:
+        example: "2026-04-08"
+        type: string
+      end_time:
+        example: "19:00"
+        type: string
+      reason:
+        type: string
+      start_time:
+        example: "17:00"
+        type: string
+    required:
+    - date
+    - end_time
+    - reason
+    - start_time
+    type: object
   model.CreateUserChangeRequest:
     properties:
       address:
@@ -58,6 +97,38 @@ definitions:
     required:
     - email
     - name
+    type: object
+  model.CreateUserRequest:
+    properties:
+      address:
+        example: Jl. Sudirman No. 1
+        type: string
+      department:
+        example: IT
+        type: string
+      email:
+        example: budi@company.com
+        type: string
+      name:
+        example: Budi Santoso
+        type: string
+      password:
+        example: "123456"
+        minLength: 6
+        type: string
+      phone_number:
+        example: "08123456789"
+        type: string
+      role_id:
+        example: 1
+        type: integer
+      tenant_id:
+        example: 1
+        type: integer
+    required:
+    - email
+    - name
+    - password
     type: object
   model.LoginRequest:
     properties:
@@ -92,10 +163,9 @@ definitions:
       phone_number:
         example: "08123456789"
         type: string
-      role:
-        allOf:
-        - $ref: '#/definitions/model.UserRole'
-        example: admin
+      role_id:
+        example: 1
+        type: integer
       tenant_id:
         example: 1
         type: integer
@@ -173,16 +243,6 @@ definitions:
         example: "2026-04-07T13:21:24Z"
         type: string
     type: object
-  model.UserRole:
-    enum:
-    - admin
-    - manager
-    - employee
-    type: string
-    x-enum-varnames:
-    - RoleAdmin
-    - RoleManager
-    - RoleEmployee
   modelDto.AttendanceListResponse:
     properties:
       data: {}
@@ -298,6 +358,30 @@ paths:
       summary: Record Attendance
       tags:
       - Attendance
+  /api/v1/attendance/summary:
+    get:
+      description: Get summary of today's attendance with comparison
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/modelDto.BaseResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.AttendanceSummaryResponse'
+              type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/modelDto.BaseResponse'
+      security:
+      - CookieAuth: []
+      summary: Get Attendance Summary
+      tags:
+      - Attendance
   /api/v1/auth/login:
     post:
       consumes:
@@ -411,6 +495,119 @@ paths:
       summary: Upload image to imgbb
       tags:
       - Media
+  /api/v1/overtime:
+    get:
+      description: Get overtime list with filters
+      parameters:
+      - description: Status
+        in: query
+        name: status
+        type: string
+      - description: User ID
+        in: query
+        name: user_id
+        type: integer
+      - description: YYYY-MM-DD
+        in: query
+        name: date_from
+        type: string
+      - description: YYYY-MM-DD
+        in: query
+        name: date_to
+        type: string
+      produces:
+      - application/json
+      responses: {}
+      security:
+      - CookieAuth: []
+      summary: Get All Overtime
+      tags:
+      - Overtime
+    post:
+      consumes:
+      - application/json
+      description: Employee request overtime
+      parameters:
+      - description: Overtime Data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.CreateOvertimeRequest'
+      produces:
+      - application/json
+      responses: {}
+      security:
+      - CookieAuth: []
+      summary: Create Overtime Request
+      tags:
+      - Overtime
+  /api/v1/overtime/{id}:
+    get:
+      parameters:
+      - description: ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses: {}
+      security:
+      - CookieAuth: []
+      summary: Get Overtime By ID
+      tags:
+      - Overtime
+  /api/v1/overtime/approve/{id}:
+    post:
+      consumes:
+      - application/json
+      description: Manager/Admin approve overtime
+      parameters:
+      - description: Overtime ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Notes
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.ApproveOvertimeRequest'
+      produces:
+      - application/json
+      responses: {}
+      security:
+      - CookieAuth: []
+      summary: Approve Overtime Request
+      tags:
+      - Overtime
+  /api/v1/overtime/reject/{id}:
+    post:
+      consumes:
+      - application/json
+      description: Manager/Admin reject overtime
+      parameters:
+      - description: Overtime ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Notes
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.ApproveOvertimeRequest'
+      produces:
+      - application/json
+      responses: {}
+      security:
+      - CookieAuth: []
+      summary: Reject Overtime Request
+      tags:
+      - Overtime
   /api/v1/ping:
     get:
       description: Check API status
@@ -562,6 +759,26 @@ paths:
       security:
       - BearerAuth: []
       summary: Get All Users
+      tags:
+      - Users
+    post:
+      consumes:
+      - application/json
+      description: Create new user with role hierarchy (SuperAdmin can create any,
+        Admin can create HR/Employee)
+      parameters:
+      - description: User Payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/model.CreateUserRequest'
+      produces:
+      - application/json
+      responses: {}
+      security:
+      - BearerAuth: []
+      summary: Create User
       tags:
       - Users
   /api/v1/users/{id}:

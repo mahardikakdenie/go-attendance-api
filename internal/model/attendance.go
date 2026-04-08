@@ -67,6 +67,17 @@ type AttendanceResponse struct {
 	Status AttendanceStatus `json:"status"`
 }
 
+type AttendanceSummaryResponse struct {
+	TotalRecord          int64   `json:"total_record"`
+	TotalRecordDiff      float64 `json:"total_record_diff"`
+
+	OntimeSummary          int64   `json:"ontime_summary"`
+	OntimeSummaryDiff      float64 `json:"ontime_summary_diff"`
+
+	LateSummary          int64   `json:"late_summary"`
+	LateSummaryDiff      float64 `json:"late_summary_diff"`
+}
+
 type AttendanceFilter struct {
 	UserID   uint
 	Status   AttendanceStatus

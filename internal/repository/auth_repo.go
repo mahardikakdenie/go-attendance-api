@@ -40,13 +40,13 @@ func (r *authRepository) CountByTenantID(tenantID uint) (int64, error) {
 
 func (r *authRepository) FindByEmail(email string) (model.User, error) {
 	var user model.User
-	err := r.db.Where("email = ?", email).First(&user).Error
+	err := r.db.Preload("Role").Where("email = ?", email).First(&user).Error
 	return user, err
 }
 
 func (r *authRepository) FindByID(id uint) (model.User, error) {
 	var user model.User
-	err := r.db.Preload("Tenant").First(&user, id).Error
+	err := r.db.Preload("Tenant").Preload("Role").First(&user, id).Error
 	return user, err
 }
 

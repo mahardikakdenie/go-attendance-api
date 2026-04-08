@@ -151,6 +151,49 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/attendance/summary": {
+            "get": {
+                "security": [
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "description": "Get summary of today's attendance with comparison",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Attendance"
+                ],
+                "summary": "Get Attendance Summary",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/modelDto.BaseResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/model.AttendanceSummaryResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/modelDto.BaseResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/auth/login": {
             "post": {
                 "consumes": [
@@ -320,6 +363,184 @@ const docTemplate = `{
                         }
                     }
                 }
+            }
+        },
+        "/api/v1/overtime": {
+            "get": {
+                "security": [
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "description": "Get overtime list with filters",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Overtime"
+                ],
+                "summary": "Get All Overtime",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Status",
+                        "name": "status",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "User ID",
+                        "name": "user_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "YYYY-MM-DD",
+                        "name": "date_from",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "YYYY-MM-DD",
+                        "name": "date_to",
+                        "in": "query"
+                    }
+                ],
+                "responses": {}
+            },
+            "post": {
+                "security": [
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "description": "Employee request overtime",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Overtime"
+                ],
+                "summary": "Create Overtime Request",
+                "parameters": [
+                    {
+                        "description": "Overtime Data",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.CreateOvertimeRequest"
+                        }
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/api/v1/overtime/approve/{id}": {
+            "post": {
+                "security": [
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "description": "Manager/Admin approve overtime",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Overtime"
+                ],
+                "summary": "Approve Overtime Request",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Overtime ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Notes",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.ApproveOvertimeRequest"
+                        }
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/api/v1/overtime/reject/{id}": {
+            "post": {
+                "security": [
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "description": "Manager/Admin reject overtime",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Overtime"
+                ],
+                "summary": "Reject Overtime Request",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Overtime ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Notes",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.ApproveOvertimeRequest"
+                        }
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/api/v1/overtime/{id}": {
+            "get": {
+                "security": [
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Overtime"
+                ],
+                "summary": "Get Overtime By ID",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {}
             }
         },
         "/api/v1/ping": {
@@ -556,6 +777,36 @@ const docTemplate = `{
                         }
                     }
                 }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Create new user with role hierarchy (SuperAdmin can create any, Admin can create HR/Employee)",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Users"
+                ],
+                "summary": "Create User",
+                "parameters": [
+                    {
+                        "description": "User Payload",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.CreateUserRequest"
+                        }
+                    }
+                ],
+                "responses": {}
             }
         },
         "/api/v1/users/approve-change/{id}": {
@@ -869,6 +1120,14 @@ const docTemplate = `{
                 }
             }
         },
+        "model.ApproveOvertimeRequest": {
+            "type": "object",
+            "properties": {
+                "admin_notes": {
+                    "type": "string"
+                }
+            }
+        },
         "model.ApproveUserChangeRequest": {
             "type": "object",
             "properties": {
@@ -922,6 +1181,55 @@ const docTemplate = `{
                 }
             }
         },
+        "model.AttendanceSummaryResponse": {
+            "type": "object",
+            "properties": {
+                "late_summary": {
+                    "type": "integer"
+                },
+                "late_summary_diff": {
+                    "type": "number"
+                },
+                "ontime_summary": {
+                    "type": "integer"
+                },
+                "ontime_summary_diff": {
+                    "type": "number"
+                },
+                "total_record": {
+                    "type": "integer"
+                },
+                "total_record_diff": {
+                    "type": "number"
+                }
+            }
+        },
+        "model.CreateOvertimeRequest": {
+            "type": "object",
+            "required": [
+                "date",
+                "end_time",
+                "reason",
+                "start_time"
+            ],
+            "properties": {
+                "date": {
+                    "type": "string",
+                    "example": "2026-04-08"
+                },
+                "end_time": {
+                    "type": "string",
+                    "example": "19:00"
+                },
+                "reason": {
+                    "type": "string"
+                },
+                "start_time": {
+                    "type": "string",
+                    "example": "17:00"
+                }
+            }
+        },
         "model.CreateUserChangeRequest": {
             "type": "object",
             "required": [
@@ -943,6 +1251,49 @@ const docTemplate = `{
                 },
                 "phone_number": {
                     "type": "string"
+                }
+            }
+        },
+        "model.CreateUserRequest": {
+            "type": "object",
+            "required": [
+                "email",
+                "name",
+                "password"
+            ],
+            "properties": {
+                "address": {
+                    "type": "string",
+                    "example": "Jl. Sudirman No. 1"
+                },
+                "department": {
+                    "type": "string",
+                    "example": "IT"
+                },
+                "email": {
+                    "type": "string",
+                    "example": "budi@company.com"
+                },
+                "name": {
+                    "type": "string",
+                    "example": "Budi Santoso"
+                },
+                "password": {
+                    "type": "string",
+                    "minLength": 6,
+                    "example": "123456"
+                },
+                "phone_number": {
+                    "type": "string",
+                    "example": "08123456789"
+                },
+                "role_id": {
+                    "type": "integer",
+                    "example": 1
+                },
+                "tenant_id": {
+                    "type": "integer",
+                    "example": 1
                 }
             }
         },
@@ -997,13 +1348,9 @@ const docTemplate = `{
                     "type": "string",
                     "example": "08123456789"
                 },
-                "role": {
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/model.UserRole"
-                        }
-                    ],
-                    "example": "admin"
+                "role_id": {
+                    "type": "integer",
+                    "example": 1
                 },
                 "tenant_id": {
                     "type": "integer",
@@ -1105,19 +1452,6 @@ const docTemplate = `{
                     "example": "2026-04-07T13:21:24Z"
                 }
             }
-        },
-        "model.UserRole": {
-            "type": "string",
-            "enum": [
-                "admin",
-                "manager",
-                "employee"
-            ],
-            "x-enum-varnames": [
-                "RoleAdmin",
-                "RoleManager",
-                "RoleEmployee"
-            ]
         },
         "modelDto.AttendanceListResponse": {
             "type": "object",

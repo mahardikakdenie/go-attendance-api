@@ -16,6 +16,8 @@ type AttendanceRepository interface {
 	Update(ctx context.Context, attendance *model.Attendance) error
 	FindTodayByUser(ctx context.Context, userID uint) (*model.Attendance, error)
 	FindAll(ctx context.Context, filter model.AttendanceFilter, includes []string, limit, offset int) ([]model.Attendance, int64, error)
+	GetSummaryCounts(ctx context.Context, tenantID uint, startTime, endTime time.Time) (map[model.AttendanceStatus]int64, error)
+	GetOldestDataDate(ctx context.Context, tenantID uint) (*time.Time, error)
 }
 
 type attendanceRepository struct {
@@ -34,6 +36,52 @@ func (r *attendanceRepository) Save(ctx context.Context, attendance *model.Atten
 
 func (r *attendanceRepository) Update(ctx context.Context, attendance *model.Attendance) error {
 	return r.db.WithContext(ctx).Save(attendance).Error
+}
+
+func (r *attendanceRepository) GetSummaryCounts(ctx context.Context, tenantID uint, startTime, endTime time.Time) (map[model.AttendanceStatus]int64, error) {
+	var results []struct {
+		Status model.AttendanceStatus
+		Count  int64
+	}
+
+	query := r.db.WithContext(ctx).Model(&model.Attendance{}).
+		Select("status, count(*) as count").
+		Where("clock_in_time >= ? AND clock_in_time < ?", startTime, endTime)
+
+	if tenantID != 0 {
+		query = query.Where("tenant_id = ?", tenantID)
+	}
+
+	err := query.Group("status").Scan(&results).Error
+	if err != nil {
+		return nil, err
+	}
+
+	counts := make(map[model.AttendanceStatus]int64)
+	for _, res := range results {
+		counts[res.Status] = res.Count
+	}
+
+	return counts, nil
+}
+
+func (r *attendanceRepository) GetOldestDataDate(ctx context.Context, tenantID uint) (*time.Time, error) {
+	var attendance model.Attendance
+	query := r.db.WithContext(ctx).Model(&model.Attendance{}).Order("clock_in_time ASC")
+
+	if tenantID != 0 {
+		query = query.Where("tenant_id = ?", tenantID)
+	}
+
+	err := query.First(&attendance).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	return &attendance.ClockInTime, nil
 }
 
 func (r *attendanceRepository) FindTodayByUser(ctx context.Context, userID uint) (*model.Attendance, error) {

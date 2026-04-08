@@ -5,9 +5,10 @@ import "time"
 type UserRole string
 
 const (
-	RoleAdmin    UserRole = "admin"
-	RoleManager  UserRole = "manager"
-	RoleEmployee UserRole = "employee"
+	RoleSuperAdmin UserRole = "superadmin"
+	RoleAdmin      UserRole = "admin"
+	RoleHR         UserRole = "hr"
+	RoleEmployee   UserRole = "employee"
 )
 
 type User struct {
@@ -24,9 +25,11 @@ type User struct {
 	Address     string `gorm:"type:text" json:"address" example:"Jl. Sudirman No. 1"`
 	PhoneNumber string `gorm:"type:varchar(20)" json:"phone_number" example:"08123456789"`
 
-	Role UserRole `gorm:"type:varchar(50);default:employee" json:"role" example:"employee" binding:"omitempty,oneof=admin manager employee"`
+	RoleID uint  `gorm:"not null" json:"role_id" example:"1"`
+	Role   *Role `gorm:"foreignKey:RoleID" json:"role,omitempty"`
 
-	Attendances []Attendance `gorm:"foreignKey:UserID" json:"attendances,omitempty"`
+	Attendances      []Attendance     `gorm:"foreignKey:UserID" json:"attendances,omitempty"`
+	RecentActivities []RecentActivity `gorm:"foreignKey:UserID" json:"recent_activities,omitempty"`
 
 	MediaUrl string `gorm:"type:varchar(255)" json:"media_url" example:"https://cdn.example.com/profile/budi.jpg" binding:"omitempty,url"`
 
@@ -37,7 +40,7 @@ type User struct {
 type UserFilter struct {
 	Name       string
 	Email      string
-	Role       UserRole
+	RoleID     uint
 	TenantID   uint
 	EmployeeID string
 
@@ -49,28 +52,30 @@ type UserFilter struct {
 }
 
 type CreateUserRequest struct {
-	Name        string   `json:"name" binding:"required" example:"Budi Santoso"`
-	Email       string   `json:"email" binding:"required,email" example:"budi@company.com"`
-	Password    string   `json:"password" binding:"required,min=6" example:"123456"`
-	Role        UserRole `json:"role" example:"employee"`
-	Department  string   `json:"department" example:"IT"`
-	Address     string   `json:"address" example:"Jl. Sudirman No. 1"`
-	PhoneNumber string   `json:"phone_number" example:"08123456789"`
+	Name        string `json:"name" binding:"required" example:"Budi Santoso"`
+	Email       string `json:"email" binding:"required,email" example:"budi@company.com"`
+	Password    string `json:"password" binding:"required,min=6" example:"123456"`
+	RoleID      uint   `json:"role_id" example:"1"`
+	TenantID    uint   `json:"tenant_id" example:"1"`
+	Department  string `json:"department" example:"IT"`
+	Address     string `json:"address" example:"Jl. Sudirman No. 1"`
+	PhoneNumber string `json:"phone_number" example:"08123456789"`
 }
 
 type UserResponse struct {
-	ID          uint      `json:"id" example:"1"`
-	Name        string    `json:"name" example:"Budi Santoso"`
-	Email       string    `json:"email" example:"budi@company.com"`
-	Role        UserRole  `json:"role" example:"employee"`
-	TenantID    uint      `json:"tenant_id" example:"1"`
-	EmployeeID  string    `json:"employee_id" example:"FT-001"`
-	Department  string    `json:"department" example:"IT"`
-	Address     string    `json:"address" example:"Jl. Sudirman No. 1"`
-	MediaUrl    string    `gorm:"type:varchar(255)" json:"media_url" example:"https://cdn.example.com/profile/budi.jpg" binding:"omitempty,url"`
-	PhoneNumber string    `json:"phone_number" example:"08123456789"`
-	CreatedAt   time.Time `json:"created_at"`
+	ID          uint          `json:"id" example:"1"`
+	Name        string        `json:"name" example:"Budi Santoso"`
+	Email       string        `json:"email" example:"budi@company.com"`
+	Role        *RoleResponse `json:"role,omitempty"`
+	TenantID    uint          `json:"tenant_id" example:"1"`
+	EmployeeID  string        `json:"employee_id" example:"FT-001"`
+	Department  string        `json:"department" example:"IT"`
+	Address     string        `json:"address" example:"Jl. Sudirman No. 1"`
+	MediaUrl    string        `gorm:"type:varchar(255)" json:"media_url" example:"https://cdn.example.com/profile/budi.jpg" binding:"omitempty,url"`
+	PhoneNumber string        `json:"phone_number" example:"08123456789"`
+	CreatedAt   time.Time     `json:"created_at"`
 
-	Tenant      *TenantResponse      `json:"tenant,omitempty"`
-	Attendances []AttendanceResponse `json:"attendances,omitempty"`
+	Tenant           *TenantResponse          `json:"tenant,omitempty"`
+	Attendances      []AttendanceResponse     `json:"attendances,omitempty"`
+	RecentActivities []RecentActivityResponse `json:"recent_activities,omitempty"`
 }

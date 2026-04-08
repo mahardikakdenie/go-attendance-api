@@ -3,14 +3,14 @@ package model
 import "time"
 
 type RegisterRequest struct {
-	Name        string   `json:"name" binding:"required" example:"Budi Santoso"`
-	Email       string   `json:"email" binding:"required,email" example:"budi@company.com"`
-	Password    string   `json:"password" binding:"required,min=6" example:"123456"`
-	TenantID    uint     `json:"tenant_id" binding:"required" example:"1"`
-	Role        UserRole `json:"role" example:"admin"`
-	Department  string   `json:"department" example:"IT"`
-	Address     string   `json:"address" example:"Jl. Sudirman No. 1"`
-	PhoneNumber string   `json:"phone_number" example:"08123456789"`
+	Name        string `json:"name" binding:"required" example:"Budi Santoso"`
+	Email       string `json:"email" binding:"required,email" example:"budi@company.com"`
+	Password    string `json:"password" binding:"required,min=6" example:"123456"`
+	TenantID    uint   `json:"tenant_id" binding:"required" example:"1"`
+	RoleID      uint   `json:"role_id" example:"1"`
+	Department  string `json:"department" example:"IT"`
+	Address     string `json:"address" example:"Jl. Sudirman No. 1"`
+	PhoneNumber string `json:"phone_number" example:"08123456789"`
 }
 
 type LoginRequest struct {

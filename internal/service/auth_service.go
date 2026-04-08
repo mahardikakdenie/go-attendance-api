@@ -51,7 +51,7 @@ func (s *authService) Register(req model.RegisterRequest) (model.User, error) {
 		Name:        req.Name,
 		Email:       req.Email,
 		Password:    string(hashedPassword),
-		Role:        req.Role,
+		RoleID:      req.RoleID,
 		TenantID:    req.TenantID,
 		EmployeeID:  employeeID,
 		Department:  req.Department,
@@ -83,10 +83,15 @@ func (s *authService) Login(req model.LoginRequest) (string, model.UserResponse,
 
 	exp := time.Now().Add(24 * time.Hour)
 
+	var roleName string
+	if user.Role != nil {
+		roleName = user.Role.Name
+	}
+
 	claims := jwt.MapClaims{
 		"user_id":   user.ID,
 		"tenant_id": user.TenantID,
-		"role":      user.Role,
+		"role":      roleName,
 		"exp":       exp.Unix(),
 		"iat":       time.Now().Unix(),
 	}
@@ -111,8 +116,14 @@ func (s *authService) Login(req model.LoginRequest) (string, model.UserResponse,
 		ID:       user.ID,
 		Name:     user.Name,
 		Email:    user.Email,
-		Role:     user.Role,
 		TenantID: user.TenantID,
+	}
+
+	if user.Role != nil {
+		userResponse.Role = &model.RoleResponse{
+			ID:   user.Role.ID,
+			Name: user.Role.Name,
+		}
 	}
 
 	return tokenString, userResponse, nil
@@ -170,12 +181,21 @@ func (s *authService) GetMe(token string) (model.UserResponse, error) {
 			Name: user.Tenant.Name,
 		}
 	}
-	return model.UserResponse{
+
+	userResponse := model.UserResponse{
 		ID:       user.ID,
 		Name:     user.Name,
 		Email:    user.Email,
-		Role:     user.Role,
 		TenantID: user.TenantID,
 		Tenant:   tenantResponse,
-	}, nil
+	}
+
+	if user.Role != nil {
+		userResponse.Role = &model.RoleResponse{
+			ID:   user.Role.ID,
+			Name: user.Role.Name,
+		}
+	}
+
+	return userResponse, nil
 }

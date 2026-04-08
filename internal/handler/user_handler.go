@@ -32,7 +32,9 @@ type UserHandler interface {
 	GetAllUsers(c *gin.Context)
 	GetUserByID(c *gin.Context)
 	GetMe(c *gin.Context)
-	UpdateProfilePhoto(c *gin.Context) // ✅ NEW
+	GetRecentActivities(c *gin.Context)
+	UpdateProfilePhoto(c *gin.Context)
+	CreateUser(c *gin.Context)
 }
 
 type userHandler struct {
@@ -82,8 +84,10 @@ func (h *userHandler) GetAllUsers(c *gin.Context) {
 	filter.OrderBy = c.Query("order_by")
 	filter.Sort = c.Query("sort")
 
-	if role := c.Query("role"); role != "" {
-		filter.Role = model.UserRole(role)
+	if roleIDStr := c.Query("role_id"); roleIDStr != "" {
+		if val, err := strconv.Atoi(roleIDStr); err == nil {
+			filter.RoleID = uint(val)
+		}
 	}
 
 	if l := c.Query("limit"); l != "" {
@@ -185,12 +189,12 @@ func (h *userHandler) GetMe(c *gin.Context) {
 
 	includes := parseIncludeParams(c)
 
-	// Always include tenant and tenant_settings for GetMe as requested for efficiency
-	if !contains(includes, "tenant") {
-		includes = append(includes, "tenant")
-	}
-	if !contains(includes, "tenant.tenant_settings") {
-		includes = append(includes, "tenant.tenant_settings")
+	// Always include required relations for GetMe as requested for efficiency
+	requiredIncludes := []string{"tenant", "tenant.tenant_settings", "attendances", "role", "recent_activities"}
+	for _, inc := range requiredIncludes {
+		if !contains(includes, inc) {
+			includes = append(includes, inc)
+		}
 	}
 
 	user, err := h.service.GetMe(c.Request.Context(), userID, includes)
@@ -204,6 +208,39 @@ func (h *userHandler) GetMe(c *gin.Context) {
 	c.JSON(200, gin.H{
 		"data":     user,
 		"includes": includes,
+	})
+}
+
+// GetRecentActivities godoc
+// @Summary Get user's recent activities
+// @Description Get recent activities for the logged-in user
+// @Tags Users
+// @Produce json
+// @Security BearerAuth
+// @Success 200 {object} map[string]interface{}
+// @Failure 401 {object} map[string]interface{}
+// @Router /api/v1/users/me/activities [get]
+func (h *userHandler) GetRecentActivities(c *gin.Context) {
+	userIDVal, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(401, gin.H{
+			"message": "Unauthorized",
+		})
+		return
+	}
+
+	userID := userIDVal.(uint)
+
+	activities, err := h.service.GetRecentActivities(c.Request.Context(), userID)
+	if err != nil {
+		c.JSON(500, gin.H{
+			"message": "Failed to fetch activities",
+		})
+		return
+	}
+
+	c.JSON(200, gin.H{
+		"data": activities,
 	})
 }
 
@@ -254,4 +291,30 @@ func (h *userHandler) UpdateProfilePhoto(c *gin.Context) {
 	c.JSON(http.StatusOK,
 		utils.BuildResponse("Profile photo updated successfully", 200, "success", nil),
 	)
+}
+
+// @Summary Create User
+// @Description Create new user with role hierarchy (SuperAdmin can create any, Admin can create HR/Employee)
+// @Tags Users
+// @Accept json
+// @Produce json
+// @Param body body model.CreateUserRequest true "User Payload"
+// @Security BearerAuth
+// @Router /api/v1/users [post]
+func (h *userHandler) CreateUser(c *gin.Context) {
+	var req model.CreateUserRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, utils.BuildErrorResponse("Invalid request", 400, "error", err.Error()))
+		return
+	}
+
+	adminID := c.MustGet("user_id").(uint)
+
+	res, err := h.service.CreateUser(c.Request.Context(), adminID, req)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, utils.BuildErrorResponse("Failed to create user", 400, "error", err.Error()))
+		return
+	}
+
+	c.JSON(http.StatusCreated, utils.BuildResponse("User created successfully", 201, "success", res))
 }

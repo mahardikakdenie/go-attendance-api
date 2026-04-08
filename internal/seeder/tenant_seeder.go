@@ -18,6 +18,10 @@ func SeedTenant(db *gorm.DB) {
 
 	tenants := []model.Tenant{
 		{
+			Name: "SaaS System",
+			Code: "system",
+		},
+		{
 			Name: "PT Friendship Logistics",
 			Code: "friendship",
 		},

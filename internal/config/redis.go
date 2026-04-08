@@ -11,7 +11,7 @@ var Ctx = context.Background()
 
 func NewRedis() *redis.Client {
 	return redis.NewClient(&redis.Options{
-		Addr:     getEnv("REDIS_ADDR", "localhost:6379"),
+		Addr:     getEnv("REDIS_ADDR", "127.0.0.1:6379"),
 		Password: "", // kalau ada password isi disini
 		DB:       0,
 	})

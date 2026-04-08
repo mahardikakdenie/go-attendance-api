@@ -27,6 +27,8 @@ type AttendanceService interface {
 		includes []string,
 		limit, offset int,
 	) ([]model.AttendanceResponse, int64, error)
+
+	GetSummary(ctx context.Context, tenantID uint) (model.AttendanceSummaryResponse, error)
 }
 
 type attendanceService struct {
@@ -174,7 +176,13 @@ func (s *attendanceService) RecordAttendance(
 			return model.AttendanceResponse{}, err
 		}
 
-		return applyPreloads(&data, []string{}), nil
+		// Preload user to ensure it's returned in the response
+		userData, _ := s.userRepo.FindByID(ctx, userID, []string{})
+		if userData != nil {
+			data.User = *userData
+		}
+
+		return applyPreloads(&data, []string{"user"}), nil
 
 	case model.ClockOut:
 
@@ -204,13 +212,22 @@ func (s *attendanceService) RecordAttendance(
 			todayAttendance.ClockOutMediaUrl = &req.MediaUrl
 		}
 
-		todayAttendance.Status = model.StatusDone
+		// Maintain StatusLate if it was already late
+		if todayAttendance.Status != model.StatusLate {
+			todayAttendance.Status = model.StatusDone
+		}
 
 		if err := s.repo.Update(ctx, todayAttendance); err != nil {
 			return model.AttendanceResponse{}, err
 		}
 
-		return applyPreloads(todayAttendance, []string{}), nil
+		// Preload user to ensure it's returned in the response
+		userData, _ := s.userRepo.FindByID(ctx, userID, []string{})
+		if userData != nil {
+			todayAttendance.User = *userData
+		}
+
+		return applyPreloads(todayAttendance, []string{"user"}), nil
 
 	default:
 		return model.AttendanceResponse{}, errors.New("invalid action")
@@ -236,6 +253,77 @@ func (s *attendanceService) GetAllData(
 	}
 
 	return responses, total, nil
+}
+
+func (s *attendanceService) GetSummary(ctx context.Context, tenantID uint) (model.AttendanceSummaryResponse, error) {
+	now := time.Now().In(WIB)
+	todayStart := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, WIB)
+	todayEnd := todayStart.Add(24 * time.Hour)
+
+	yesterdayStart := todayStart.Add(-24 * time.Hour)
+	yesterdayEnd := todayStart
+
+	todayCounts, err := s.repo.GetSummaryCounts(ctx, tenantID, todayStart, todayEnd)
+	if err != nil {
+		return model.AttendanceSummaryResponse{}, err
+	}
+
+	yesterdayCounts, err := s.repo.GetSummaryCounts(ctx, tenantID, yesterdayStart, yesterdayEnd)
+	if err != nil {
+		return model.AttendanceSummaryResponse{}, err
+	}
+
+	// Check if yesterday has any data
+	var yesterdayTotal int64
+	for _, count := range yesterdayCounts {
+		yesterdayTotal += count
+	}
+
+	comparisonCounts := yesterdayCounts
+	if yesterdayTotal == 0 {
+		// Try oldest data date
+		oldestDate, _ := s.repo.GetOldestDataDate(ctx, tenantID)
+		if oldestDate != nil {
+			oldestStart := time.Date(oldestDate.Year(), oldestDate.Month(), oldestDate.Day(), 0, 0, 0, 0, oldestDate.Location())
+			oldestEnd := oldestStart.Add(24 * time.Hour)
+			if oldestStart.Before(todayStart) {
+				comparisonCounts, _ = s.repo.GetSummaryCounts(ctx, tenantID, oldestStart, oldestEnd)
+			}
+		}
+	}
+
+	var compTotal int64
+	for _, count := range comparisonCounts {
+		compTotal += count
+	}
+
+	todayTotal := todayCounts[model.StatusWorking] + todayCounts[model.StatusDone] + todayCounts[model.StatusLate]
+	todayOntime := todayCounts[model.StatusWorking] + todayCounts[model.StatusDone]
+	todayLate := todayCounts[model.StatusLate]
+
+	compOntime := comparisonCounts[model.StatusWorking] + comparisonCounts[model.StatusDone]
+	compLate := comparisonCounts[model.StatusLate]
+
+	return model.AttendanceSummaryResponse{
+		TotalRecord:     todayTotal,
+		TotalRecordDiff: calculateDiff(todayTotal, compTotal),
+
+		OntimeSummary:     todayOntime,
+		OntimeSummaryDiff: calculateDiff(todayOntime, compOntime),
+
+		LateSummary:     todayLate,
+		LateSummaryDiff: calculateDiff(todayLate, compLate),
+	}, nil
+}
+
+func calculateDiff(today, previous int64) float64 {
+	if previous == 0 {
+		if today > 0 {
+			return 100.0
+		}
+		return 0.0
+	}
+	return float64(today-previous) / float64(previous) * 100.0
 }
 
 func isWithinTimeRange(now time.Time, start, end string) (bool, error) {
@@ -311,11 +399,19 @@ func applyPreloads(a *model.Attendance, includes []string) model.AttendanceRespo
 	}
 
 	if hasAttendanceInclude(includes, "user") {
+		var roleRes *model.RoleResponse
+		if a.User.Role != nil {
+			roleRes = &model.RoleResponse{
+				ID:   a.User.Role.ID,
+				Name: a.User.Role.Name,
+			}
+		}
+
 		res.User = &model.UserResponse{
 			ID:          a.User.ID,
 			Name:        a.User.Name,
 			Email:       a.User.Email,
-			Role:        a.User.Role,
+			Role:        roleRes,
 			TenantID:    a.User.TenantID,
 			EmployeeID:  a.User.EmployeeID,
 			Department:  a.User.Department,

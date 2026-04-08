@@ -36,8 +36,11 @@ func InitDB() *gorm.DB {
 			&model.Token{},
 			&model.Media{},
 			&model.Attendance{},
+			&model.Overtime{},
 			&model.UserChangeRequest{},
+			&model.RecentActivity{},
 			&model.User{},
+			&model.Role{},
 			&model.TenantSetting{},
 			&model.Tenant{},
 		)
@@ -51,8 +54,11 @@ func InitDB() *gorm.DB {
 
 		err = db.AutoMigrate(
 			&model.Tenant{},
+			&model.Role{},
 			&model.User{},
+			&model.RecentActivity{},
 			&model.UserChangeRequest{},
+			&model.Overtime{},
 			&model.TenantSetting{},
 			&model.Attendance{},
 			&model.Token{},
@@ -70,8 +76,10 @@ func InitDB() *gorm.DB {
 		log.Println("🌱 Running seeder...")
 
 		seeder.SeedTenant(db)
+		seeder.SeedRoles(db)
 		seeder.SeedUsers(db)
 		seeder.SeedTenantSetting(db)
+		seeder.SeedRecentActivities(db)
 
 		log.Println("✅ Seeder selesai")
 	}

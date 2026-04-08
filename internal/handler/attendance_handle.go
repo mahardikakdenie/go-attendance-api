@@ -17,6 +17,7 @@ import (
 type AttendanceHandler interface {
 	RecordAttendance(c *gin.Context)
 	GetAllAttendance(c *gin.Context)
+	GetAttendanceSummary(c *gin.Context)
 	HelloTest(c *gin.Context)
 }
 
@@ -28,6 +29,32 @@ func NewAttendanceHandler(service service.AttendanceService) AttendanceHandler {
 	return &attendanceHandler{
 		service: service,
 	}
+}
+
+// @Summary Get Attendance Summary
+// @Description Get summary of today's attendance with comparison
+// @Tags Attendance
+// @Produce json
+// @Security CookieAuth
+// @Success 200 {object} modelDto.BaseResponse{data=model.AttendanceSummaryResponse}
+// @Failure 500 {object} modelDto.BaseResponse
+// @Router /api/v1/attendance/summary [get]
+func (h *attendanceHandler) GetAttendanceSummary(c *gin.Context) {
+	ctx := c.Request.Context()
+
+	tenantIDVal, _ := c.Get("tenant_id")
+	var tenantID uint
+	if tenantIDVal != nil {
+		tenantID = tenantIDVal.(uint)
+	}
+
+	summary, err := h.service.GetSummary(ctx, tenantID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, utils.BuildErrorResponse("Failed to fetch summary", http.StatusInternalServerError, "error", err.Error()))
+		return
+	}
+
+	c.JSON(http.StatusOK, utils.BuildResponse("Attendance summary fetched successfully", http.StatusOK, "success", summary))
 }
 
 // @Summary Record Attendance
