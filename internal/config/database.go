@@ -29,7 +29,12 @@ func InitDB() *gorm.DB {
 		log.Fatalf("❌ Gagal koneksi ke database: %v", err)
 	}
 
-	log.Println("✅ Database connected")
+	// Register Tenant Plugin
+	if err := db.Use(&TenantPlugin{}); err != nil {
+		log.Fatalf("❌ Gagal inisialisasi TenantPlugin: %v", err)
+	}
+
+	log.Println("✅ Database connected with TenantPlugin enabled")
 
 	if os.Getenv("RESET_DB") == "true" {
 		err := db.Migrator().DropTable(

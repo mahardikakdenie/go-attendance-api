@@ -1,0 +1,32 @@
+name: Go CI
+
+on:
+  push:
+    branches: [ master, feature/* ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: '1.26'
+
+    - name: Install dependencies
+      run: go mod tidy
+
+    - name: Build
+      run: go build -v ./...
+
+    - name: Test
+      run: go test -v -cover ./...
+
+    - name: Lint
+      uses: golangci/golangci-lint-action@v4
+      with:
+        version: latest

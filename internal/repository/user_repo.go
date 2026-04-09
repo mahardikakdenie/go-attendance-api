@@ -19,6 +19,7 @@ type UserRepository interface {
 	Update(ctx context.Context, user *model.User) error
 	Create(ctx context.Context, user *model.User) error
 	CountByTenantID(ctx context.Context, tenantID uint) (int64, error)
+	Transaction(ctx context.Context, fn func(repo UserRepository) error) error
 }
 
 type userRepository struct {
@@ -29,6 +30,12 @@ func NewUserRepository(db *gorm.DB) UserRepository {
 	return &userRepository{
 		db: db,
 	}
+}
+
+func (r *userRepository) Transaction(ctx context.Context, fn func(repo UserRepository) error) error {
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		return fn(NewUserRepository(tx))
+	})
 }
 
 var userPreloadMap = map[string]string{

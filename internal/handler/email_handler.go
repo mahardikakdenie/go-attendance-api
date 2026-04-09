@@ -21,9 +21,9 @@ type EmailRequest struct {
 // @Accept json
 // @Produce json
 // @Param request body EmailRequest true "Email Data"
-// @Success 200 {object} modelDto.BaseResponse
-// @Failure 400 {object} modelDto.BaseResponse
-// @Failure 500 {object} modelDto.BaseResponse
+// @Success 200 {object} utils.APIResponse
+// @Failure 400 {object} utils.APIResponse
+// @Failure 500 {object} utils.APIResponse
 // @Router /api/v1/email/test [post]
 func SendEmailTest(c *gin.Context) {
 	var req EmailRequest

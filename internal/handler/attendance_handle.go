@@ -35,9 +35,10 @@ func NewAttendanceHandler(service service.AttendanceService) AttendanceHandler {
 // @Description Get summary of today's attendance with comparison
 // @Tags Attendance
 // @Produce json
+// @Security BearerAuth
 // @Security CookieAuth
-// @Success 200 {object} modelDto.BaseResponse{data=model.AttendanceSummaryResponse}
-// @Failure 500 {object} modelDto.BaseResponse
+// @Success 200 {object} utils.APIResponse{data=model.AttendanceSummaryResponse}
+// @Failure 500 {object} utils.APIResponse
 // @Router /api/v1/attendance/summary [get]
 func (h *attendanceHandler) GetAttendanceSummary(c *gin.Context) {
 	ctx := c.Request.Context()
@@ -63,10 +64,11 @@ func (h *attendanceHandler) GetAttendanceSummary(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Param request body model.AttendanceRequest true "Attendance Data"
+// @Security BearerAuth
 // @Security CookieAuth
-// @Success 200 {object} modelDto.BaseResponse{data=model.AttendanceResponse}
-// @Failure 400 {object} modelDto.BaseResponse
-// @Failure 401 {object} modelDto.BaseResponse
+// @Success 200 {object} utils.APIResponse{data=model.AttendanceResponse}
+// @Failure 400 {object} utils.APIResponse
+// @Failure 401 {object} utils.APIResponse
 // @Router /api/v1/attendance [post]
 func (h *attendanceHandler) RecordAttendance(c *gin.Context) {
 	var req model.AttendanceRequest
@@ -104,9 +106,10 @@ func (h *attendanceHandler) RecordAttendance(c *gin.Context) {
 // @Param limit query int false "Limit"
 // @Param offset query int false "Offset"
 // @Param include query string false "Relations: user,tenant,setting"
+// @Security BearerAuth
 // @Security CookieAuth
-// @Success 200 {object} modelDto.BaseResponse{data=modelDto.AttendanceListResponse}
-// @Failure 500 {object} modelDto.BaseResponse
+// @Success 200 {object} utils.APIResponse{data=modelDto.AttendanceListResponse}
+// @Failure 500 {object} utils.APIResponse
 // @Router /api/v1/attendance [get]
 func (h *attendanceHandler) GetAllAttendance(c *gin.Context) {
 	var filter model.AttendanceFilter

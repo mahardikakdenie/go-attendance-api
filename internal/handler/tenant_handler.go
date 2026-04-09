@@ -26,12 +26,15 @@ func NewTenantHandler(service service.TenantService) TenantHandler {
 }
 
 // @Summary Create Tenant
+// @Description Create a new tenant (SuperAdmin only)
 // @Tags Tenant
 // @Accept json
 // @Produce json
 // @Param request body model.Tenant true "Tenant Data"
-// @Success 200 {object} modelDto.BaseResponse{data=model.Tenant}
-// @Failure 400 {object} modelDto.BaseResponse
+// @Security BearerAuth
+// @Security CookieAuth
+// @Success 200 {object} utils.APIResponse{data=model.Tenant}
+// @Failure 400 {object} utils.APIResponse
 // @Router /api/v1/tenants [post]
 func (h *tenantHandler) CreateTenant(c *gin.Context) {
 	var req model.Tenant
@@ -51,10 +54,13 @@ func (h *tenantHandler) CreateTenant(c *gin.Context) {
 }
 
 // @Summary Get All Tenants
+// @Description Get list of all tenants (SuperAdmin only)
 // @Tags Tenant
 // @Produce json
-// @Success 200 {object} modelDto.BaseResponse{data=[]model.Tenant}
-// @Failure 500 {object} modelDto.BaseResponse
+// @Security BearerAuth
+// @Security CookieAuth
+// @Success 200 {object} utils.APIResponse{data=[]model.Tenant}
+// @Failure 500 {object} utils.APIResponse
 // @Router /api/v1/tenants [get]
 func (h *tenantHandler) GetAllTenant(c *gin.Context) {
 	data, err := h.service.GetAllTenants(c.Request.Context())
@@ -67,13 +73,16 @@ func (h *tenantHandler) GetAllTenant(c *gin.Context) {
 }
 
 // @Summary Get Tenant By ID
+// @Description Get detailed information about a specific tenant
 // @Tags Tenant
 // @Produce json
 // @Param id path int true "Tenant ID"
-// @Success 200 {object} modelDto.BaseResponse{data=model.Tenant}
-// @Failure 400 {object} modelDto.BaseResponse
-// @Failure 403 {object} modelDto.BaseResponse
-// @Failure 404 {object} modelDto.BaseResponse
+// @Security BearerAuth
+// @Security CookieAuth
+// @Success 200 {object} utils.APIResponse{data=model.Tenant}
+// @Failure 400 {object} utils.APIResponse
+// @Failure 403 {object} utils.APIResponse
+// @Failure 404 {object} utils.APIResponse
 // @Router /api/v1/tenants/{id} [get]
 func (h *tenantHandler) GetTenantByID(c *gin.Context) {
 	idParam := c.Param("id")

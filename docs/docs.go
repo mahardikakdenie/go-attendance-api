@@ -9,7 +9,16 @@ const docTemplate = `{
     "info": {
         "description": "{{escape .Description}}",
         "title": "{{.Title}}",
-        "contact": {},
+        "termsOfService": "http://swagger.io/terms/",
+        "contact": {
+            "name": "API Support",
+            "url": "http://www.swagger.io/support",
+            "email": "support@swagger.io"
+        },
+        "license": {
+            "name": "MIT",
+            "url": "https://opensource.org/licenses/MIT"
+        },
         "version": "{{.Version}}"
     },
     "host": "{{.Host}}",
@@ -18,6 +27,9 @@ const docTemplate = `{
         "/api/v1/attendance": {
             "get": {
                 "security": [
+                    {
+                        "BearerAuth": []
+                    },
                     {
                         "CookieAuth": []
                     }
@@ -80,7 +92,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/modelDto.BaseResponse"
+                                    "$ref": "#/definitions/utils.APIResponse"
                                 },
                                 {
                                     "type": "object",
@@ -96,13 +108,16 @@ const docTemplate = `{
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/modelDto.BaseResponse"
+                            "$ref": "#/definitions/utils.APIResponse"
                         }
                     }
                 }
             },
             "post": {
                 "security": [
+                    {
+                        "BearerAuth": []
+                    },
                     {
                         "CookieAuth": []
                     }
@@ -135,7 +150,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/modelDto.BaseResponse"
+                                    "$ref": "#/definitions/utils.APIResponse"
                                 },
                                 {
                                     "type": "object",
@@ -151,13 +166,13 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/modelDto.BaseResponse"
+                            "$ref": "#/definitions/utils.APIResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/modelDto.BaseResponse"
+                            "$ref": "#/definitions/utils.APIResponse"
                         }
                     }
                 }
@@ -166,6 +181,9 @@ const docTemplate = `{
         "/api/v1/attendance/summary": {
             "get": {
                 "security": [
+                    {
+                        "BearerAuth": []
+                    },
                     {
                         "CookieAuth": []
                     }
@@ -184,7 +202,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/modelDto.BaseResponse"
+                                    "$ref": "#/definitions/utils.APIResponse"
                                 },
                                 {
                                     "type": "object",
@@ -200,7 +218,7 @@ const docTemplate = `{
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/modelDto.BaseResponse"
+                            "$ref": "#/definitions/utils.APIResponse"
                         }
                     }
                 }
@@ -208,6 +226,7 @@ const docTemplate = `{
         },
         "/api/v1/auth/login": {
             "post": {
+                "description": "Authenticate user and get JWT via session cookie",
                 "consumes": [
                     "application/json"
                 ],
@@ -235,7 +254,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/modelDto.BaseResponse"
+                                    "$ref": "#/definitions/utils.APIResponse"
                                 },
                                 {
                                     "type": "object",
@@ -251,13 +270,13 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/modelDto.BaseResponse"
+                            "$ref": "#/definitions/utils.APIResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/modelDto.BaseResponse"
+                            "$ref": "#/definitions/utils.APIResponse"
                         }
                     }
                 }
@@ -265,6 +284,15 @@ const docTemplate = `{
         },
         "/api/v1/auth/logout": {
             "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    },
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "description": "Invalidate current session and clear cookie",
                 "produces": [
                     "application/json"
                 ],
@@ -276,7 +304,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/modelDto.BaseResponse"
+                            "$ref": "#/definitions/utils.APIResponse"
                         }
                     }
                 }
@@ -284,6 +312,7 @@ const docTemplate = `{
         },
         "/api/v1/auth/register": {
             "post": {
+                "description": "Register a new user with employee role by default",
                 "consumes": [
                     "application/json"
                 ],
@@ -311,7 +340,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/modelDto.BaseResponse"
+                                    "$ref": "#/definitions/utils.APIResponse"
                                 },
                                 {
                                     "type": "object",
@@ -327,7 +356,7 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/modelDto.BaseResponse"
+                            "$ref": "#/definitions/utils.APIResponse"
                         }
                     }
                 }
@@ -361,19 +390,19 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/modelDto.BaseResponse"
+                            "$ref": "#/definitions/utils.APIResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/modelDto.BaseResponse"
+                            "$ref": "#/definitions/utils.APIResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/modelDto.BaseResponse"
+                            "$ref": "#/definitions/utils.APIResponse"
                         }
                     }
                 }
@@ -381,6 +410,14 @@ const docTemplate = `{
         },
         "/api/v1/media/upload": {
             "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    },
+                    {
+                        "CookieAuth": []
+                    }
+                ],
                 "description": "Upload image file and store metadata to database",
                 "consumes": [
                     "multipart/form-data"
@@ -418,7 +455,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/modelDto.BaseResponse"
+                                    "$ref": "#/definitions/utils.APIResponse"
                                 },
                                 {
                                     "type": "object",
@@ -434,13 +471,13 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/modelDto.BaseResponse"
+                            "$ref": "#/definitions/utils.APIResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/modelDto.BaseResponse"
+                            "$ref": "#/definitions/utils.APIResponse"
                         }
                     }
                 }
@@ -449,6 +486,9 @@ const docTemplate = `{
         "/api/v1/overtime": {
             "get": {
                 "security": [
+                    {
+                        "BearerAuth": []
+                    },
                     {
                         "CookieAuth": []
                     }
@@ -505,7 +545,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/modelDto.BaseResponse"
+                                    "$ref": "#/definitions/utils.APIResponse"
                                 },
                                 {
                                     "type": "object",
@@ -521,13 +561,16 @@ const docTemplate = `{
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/modelDto.BaseResponse"
+                            "$ref": "#/definitions/utils.APIResponse"
                         }
                     }
                 }
             },
             "post": {
                 "security": [
+                    {
+                        "BearerAuth": []
+                    },
                     {
                         "CookieAuth": []
                     }
@@ -560,7 +603,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/modelDto.BaseResponse"
+                                    "$ref": "#/definitions/utils.APIResponse"
                                 },
                                 {
                                     "type": "object",
@@ -576,7 +619,7 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/modelDto.BaseResponse"
+                            "$ref": "#/definitions/utils.APIResponse"
                         }
                     }
                 }
@@ -585,6 +628,9 @@ const docTemplate = `{
         "/api/v1/overtime/approve/{id}": {
             "post": {
                 "security": [
+                    {
+                        "BearerAuth": []
+                    },
                     {
                         "CookieAuth": []
                     }
@@ -624,7 +670,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/modelDto.BaseResponse"
+                                    "$ref": "#/definitions/utils.APIResponse"
                                 },
                                 {
                                     "type": "object",
@@ -640,7 +686,7 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/modelDto.BaseResponse"
+                            "$ref": "#/definitions/utils.APIResponse"
                         }
                     }
                 }
@@ -649,6 +695,9 @@ const docTemplate = `{
         "/api/v1/overtime/reject/{id}": {
             "post": {
                 "security": [
+                    {
+                        "BearerAuth": []
+                    },
                     {
                         "CookieAuth": []
                     }
@@ -688,7 +737,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/modelDto.BaseResponse"
+                                    "$ref": "#/definitions/utils.APIResponse"
                                 },
                                 {
                                     "type": "object",
@@ -704,7 +753,7 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/modelDto.BaseResponse"
+                            "$ref": "#/definitions/utils.APIResponse"
                         }
                     }
                 }
@@ -713,6 +762,9 @@ const docTemplate = `{
         "/api/v1/overtime/{id}": {
             "get": {
                 "security": [
+                    {
+                        "BearerAuth": []
+                    },
                     {
                         "CookieAuth": []
                     }
@@ -739,7 +791,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/modelDto.BaseResponse"
+                                    "$ref": "#/definitions/utils.APIResponse"
                                 },
                                 {
                                     "type": "object",
@@ -755,7 +807,7 @@ const docTemplate = `{
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/modelDto.BaseResponse"
+                            "$ref": "#/definitions/utils.APIResponse"
                         }
                     }
                 }
@@ -779,7 +831,14 @@ const docTemplate = `{
                 "security": [
                     {
                         "BearerAuth": []
+                    },
+                    {
+                        "CookieAuth": []
                     }
+                ],
+                "description": "Get settings for the current tenant",
+                "produces": [
+                    "application/json"
                 ],
                 "tags": [
                     "Tenant Setting"
@@ -791,7 +850,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/modelDto.BaseResponse"
+                                    "$ref": "#/definitions/utils.APIResponse"
                                 },
                                 {
                                     "type": "object",
@@ -807,7 +866,7 @@ const docTemplate = `{
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/modelDto.BaseResponse"
+                            "$ref": "#/definitions/utils.APIResponse"
                         }
                     }
                 }
@@ -816,8 +875,12 @@ const docTemplate = `{
                 "security": [
                     {
                         "BearerAuth": []
+                    },
+                    {
+                        "CookieAuth": []
                     }
                 ],
+                "description": "Update settings for the current tenant",
                 "consumes": [
                     "application/json"
                 ],
@@ -845,7 +908,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/modelDto.BaseResponse"
+                                    "$ref": "#/definitions/utils.APIResponse"
                                 },
                                 {
                                     "type": "object",
@@ -861,7 +924,7 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/modelDto.BaseResponse"
+                            "$ref": "#/definitions/utils.APIResponse"
                         }
                     }
                 }
@@ -869,6 +932,15 @@ const docTemplate = `{
         },
         "/api/v1/tenants": {
             "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    },
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "description": "Get list of all tenants (SuperAdmin only)",
                 "produces": [
                     "application/json"
                 ],
@@ -882,7 +954,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/modelDto.BaseResponse"
+                                    "$ref": "#/definitions/utils.APIResponse"
                                 },
                                 {
                                     "type": "object",
@@ -901,12 +973,21 @@ const docTemplate = `{
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/modelDto.BaseResponse"
+                            "$ref": "#/definitions/utils.APIResponse"
                         }
                     }
                 }
             },
             "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    },
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "description": "Create a new tenant (SuperAdmin only)",
                 "consumes": [
                     "application/json"
                 ],
@@ -934,7 +1015,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/modelDto.BaseResponse"
+                                    "$ref": "#/definitions/utils.APIResponse"
                                 },
                                 {
                                     "type": "object",
@@ -950,7 +1031,7 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/modelDto.BaseResponse"
+                            "$ref": "#/definitions/utils.APIResponse"
                         }
                     }
                 }
@@ -958,6 +1039,15 @@ const docTemplate = `{
         },
         "/api/v1/tenants/{id}": {
             "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    },
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "description": "Get detailed information about a specific tenant",
                 "produces": [
                     "application/json"
                 ],
@@ -980,7 +1070,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/modelDto.BaseResponse"
+                                    "$ref": "#/definitions/utils.APIResponse"
                                 },
                                 {
                                     "type": "object",
@@ -996,19 +1086,19 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/modelDto.BaseResponse"
+                            "$ref": "#/definitions/utils.APIResponse"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/modelDto.BaseResponse"
+                            "$ref": "#/definitions/utils.APIResponse"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/modelDto.BaseResponse"
+                            "$ref": "#/definitions/utils.APIResponse"
                         }
                     }
                 }
@@ -1019,6 +1109,9 @@ const docTemplate = `{
                 "security": [
                     {
                         "BearerAuth": []
+                    },
+                    {
+                        "CookieAuth": []
                     }
                 ],
                 "description": "Get list of users with filter, sorting, pagination, and dynamic includes",
@@ -1085,7 +1178,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/modelDto.BaseResponse"
+                                    "$ref": "#/definitions/utils.APIResponse"
                                 },
                                 {
                                     "type": "object",
@@ -1104,7 +1197,7 @@ const docTemplate = `{
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/modelDto.BaseResponse"
+                            "$ref": "#/definitions/utils.APIResponse"
                         }
                     }
                 }
@@ -1113,6 +1206,9 @@ const docTemplate = `{
                 "security": [
                     {
                         "BearerAuth": []
+                    },
+                    {
+                        "CookieAuth": []
                     }
                 ],
                 "description": "Create new user with role hierarchy (SuperAdmin can create any, Admin can create HR/Employee)",
@@ -1143,7 +1239,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/modelDto.BaseResponse"
+                                    "$ref": "#/definitions/utils.APIResponse"
                                 },
                                 {
                                     "type": "object",
@@ -1159,7 +1255,7 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/modelDto.BaseResponse"
+                            "$ref": "#/definitions/utils.APIResponse"
                         }
                     }
                 }
@@ -1170,6 +1266,9 @@ const docTemplate = `{
                 "security": [
                     {
                         "BearerAuth": []
+                    },
+                    {
+                        "CookieAuth": []
                     }
                 ],
                 "description": "Approve a pending change request",
@@ -1193,13 +1292,13 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/modelDto.BaseResponse"
+                            "$ref": "#/definitions/utils.APIResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/modelDto.BaseResponse"
+                            "$ref": "#/definitions/utils.APIResponse"
                         }
                     }
                 }
@@ -1210,9 +1309,12 @@ const docTemplate = `{
                 "security": [
                     {
                         "BearerAuth": []
+                    },
+                    {
+                        "CookieAuth": []
                     }
                 ],
-                "description": "Get authenticated user profile from token (httpOnly cookie) with optional includes",
+                "description": "Get authenticated user profile from token with optional includes",
                 "produces": [
                     "application/json"
                 ],
@@ -1234,7 +1336,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/modelDto.BaseResponse"
+                                    "$ref": "#/definitions/utils.APIResponse"
                                 },
                                 {
                                     "type": "object",
@@ -1250,13 +1352,13 @@ const docTemplate = `{
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/modelDto.BaseResponse"
+                            "$ref": "#/definitions/utils.APIResponse"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/modelDto.BaseResponse"
+                            "$ref": "#/definitions/utils.APIResponse"
                         }
                     }
                 }
@@ -1267,6 +1369,9 @@ const docTemplate = `{
                 "security": [
                     {
                         "BearerAuth": []
+                    },
+                    {
+                        "CookieAuth": []
                     }
                 ],
                 "description": "Get recent activities for the logged-in user",
@@ -1283,7 +1388,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/modelDto.BaseResponse"
+                                    "$ref": "#/definitions/utils.APIResponse"
                                 },
                                 {
                                     "type": "object",
@@ -1302,13 +1407,13 @@ const docTemplate = `{
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/modelDto.BaseResponse"
+                            "$ref": "#/definitions/utils.APIResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/modelDto.BaseResponse"
+                            "$ref": "#/definitions/utils.APIResponse"
                         }
                     }
                 }
@@ -1319,6 +1424,9 @@ const docTemplate = `{
                 "security": [
                     {
                         "BearerAuth": []
+                    },
+                    {
+                        "CookieAuth": []
                     }
                 ],
                 "description": "Get all pending change requests for the tenant",
@@ -1335,7 +1443,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/modelDto.BaseResponse"
+                                    "$ref": "#/definitions/utils.APIResponse"
                                 },
                                 {
                                     "type": "object",
@@ -1354,7 +1462,7 @@ const docTemplate = `{
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/modelDto.BaseResponse"
+                            "$ref": "#/definitions/utils.APIResponse"
                         }
                     }
                 }
@@ -1365,6 +1473,9 @@ const docTemplate = `{
                 "security": [
                     {
                         "BearerAuth": []
+                    },
+                    {
+                        "CookieAuth": []
                     }
                 ],
                 "description": "Update logged-in user's profile photo",
@@ -1393,25 +1504,25 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/modelDto.BaseResponse"
+                            "$ref": "#/definitions/utils.APIResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/modelDto.BaseResponse"
+                            "$ref": "#/definitions/utils.APIResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/modelDto.BaseResponse"
+                            "$ref": "#/definitions/utils.APIResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/modelDto.BaseResponse"
+                            "$ref": "#/definitions/utils.APIResponse"
                         }
                     }
                 }
@@ -1422,6 +1533,9 @@ const docTemplate = `{
                 "security": [
                     {
                         "BearerAuth": []
+                    },
+                    {
+                        "CookieAuth": []
                     }
                 ],
                 "description": "Reject a pending change request",
@@ -1457,13 +1571,13 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/modelDto.BaseResponse"
+                            "$ref": "#/definitions/utils.APIResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/modelDto.BaseResponse"
+                            "$ref": "#/definitions/utils.APIResponse"
                         }
                     }
                 }
@@ -1474,6 +1588,9 @@ const docTemplate = `{
                 "security": [
                     {
                         "BearerAuth": []
+                    },
+                    {
+                        "CookieAuth": []
                     }
                 ],
                 "description": "Create a request to change user data (needs approval)",
@@ -1504,7 +1621,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/modelDto.BaseResponse"
+                                    "$ref": "#/definitions/utils.APIResponse"
                                 },
                                 {
                                     "type": "object",
@@ -1520,13 +1637,13 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/modelDto.BaseResponse"
+                            "$ref": "#/definitions/utils.APIResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/modelDto.BaseResponse"
+                            "$ref": "#/definitions/utils.APIResponse"
                         }
                     }
                 }
@@ -1537,6 +1654,9 @@ const docTemplate = `{
                 "security": [
                     {
                         "BearerAuth": []
+                    },
+                    {
+                        "CookieAuth": []
                     }
                 ],
                 "description": "Get single user detail with optional includes",
@@ -1568,7 +1688,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/modelDto.BaseResponse"
+                                    "$ref": "#/definitions/utils.APIResponse"
                                 },
                                 {
                                     "type": "object",
@@ -1584,13 +1704,13 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/modelDto.BaseResponse"
+                            "$ref": "#/definitions/utils.APIResponse"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/modelDto.BaseResponse"
+                            "$ref": "#/definitions/utils.APIResponse"
                         }
                     }
                 }
@@ -2499,21 +2619,6 @@ const docTemplate = `{
                 }
             }
         },
-        "modelDto.BaseResponse": {
-            "type": "object",
-            "properties": {
-                "code": {
-                    "type": "integer"
-                },
-                "data": {},
-                "message": {
-                    "type": "string"
-                },
-                "status": {
-                    "type": "string"
-                }
-            }
-        },
         "modelDto.Meta": {
             "type": "object",
             "properties": {
@@ -2527,6 +2632,29 @@ const docTemplate = `{
                     "type": "integer"
                 }
             }
+        },
+        "utils.APIResponse": {
+            "type": "object",
+            "properties": {
+                "data": {},
+                "meta": {
+                    "$ref": "#/definitions/utils.Meta"
+                }
+            }
+        },
+        "utils.Meta": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "integer"
+                },
+                "message": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                }
+            }
         }
     },
     "securityDefinitions": {
@@ -2534,18 +2662,23 @@ const docTemplate = `{
             "type": "apiKey",
             "name": "Authorization",
             "in": "header"
+        },
+        "CookieAuth": {
+            "type": "apiKey",
+            "name": "access_token",
+            "in": "cookie"
         }
     }
 }`
 
 // SwaggerInfo holds exported Swagger Info so clients can modify it
 var SwaggerInfo = &swag.Spec{
-	Version:          "1.0",
-	Host:             "",
+	Version:          "1.0.0",
+	Host:             "localhost:8080",
 	BasePath:         "/",
 	Schemes:          []string{},
-	Title:            "HRD Attendance API",
-	Description:      "API documentation for HRD Attendance System",
+	Title:            "Go Attendance API",
+	Description:      "A robust and scalable attendance management API built with Go, Gin Gonic, and GORM.\nFeaturing role-based access control, tenant management, and integration with PostgreSQL and Redis.\nThis project includes comprehensive user features, attendance tracking, overtime management, and user activity logs.",
 	InfoInstanceName: "swagger",
 	SwaggerTemplate:  docTemplate,
 	LeftDelim:        "{{",

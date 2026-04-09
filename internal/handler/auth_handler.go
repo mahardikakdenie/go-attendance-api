@@ -27,12 +27,13 @@ func NewAuthHandler(service service.AuthService) AuthHandler {
 }
 
 // @Summary Register new employee
+// @Description Register a new user with employee role by default
 // @Tags Auth
 // @Accept json
 // @Produce json
 // @Param request body model.RegisterRequest true "Register Data"
-// @Success 200 {object} modelDto.BaseResponse{data=model.User}
-// @Failure 400 {object} modelDto.BaseResponse
+// @Success 200 {object} utils.APIResponse{data=model.User}
+// @Failure 400 {object} utils.APIResponse
 // @Router /api/v1/auth/register [post]
 func (h *authHandler) Register(c *gin.Context) {
 	var req model.RegisterRequest
@@ -55,13 +56,14 @@ func (h *authHandler) Register(c *gin.Context) {
 }
 
 // @Summary Login employee
+// @Description Authenticate user and get JWT via session cookie
 // @Tags Auth
 // @Accept json
 // @Produce json
 // @Param request body model.LoginRequest true "Login Data"
-// @Success 200 {object} modelDto.BaseResponse{data=model.UserResponse}
-// @Failure 400 {object} modelDto.BaseResponse
-// @Failure 401 {object} modelDto.BaseResponse
+// @Success 200 {object} utils.APIResponse{data=model.UserResponse}
+// @Failure 400 {object} utils.APIResponse
+// @Failure 401 {object} utils.APIResponse
 // @Router /api/v1/auth/login [post]
 func (h *authHandler) Login(c *gin.Context) {
 	var req model.LoginRequest
@@ -94,9 +96,12 @@ func (h *authHandler) Login(c *gin.Context) {
 }
 
 // @Summary Logout user
+// @Description Invalidate current session and clear cookie
 // @Tags Auth
 // @Produce json
-// @Success 200 {object} modelDto.BaseResponse
+// @Security BearerAuth
+// @Security CookieAuth
+// @Success 200 {object} utils.APIResponse
 // @Router /api/v1/auth/logout [post]
 func (h *authHandler) Logout(c *gin.Context) {
 	token, _ := c.Cookie("access_token")

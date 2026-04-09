@@ -6,6 +6,7 @@ import (
 	"os"
 	"time"
 
+	"go-attendance-api/internal/config"
 	"go-attendance-api/internal/model"
 	"go-attendance-api/internal/repository"
 
@@ -133,7 +134,16 @@ func (s *authService) Logout(token string) error {
 	if token == "" {
 		return nil
 	}
-	return s.repo.RevokeToken(token)
+
+	// 1. Database revocation
+	_ = s.repo.RevokeToken(token)
+
+	// 2. Redis Blacklisting for faster checks in middleware
+	// We set expiration to 24h to match token max age
+	blacklistKey := fmt.Sprintf("blacklist:%s", token)
+	_ = config.NewRedis().Set(config.Ctx, blacklistKey, "1", 24*time.Hour).Err()
+
+	return nil
 }
 
 func (s *authService) GetMe(token string) (model.UserResponse, error) {
