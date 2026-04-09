@@ -7,19 +7,38 @@ import (
 
 	"go-attendance-api/docs"
 	"go-attendance-api/internal/config"
+	"go-attendance-api/internal/middleware"
 	"go-attendance-api/internal/routes"
 
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
 )
 
-// @title HRD Attendance API
-// @version 1.0
-// @description API documentation for HRD Attendance System
+// @title Go Attendance API
+// @version 1.0.0
+// @description A robust and scalable attendance management API built with Go, Gin Gonic, and GORM.
+// @description Featuring role-based access control, tenant management, and integration with PostgreSQL and Redis.
+// @description This project includes comprehensive user features, attendance tracking, overtime management, and user activity logs.
+// @termsOfService http://swagger.io/terms/
+
+// @contact.name API Support
+// @contact.url http://www.swagger.io/support
+// @contact.email support@swagger.io
+
+// @license.name MIT
+// @license.url https://opensource.org/licenses/MIT
+
+// @host localhost:8080
 // @BasePath /
+// @query.collection.format multi
+
 // @securityDefinitions.apikey BearerAuth
 // @in header
 // @name Authorization
+
+// @securityDefinitions.apikey CookieAuth
+// @in cookie
+// @name access_token
 func main() {
 	if err := godotenv.Load(); err != nil {
 		log.Println("Peringatan: File .env tidak ditemukan")
@@ -44,6 +63,7 @@ func main() {
 	println("Redis connected:", pong)
 
 	r := gin.Default()
+	r.Use(middleware.RateLimiter())
 
 	routes.SetupRoutes(r, db)
 

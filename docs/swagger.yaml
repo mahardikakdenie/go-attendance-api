@@ -623,16 +623,6 @@ definitions:
       meta:
         $ref: '#/definitions/modelDto.Meta'
     type: object
-  modelDto.BaseResponse:
-    properties:
-      code:
-        type: integer
-      data: {}
-      message:
-        type: string
-      status:
-        type: string
-    type: object
   modelDto.Meta:
     properties:
       limit:
@@ -642,11 +632,37 @@ definitions:
       total:
         type: integer
     type: object
+  utils.APIResponse:
+    properties:
+      data: {}
+      meta:
+        $ref: '#/definitions/utils.Meta'
+    type: object
+  utils.Meta:
+    properties:
+      code:
+        type: integer
+      message:
+        type: string
+      status:
+        type: string
+    type: object
+host: localhost:8080
 info:
-  contact: {}
-  description: API documentation for HRD Attendance System
-  title: HRD Attendance API
-  version: "1.0"
+  contact:
+    email: support@swagger.io
+    name: API Support
+    url: http://www.swagger.io/support
+  description: |-
+    A robust and scalable attendance management API built with Go, Gin Gonic, and GORM.
+    Featuring role-based access control, tenant management, and integration with PostgreSQL and Redis.
+    This project includes comprehensive user features, attendance tracking, overtime management, and user activity logs.
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+  termsOfService: http://swagger.io/terms/
+  title: Go Attendance API
+  version: 1.0.0
 paths:
   /api/v1/attendance:
     get:
@@ -687,7 +703,7 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/modelDto.BaseResponse'
+            - $ref: '#/definitions/utils.APIResponse'
             - properties:
                 data:
                   $ref: '#/definitions/modelDto.AttendanceListResponse'
@@ -695,8 +711,9 @@ paths:
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/modelDto.BaseResponse'
+            $ref: '#/definitions/utils.APIResponse'
       security:
+      - BearerAuth: []
       - CookieAuth: []
       summary: Get All Attendance
       tags:
@@ -719,7 +736,7 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/modelDto.BaseResponse'
+            - $ref: '#/definitions/utils.APIResponse'
             - properties:
                 data:
                   $ref: '#/definitions/model.AttendanceResponse'
@@ -727,12 +744,13 @@ paths:
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/modelDto.BaseResponse'
+            $ref: '#/definitions/utils.APIResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/modelDto.BaseResponse'
+            $ref: '#/definitions/utils.APIResponse'
       security:
+      - BearerAuth: []
       - CookieAuth: []
       summary: Record Attendance
       tags:
@@ -747,7 +765,7 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/modelDto.BaseResponse'
+            - $ref: '#/definitions/utils.APIResponse'
             - properties:
                 data:
                   $ref: '#/definitions/model.AttendanceSummaryResponse'
@@ -755,8 +773,9 @@ paths:
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/modelDto.BaseResponse'
+            $ref: '#/definitions/utils.APIResponse'
       security:
+      - BearerAuth: []
       - CookieAuth: []
       summary: Get Attendance Summary
       tags:
@@ -765,6 +784,7 @@ paths:
     post:
       consumes:
       - application/json
+      description: Authenticate user and get JWT via session cookie
       parameters:
       - description: Login Data
         in: body
@@ -779,7 +799,7 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/modelDto.BaseResponse'
+            - $ref: '#/definitions/utils.APIResponse'
             - properties:
                 data:
                   $ref: '#/definitions/model.UserResponse'
@@ -787,23 +807,27 @@ paths:
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/modelDto.BaseResponse'
+            $ref: '#/definitions/utils.APIResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/modelDto.BaseResponse'
+            $ref: '#/definitions/utils.APIResponse'
       summary: Login employee
       tags:
       - Auth
   /api/v1/auth/logout:
     post:
+      description: Invalidate current session and clear cookie
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/modelDto.BaseResponse'
+            $ref: '#/definitions/utils.APIResponse'
+      security:
+      - BearerAuth: []
+      - CookieAuth: []
       summary: Logout user
       tags:
       - Auth
@@ -811,6 +835,7 @@ paths:
     post:
       consumes:
       - application/json
+      description: Register a new user with employee role by default
       parameters:
       - description: Register Data
         in: body
@@ -825,7 +850,7 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/modelDto.BaseResponse'
+            - $ref: '#/definitions/utils.APIResponse'
             - properties:
                 data:
                   $ref: '#/definitions/model.User'
@@ -833,7 +858,7 @@ paths:
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/modelDto.BaseResponse'
+            $ref: '#/definitions/utils.APIResponse'
       summary: Register new employee
       tags:
       - Auth
@@ -855,15 +880,15 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/modelDto.BaseResponse'
+            $ref: '#/definitions/utils.APIResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/modelDto.BaseResponse'
+            $ref: '#/definitions/utils.APIResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/modelDto.BaseResponse'
+            $ref: '#/definitions/utils.APIResponse'
       summary: Send Test Email
       tags:
       - Email
@@ -892,7 +917,7 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/modelDto.BaseResponse'
+            - $ref: '#/definitions/utils.APIResponse'
             - properties:
                 data:
                   $ref: '#/definitions/model.Media'
@@ -900,11 +925,14 @@ paths:
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/modelDto.BaseResponse'
+            $ref: '#/definitions/utils.APIResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/modelDto.BaseResponse'
+            $ref: '#/definitions/utils.APIResponse'
+      security:
+      - BearerAuth: []
+      - CookieAuth: []
       summary: Upload image to imgbb
       tags:
       - Media
@@ -943,7 +971,7 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/modelDto.BaseResponse'
+            - $ref: '#/definitions/utils.APIResponse'
             - properties:
                 data:
                   $ref: '#/definitions/modelDto.AttendanceListResponse'
@@ -951,8 +979,9 @@ paths:
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/modelDto.BaseResponse'
+            $ref: '#/definitions/utils.APIResponse'
       security:
+      - BearerAuth: []
       - CookieAuth: []
       summary: Get All Overtime
       tags:
@@ -975,7 +1004,7 @@ paths:
           description: Created
           schema:
             allOf:
-            - $ref: '#/definitions/modelDto.BaseResponse'
+            - $ref: '#/definitions/utils.APIResponse'
             - properties:
                 data:
                   $ref: '#/definitions/model.OvertimeResponse'
@@ -983,8 +1012,9 @@ paths:
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/modelDto.BaseResponse'
+            $ref: '#/definitions/utils.APIResponse'
       security:
+      - BearerAuth: []
       - CookieAuth: []
       summary: Create Overtime Request
       tags:
@@ -1004,7 +1034,7 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/modelDto.BaseResponse'
+            - $ref: '#/definitions/utils.APIResponse'
             - properties:
                 data:
                   $ref: '#/definitions/model.OvertimeResponse'
@@ -1012,8 +1042,9 @@ paths:
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/modelDto.BaseResponse'
+            $ref: '#/definitions/utils.APIResponse'
       security:
+      - BearerAuth: []
       - CookieAuth: []
       summary: Get Overtime By ID
       tags:
@@ -1042,7 +1073,7 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/modelDto.BaseResponse'
+            - $ref: '#/definitions/utils.APIResponse'
             - properties:
                 data:
                   $ref: '#/definitions/model.OvertimeResponse'
@@ -1050,8 +1081,9 @@ paths:
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/modelDto.BaseResponse'
+            $ref: '#/definitions/utils.APIResponse'
       security:
+      - BearerAuth: []
       - CookieAuth: []
       summary: Approve Overtime Request
       tags:
@@ -1080,7 +1112,7 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/modelDto.BaseResponse'
+            - $ref: '#/definitions/utils.APIResponse'
             - properties:
                 data:
                   $ref: '#/definitions/model.OvertimeResponse'
@@ -1088,8 +1120,9 @@ paths:
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/modelDto.BaseResponse'
+            $ref: '#/definitions/utils.APIResponse'
       security:
+      - BearerAuth: []
       - CookieAuth: []
       summary: Reject Overtime Request
       tags:
@@ -1105,12 +1138,15 @@ paths:
       - Health
   /api/v1/tenant-setting:
     get:
+      description: Get settings for the current tenant
+      produces:
+      - application/json
       responses:
         "200":
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/modelDto.BaseResponse'
+            - $ref: '#/definitions/utils.APIResponse'
             - properties:
                 data:
                   $ref: '#/definitions/model.TenantSetting'
@@ -1118,15 +1154,17 @@ paths:
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/modelDto.BaseResponse'
+            $ref: '#/definitions/utils.APIResponse'
       security:
       - BearerAuth: []
+      - CookieAuth: []
       summary: Get Tenant Setting
       tags:
       - Tenant Setting
     put:
       consumes:
       - application/json
+      description: Update settings for the current tenant
       parameters:
       - description: Tenant Setting
         in: body
@@ -1141,7 +1179,7 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/modelDto.BaseResponse'
+            - $ref: '#/definitions/utils.APIResponse'
             - properties:
                 data:
                   $ref: '#/definitions/model.TenantSetting'
@@ -1149,14 +1187,16 @@ paths:
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/modelDto.BaseResponse'
+            $ref: '#/definitions/utils.APIResponse'
       security:
       - BearerAuth: []
+      - CookieAuth: []
       summary: Update Tenant Setting
       tags:
       - Tenant Setting
   /api/v1/tenants:
     get:
+      description: Get list of all tenants (SuperAdmin only)
       produces:
       - application/json
       responses:
@@ -1164,7 +1204,7 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/modelDto.BaseResponse'
+            - $ref: '#/definitions/utils.APIResponse'
             - properties:
                 data:
                   items:
@@ -1174,13 +1214,17 @@ paths:
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/modelDto.BaseResponse'
+            $ref: '#/definitions/utils.APIResponse'
+      security:
+      - BearerAuth: []
+      - CookieAuth: []
       summary: Get All Tenants
       tags:
       - Tenant
     post:
       consumes:
       - application/json
+      description: Create a new tenant (SuperAdmin only)
       parameters:
       - description: Tenant Data
         in: body
@@ -1195,7 +1239,7 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/modelDto.BaseResponse'
+            - $ref: '#/definitions/utils.APIResponse'
             - properties:
                 data:
                   $ref: '#/definitions/model.Tenant'
@@ -1203,12 +1247,16 @@ paths:
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/modelDto.BaseResponse'
+            $ref: '#/definitions/utils.APIResponse'
+      security:
+      - BearerAuth: []
+      - CookieAuth: []
       summary: Create Tenant
       tags:
       - Tenant
   /api/v1/tenants/{id}:
     get:
+      description: Get detailed information about a specific tenant
       parameters:
       - description: Tenant ID
         in: path
@@ -1222,7 +1270,7 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/modelDto.BaseResponse'
+            - $ref: '#/definitions/utils.APIResponse'
             - properties:
                 data:
                   $ref: '#/definitions/model.Tenant'
@@ -1230,15 +1278,18 @@ paths:
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/modelDto.BaseResponse'
+            $ref: '#/definitions/utils.APIResponse'
         "403":
           description: Forbidden
           schema:
-            $ref: '#/definitions/modelDto.BaseResponse'
+            $ref: '#/definitions/utils.APIResponse'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/modelDto.BaseResponse'
+            $ref: '#/definitions/utils.APIResponse'
+      security:
+      - BearerAuth: []
+      - CookieAuth: []
       summary: Get Tenant By ID
       tags:
       - Tenant
@@ -1286,7 +1337,7 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/modelDto.BaseResponse'
+            - $ref: '#/definitions/utils.APIResponse'
             - properties:
                 data:
                   items:
@@ -1296,9 +1347,10 @@ paths:
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/modelDto.BaseResponse'
+            $ref: '#/definitions/utils.APIResponse'
       security:
       - BearerAuth: []
+      - CookieAuth: []
       summary: Get All Users
       tags:
       - Users
@@ -1321,7 +1373,7 @@ paths:
           description: Created
           schema:
             allOf:
-            - $ref: '#/definitions/modelDto.BaseResponse'
+            - $ref: '#/definitions/utils.APIResponse'
             - properties:
                 data:
                   $ref: '#/definitions/model.UserResponse'
@@ -1329,9 +1381,10 @@ paths:
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/modelDto.BaseResponse'
+            $ref: '#/definitions/utils.APIResponse'
       security:
       - BearerAuth: []
+      - CookieAuth: []
       summary: Create User
       tags:
       - Users
@@ -1355,7 +1408,7 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/modelDto.BaseResponse'
+            - $ref: '#/definitions/utils.APIResponse'
             - properties:
                 data:
                   $ref: '#/definitions/model.UserResponse'
@@ -1363,13 +1416,14 @@ paths:
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/modelDto.BaseResponse'
+            $ref: '#/definitions/utils.APIResponse'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/modelDto.BaseResponse'
+            $ref: '#/definitions/utils.APIResponse'
       security:
       - BearerAuth: []
+      - CookieAuth: []
       summary: Get User By ID
       tags:
       - Users
@@ -1388,20 +1442,20 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/modelDto.BaseResponse'
+            $ref: '#/definitions/utils.APIResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/modelDto.BaseResponse'
+            $ref: '#/definitions/utils.APIResponse'
       security:
       - BearerAuth: []
+      - CookieAuth: []
       summary: Approve Change Request
       tags:
       - UserChangeRequests
   /api/v1/users/me:
     get:
-      description: Get authenticated user profile from token (httpOnly cookie) with
-        optional includes
+      description: Get authenticated user profile from token with optional includes
       parameters:
       - description: 'Relations (comma separated: tenant,attendances)'
         in: query
@@ -1414,7 +1468,7 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/modelDto.BaseResponse'
+            - $ref: '#/definitions/utils.APIResponse'
             - properties:
                 data:
                   $ref: '#/definitions/model.UserResponse'
@@ -1422,13 +1476,14 @@ paths:
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/modelDto.BaseResponse'
+            $ref: '#/definitions/utils.APIResponse'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/modelDto.BaseResponse'
+            $ref: '#/definitions/utils.APIResponse'
       security:
       - BearerAuth: []
+      - CookieAuth: []
       summary: Get current user
       tags:
       - Users
@@ -1442,7 +1497,7 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/modelDto.BaseResponse'
+            - $ref: '#/definitions/utils.APIResponse'
             - properties:
                 data:
                   items:
@@ -1452,13 +1507,14 @@ paths:
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/modelDto.BaseResponse'
+            $ref: '#/definitions/utils.APIResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/modelDto.BaseResponse'
+            $ref: '#/definitions/utils.APIResponse'
       security:
       - BearerAuth: []
+      - CookieAuth: []
       summary: Get user's recent activities
       tags:
       - Users
@@ -1472,7 +1528,7 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/modelDto.BaseResponse'
+            - $ref: '#/definitions/utils.APIResponse'
             - properties:
                 data:
                   items:
@@ -1482,9 +1538,10 @@ paths:
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/modelDto.BaseResponse'
+            $ref: '#/definitions/utils.APIResponse'
       security:
       - BearerAuth: []
+      - CookieAuth: []
       summary: Get Pending Change Requests
       tags:
       - UserChangeRequests
@@ -1506,21 +1563,22 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/modelDto.BaseResponse'
+            $ref: '#/definitions/utils.APIResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/modelDto.BaseResponse'
+            $ref: '#/definitions/utils.APIResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/modelDto.BaseResponse'
+            $ref: '#/definitions/utils.APIResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/modelDto.BaseResponse'
+            $ref: '#/definitions/utils.APIResponse'
       security:
       - BearerAuth: []
+      - CookieAuth: []
       summary: Update Profile Photo
       tags:
       - Users
@@ -1547,13 +1605,14 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/modelDto.BaseResponse'
+            $ref: '#/definitions/utils.APIResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/modelDto.BaseResponse'
+            $ref: '#/definitions/utils.APIResponse'
       security:
       - BearerAuth: []
+      - CookieAuth: []
       summary: Reject Change Request
       tags:
       - UserChangeRequests
@@ -1576,7 +1635,7 @@ paths:
           description: Created
           schema:
             allOf:
-            - $ref: '#/definitions/modelDto.BaseResponse'
+            - $ref: '#/definitions/utils.APIResponse'
             - properties:
                 data:
                   $ref: '#/definitions/model.UserChangeRequestResponse'
@@ -1584,13 +1643,14 @@ paths:
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/modelDto.BaseResponse'
+            $ref: '#/definitions/utils.APIResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/modelDto.BaseResponse'
+            $ref: '#/definitions/utils.APIResponse'
       security:
       - BearerAuth: []
+      - CookieAuth: []
       summary: Create User Change Request
       tags:
       - UserChangeRequests
@@ -1598,5 +1658,9 @@ securityDefinitions:
   BearerAuth:
     in: header
     name: Authorization
+    type: apiKey
+  CookieAuth:
+    in: cookie
+    name: access_token
     type: apiKey
 swagger: "2.0"

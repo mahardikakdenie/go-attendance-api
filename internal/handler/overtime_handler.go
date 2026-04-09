@@ -37,9 +37,10 @@ func NewOvertimeHandler(service service.OvertimeService) OvertimeHandler {
 // @Accept json
 // @Produce json
 // @Param request body model.CreateOvertimeRequest true "Overtime Data"
+// @Security BearerAuth
 // @Security CookieAuth
-// @Success 201 {object} modelDto.BaseResponse{data=model.OvertimeResponse}
-// @Failure 400 {object} modelDto.BaseResponse
+// @Success 201 {object} utils.APIResponse{data=model.OvertimeResponse}
+// @Failure 400 {object} utils.APIResponse
 // @Router /api/v1/overtime [post]
 func (h *overtimeHandler) CreateRequest(c *gin.Context) {
 	var req model.CreateOvertimeRequest
@@ -67,9 +68,10 @@ func (h *overtimeHandler) CreateRequest(c *gin.Context) {
 // @Produce json
 // @Param id path int true "Overtime ID"
 // @Param request body model.ApproveOvertimeRequest true "Notes"
+// @Security BearerAuth
 // @Security CookieAuth
-// @Success 200 {object} modelDto.BaseResponse{data=model.OvertimeResponse}
-// @Failure 400 {object} modelDto.BaseResponse
+// @Success 200 {object} utils.APIResponse{data=model.OvertimeResponse}
+// @Failure 400 {object} utils.APIResponse
 // @Router /api/v1/overtime/approve/{id} [post]
 func (h *overtimeHandler) ApproveRequest(c *gin.Context) {
 	id, _ := strconv.Atoi(c.Param("id"))
@@ -94,9 +96,10 @@ func (h *overtimeHandler) ApproveRequest(c *gin.Context) {
 // @Produce json
 // @Param id path int true "Overtime ID"
 // @Param request body model.ApproveOvertimeRequest true "Notes"
+// @Security BearerAuth
 // @Security CookieAuth
-// @Success 200 {object} modelDto.BaseResponse{data=model.OvertimeResponse}
-// @Failure 400 {object} modelDto.BaseResponse
+// @Success 200 {object} utils.APIResponse{data=model.OvertimeResponse}
+// @Failure 400 {object} utils.APIResponse
 // @Router /api/v1/overtime/reject/{id} [post]
 func (h *overtimeHandler) RejectRequest(c *gin.Context) {
 	id, _ := strconv.Atoi(c.Param("id"))
@@ -124,9 +127,10 @@ func (h *overtimeHandler) RejectRequest(c *gin.Context) {
 // @Param date_to query string false "YYYY-MM-DD"
 // @Param limit query int false "Limit"
 // @Param offset query int false "Offset"
+// @Security BearerAuth
 // @Security CookieAuth
-// @Success 200 {object} modelDto.BaseResponse{data=modelDto.AttendanceListResponse}
-// @Failure 500 {object} modelDto.BaseResponse
+// @Success 200 {object} utils.APIResponse{data=modelDto.AttendanceListResponse}
+// @Failure 500 {object} utils.APIResponse
 // @Router /api/v1/overtime [get]
 func (h *overtimeHandler) GetAll(c *gin.Context) {
 	var filter model.OvertimeFilter
@@ -172,9 +176,10 @@ func (h *overtimeHandler) GetAll(c *gin.Context) {
 // @Tags Overtime
 // @Produce json
 // @Param id path int true "ID"
+// @Security BearerAuth
 // @Security CookieAuth
-// @Success 200 {object} modelDto.BaseResponse{data=model.OvertimeResponse}
-// @Failure 404 {object} modelDto.BaseResponse
+// @Success 200 {object} utils.APIResponse{data=model.OvertimeResponse}
+// @Failure 404 {object} utils.APIResponse
 // @Router /api/v1/overtime/{id} [get]
 func (h *overtimeHandler) GetByID(c *gin.Context) {
 	id, _ := strconv.Atoi(c.Param("id"))

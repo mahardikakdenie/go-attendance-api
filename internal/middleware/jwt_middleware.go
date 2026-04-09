@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"bytes"
+	"context"
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/hex"
@@ -82,6 +83,16 @@ func SecureAuth(authService service.AuthService) gin.HandlerFunc {
 		}
 
 		////////////////////////////////////////////////////////
+		// 3.5 BLACKLIST CHECK (REDIS)
+		////////////////////////////////////////////////////////
+		blacklistKey := fmt.Sprintf("blacklist:%s", token)
+		isBlacklisted, _ := rdb.Exists(config.Ctx, blacklistKey).Result()
+		if isBlacklisted > 0 {
+			c.AbortWithStatusJSON(401, gin.H{"message": "Session expired or logged out"})
+			return
+		}
+
+		////////////////////////////////////////////////////////
 		// 4. ANTI REPLAY (BYPASS IN DEV)
 		////////////////////////////////////////////////////////
 		if !isDev {
@@ -126,6 +137,11 @@ func SecureAuth(authService service.AuthService) gin.HandlerFunc {
 		////////////////////////////////////////////////////////
 		// 6. SET CONTEXT
 		////////////////////////////////////////////////////////
+		
+		// Inject into standard context for GORM plugin
+		ctx := context.WithValue(c.Request.Context(), "tenant_id", user.TenantID)
+		c.Request = c.Request.WithContext(ctx)
+
 		c.Set("user_id", user.ID)
 		c.Set("tenant_id", user.TenantID)
 		

@@ -296,7 +296,27 @@ func (s *userService) CreateUser(ctx context.Context, adminID uint, req model.Cr
 		PhoneNumber: req.PhoneNumber,
 	}
 
-	if err := s.repo.Create(ctx, user); err != nil {
+	// 4. Use Transaction for ACID compliance
+	err = s.repo.Transaction(ctx, func(txRepo repository.UserRepository) error {
+		// Create User
+		if err := txRepo.Create(ctx, user); err != nil {
+			return err
+		}
+
+		// Log Activity (multi-table operation)
+		activity := model.RecentActivity{
+			UserID: adminID, // Log who created the user
+			Title:  "User Management",
+			Action: fmt.Sprintf("Created new user: %s (%s)", user.Name, user.EmployeeID),
+			Status: "success",
+		}
+		
+		// Note: Ideally activityRepo should also support transaction or use a shared DB instance.
+		// For now, we focus on the user creation integrity.
+		return s.activityRepo.Create(ctx, &activity)
+	})
+
+	if err != nil {
 		return model.UserResponse{}, err
 	}
 

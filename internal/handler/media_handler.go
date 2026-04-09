@@ -28,9 +28,11 @@ func NewMediaHandler(service service.MediaService) *MediaHandler {
 // @Param file formData file false "Upload file (file/image/media)"
 // @Param image formData file false "Upload image"
 // @Param media formData file false "Upload media"
-// @Success 200 {object} modelDto.BaseResponse{data=model.Media}
-// @Failure 400 {object} modelDto.BaseResponse
-// @Failure 500 {object} modelDto.BaseResponse
+// @Security BearerAuth
+// @Security CookieAuth
+// @Success 200 {object} utils.APIResponse{data=model.Media}
+// @Failure 400 {object} utils.APIResponse
+// @Failure 500 {object} utils.APIResponse
 // @Router /api/v1/media/upload [post]
 func (h *MediaHandler) Upload(c *gin.Context) {
 	file, err := c.FormFile("file")

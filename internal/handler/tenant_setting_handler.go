@@ -23,10 +23,13 @@ func NewTenantSettingHandler(service service.TenantSettingService) TenantSetting
 }
 
 // @Summary Get Tenant Setting
+// @Description Get settings for the current tenant
 // @Tags Tenant Setting
 // @Security BearerAuth
-// @Success 200 {object} modelDto.BaseResponse{data=model.TenantSetting}
-// @Failure 404 {object} modelDto.BaseResponse
+// @Security CookieAuth
+// @Produce json
+// @Success 200 {object} utils.APIResponse{data=model.TenantSetting}
+// @Failure 404 {object} utils.APIResponse
 // @Router /api/v1/tenant-setting [get]
 func (h *tenantSettingHandler) GetSetting(c *gin.Context) {
 	tenantIDVal, _ := c.Get("tenant_id")
@@ -42,13 +45,15 @@ func (h *tenantSettingHandler) GetSetting(c *gin.Context) {
 }
 
 // @Summary Update Tenant Setting
+// @Description Update settings for the current tenant
 // @Tags Tenant Setting
 // @Security BearerAuth
+// @Security CookieAuth
 // @Accept json
 // @Produce json
 // @Param request body model.TenantSetting true "Tenant Setting"
-// @Success 200 {object} modelDto.BaseResponse{data=model.TenantSetting}
-// @Failure 400 {object} modelDto.BaseResponse
+// @Success 200 {object} utils.APIResponse{data=model.TenantSetting}
+// @Failure 400 {object} utils.APIResponse
 // @Router /api/v1/tenant-setting [put]
 func (h *tenantSettingHandler) UpdateSetting(c *gin.Context) {
 	var req model.TenantSetting
