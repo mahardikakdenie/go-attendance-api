@@ -29,6 +29,8 @@ type AttendanceService interface {
 	) ([]model.AttendanceResponse, int64, error)
 
 	GetSummary(ctx context.Context, tenantID uint) (model.AttendanceSummaryResponse, error)
+
+	GetTodayAttendance(ctx context.Context, userID uint) (*model.AttendanceResponse, error)
 }
 
 type attendanceService struct {
@@ -110,7 +112,7 @@ func (s *attendanceService) RecordAttendance(
 	now := time.Now().In(WIB)
 	nowStr := now.Format("15:04:05")
 
-	todayAttendance, err := s.repo.FindTodayByUser(ctx, userID)
+	todayAttendance, err := s.repo.FindTodayByUser(ctx, userID, now)
 	if err != nil {
 		return model.AttendanceResponse{}, err
 	}
@@ -190,7 +192,7 @@ func (s *attendanceService) RecordAttendance(
 			return model.AttendanceResponse{}, errors.New("anda belum melakukan clock-in hari ini")
 		}
 
-		if todayAttendance.ClockOutTime != nil {
+		if todayAttendance.ClockOutTime != nil && !setting.AllowMultipleCheck {
 			return model.AttendanceResponse{}, errors.New("anda sudah clock-out hari ini")
 		}
 
@@ -314,6 +316,24 @@ func (s *attendanceService) GetSummary(ctx context.Context, tenantID uint) (mode
 		LateSummary:     todayLate,
 		LateSummaryDiff: calculateDiff(todayLate, compLate),
 	}, nil
+}
+
+// GetTodayAttendance godoc
+// @Summary Get Today Attendance
+// @Description Get today's attendance for the logged-in user
+// @Tags Attendance
+func (s *attendanceService) GetTodayAttendance(ctx context.Context, userID uint) (*model.AttendanceResponse, error) {
+	now := time.Now().In(WIB)
+	attendance, err := s.repo.FindTodayByUser(ctx, userID, now)
+	if err != nil {
+		return nil, err
+	}
+	if attendance == nil {
+		return nil, nil
+	}
+
+	res := applyPreloads(attendance, []string{})
+	return &res, nil
 }
 
 func calculateDiff(today, previous int64) float64 {
