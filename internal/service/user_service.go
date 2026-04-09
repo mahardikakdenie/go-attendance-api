@@ -313,7 +313,7 @@ func (s *userService) CreateUser(ctx context.Context, adminID uint, req model.Cr
 		
 		// Note: Ideally activityRepo should also support transaction or use a shared DB instance.
 		// For now, we focus on the user creation integrity.
-		return s.activityRepo.Create(ctx, activity)
+		return s.activityRepo.Create(ctx, &activity)
 	})
 
 	if err != nil {
