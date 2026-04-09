@@ -4,7 +4,9 @@ import (
 	"io"
 	"net/http"
 
+	// modelDto "go-attendance-api/internal/dto"
 	"go-attendance-api/internal/service"
+	"go-attendance-api/internal/utils"
 
 	"github.com/gin-gonic/gin"
 )
@@ -26,9 +28,9 @@ func NewMediaHandler(service service.MediaService) *MediaHandler {
 // @Param file formData file false "Upload file (file/image/media)"
 // @Param image formData file false "Upload image"
 // @Param media formData file false "Upload media"
-// @Success 200 {object} map[string]interface{}
-// @Failure 400 {object} map[string]string
-// @Failure 500 {object} map[string]string
+// @Success 200 {object} modelDto.BaseResponse{data=model.Media}
+// @Failure 400 {object} modelDto.BaseResponse
+// @Failure 500 {object} modelDto.BaseResponse
 // @Router /api/v1/media/upload [post]
 func (h *MediaHandler) Upload(c *gin.Context) {
 	file, err := c.FormFile("file")
@@ -37,7 +39,7 @@ func (h *MediaHandler) Upload(c *gin.Context) {
 		if err != nil {
 			file, err = c.FormFile("media")
 			if err != nil {
-				c.JSON(400, gin.H{"message": "file required"})
+				c.JSON(http.StatusBadRequest, utils.BuildErrorResponse("file required", http.StatusBadRequest, "error", nil))
 				return
 			}
 		}
@@ -45,25 +47,22 @@ func (h *MediaHandler) Upload(c *gin.Context) {
 
 	f, err := file.Open()
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"message": "failed to open uploaded file"})
+		c.JSON(http.StatusBadRequest, utils.BuildErrorResponse("failed to open uploaded file", http.StatusBadRequest, "error", err.Error()))
 		return
 	}
 	defer f.Close()
 
 	buffer, err := io.ReadAll(f)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"message": "failed to read uploaded file"})
+		c.JSON(http.StatusBadRequest, utils.BuildErrorResponse("failed to read uploaded file", http.StatusBadRequest, "error", err.Error()))
 		return
 	}
 
 	result, err := h.service.Upload(c.Request.Context(), buffer, file.Filename)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
+		c.JSON(http.StatusInternalServerError, utils.BuildErrorResponse(err.Error(), http.StatusInternalServerError, "error", nil))
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"message": "success",
-		"data":    result,
-	})
+	c.JSON(http.StatusOK, utils.BuildResponse("success", http.StatusOK, "success", result))
 }

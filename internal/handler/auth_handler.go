@@ -31,8 +31,8 @@ func NewAuthHandler(service service.AuthService) AuthHandler {
 // @Accept json
 // @Produce json
 // @Param request body model.RegisterRequest true "Register Data"
-// @Success 200 {object} map[string]interface{}
-// @Failure 400 {object} map[string]interface{}
+// @Success 200 {object} modelDto.BaseResponse{data=model.User}
+// @Failure 400 {object} modelDto.BaseResponse
 // @Router /api/v1/auth/register [post]
 func (h *authHandler) Register(c *gin.Context) {
 	var req model.RegisterRequest
@@ -59,9 +59,9 @@ func (h *authHandler) Register(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Param request body model.LoginRequest true "Login Data"
-// @Success 200 {object} map[string]interface{}
-// @Failure 400 {object} map[string]interface{}
-// @Failure 401 {object} map[string]interface{}
+// @Success 200 {object} modelDto.BaseResponse{data=model.UserResponse}
+// @Failure 400 {object} modelDto.BaseResponse
+// @Failure 401 {object} modelDto.BaseResponse
 // @Router /api/v1/auth/login [post]
 func (h *authHandler) Login(c *gin.Context) {
 	var req model.LoginRequest
@@ -96,7 +96,7 @@ func (h *authHandler) Login(c *gin.Context) {
 // @Summary Logout user
 // @Tags Auth
 // @Produce json
-// @Success 200 {object} map[string]interface{}
+// @Success 200 {object} modelDto.BaseResponse
 // @Router /api/v1/auth/logout [post]
 func (h *authHandler) Logout(c *gin.Context) {
 	token, _ := c.Cookie("access_token")

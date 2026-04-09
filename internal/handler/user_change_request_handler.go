@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"strconv"
 
+	// modelDto "go-attendance-api/internal/dto"
 	"go-attendance-api/internal/model"
 	"go-attendance-api/internal/service"
 	"go-attendance-api/internal/utils"
@@ -35,7 +36,9 @@ func NewUserChangeRequestHandler(service service.UserChangeRequestService) UserC
 // @Produce json
 // @Param body body model.CreateUserChangeRequest true "Request Body"
 // @Security BearerAuth
-// @Success 201 {object} map[string]interface{}
+// @Success 201 {object} modelDto.BaseResponse{data=model.UserChangeRequestResponse}
+// @Failure 400 {object} modelDto.BaseResponse
+// @Failure 500 {object} modelDto.BaseResponse
 // @Router /api/v1/users/request-change [post]
 func (h *userChangeRequestHandler) CreateRequest(c *gin.Context) {
 	var req model.CreateUserChangeRequest
@@ -61,7 +64,8 @@ func (h *userChangeRequestHandler) CreateRequest(c *gin.Context) {
 // @Tags UserChangeRequests
 // @Produce json
 // @Security BearerAuth
-// @Success 200 {object} map[string]interface{}
+// @Success 200 {object} modelDto.BaseResponse{data=[]model.UserChangeRequestResponse}
+// @Failure 500 {object} modelDto.BaseResponse
 // @Router /api/v1/users/pending-changes [get]
 func (h *userChangeRequestHandler) GetPendingRequests(c *gin.Context) {
 	tenantID := c.MustGet("tenant_id").(uint)
@@ -81,7 +85,8 @@ func (h *userChangeRequestHandler) GetPendingRequests(c *gin.Context) {
 // @Produce json
 // @Param id path int true "Request ID"
 // @Security BearerAuth
-// @Success 200 {object} map[string]interface{}
+// @Success 200 {object} modelDto.BaseResponse
+// @Failure 500 {object} modelDto.BaseResponse
 // @Router /api/v1/users/approve-change/{id} [post]
 func (h *userChangeRequestHandler) ApproveRequest(c *gin.Context) {
 	idParam := c.Param("id")
@@ -105,7 +110,8 @@ func (h *userChangeRequestHandler) ApproveRequest(c *gin.Context) {
 // @Param id path int true "Request ID"
 // @Param body body model.ApproveUserChangeRequest true "Notes"
 // @Security BearerAuth
-// @Success 200 {object} map[string]interface{}
+// @Success 200 {object} modelDto.BaseResponse
+// @Failure 500 {object} modelDto.BaseResponse
 // @Router /api/v1/users/reject-change/{id} [post]
 func (h *userChangeRequestHandler) RejectRequest(c *gin.Context) {
 	idParam := c.Param("id")

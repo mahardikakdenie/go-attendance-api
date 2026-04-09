@@ -3,6 +3,7 @@ package handler
 import (
 	"net/http"
 
+	// modelDto "go-attendance-api/internal/dto"
 	"go-attendance-api/internal/utils"
 
 	"github.com/gin-gonic/gin"
@@ -14,6 +15,16 @@ type EmailRequest struct {
 	Html    string   `json:"html" binding:"required"`
 }
 
+// @Summary Send Test Email
+// @Description Send a test email
+// @Tags Email
+// @Accept json
+// @Produce json
+// @Param request body EmailRequest true "Email Data"
+// @Success 200 {object} modelDto.BaseResponse
+// @Failure 400 {object} modelDto.BaseResponse
+// @Failure 500 {object} modelDto.BaseResponse
+// @Router /api/v1/email/test [post]
 func SendEmailTest(c *gin.Context) {
 	var req EmailRequest
 	if err := c.ShouldBindJSON(&req); err != nil {

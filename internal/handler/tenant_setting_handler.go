@@ -1,6 +1,7 @@
 package handler
 
 import (
+	// modelDto "go-attendance-api/internal/dto"
 	"go-attendance-api/internal/model"
 	"go-attendance-api/internal/service"
 	"go-attendance-api/internal/utils"
@@ -24,7 +25,8 @@ func NewTenantSettingHandler(service service.TenantSettingService) TenantSetting
 // @Summary Get Tenant Setting
 // @Tags Tenant Setting
 // @Security BearerAuth
-// @Success 200 {object} map[string]interface{}
+// @Success 200 {object} modelDto.BaseResponse{data=model.TenantSetting}
+// @Failure 404 {object} modelDto.BaseResponse
 // @Router /api/v1/tenant-setting [get]
 func (h *tenantSettingHandler) GetSetting(c *gin.Context) {
 	tenantIDVal, _ := c.Get("tenant_id")
@@ -45,7 +47,8 @@ func (h *tenantSettingHandler) GetSetting(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Param request body model.TenantSetting true "Tenant Setting"
-// @Success 200 {object} map[string]interface{}
+// @Success 200 {object} modelDto.BaseResponse{data=model.TenantSetting}
+// @Failure 400 {object} modelDto.BaseResponse
 // @Router /api/v1/tenant-setting [put]
 func (h *tenantSettingHandler) UpdateSetting(c *gin.Context) {
 	var req model.TenantSetting

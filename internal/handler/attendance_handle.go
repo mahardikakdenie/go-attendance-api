@@ -64,7 +64,7 @@ func (h *attendanceHandler) GetAttendanceSummary(c *gin.Context) {
 // @Produce json
 // @Param request body model.AttendanceRequest true "Attendance Data"
 // @Security CookieAuth
-// @Success 200 {object} modelDto.BaseResponse
+// @Success 200 {object} modelDto.BaseResponse{data=model.AttendanceResponse}
 // @Failure 400 {object} modelDto.BaseResponse
 // @Failure 401 {object} modelDto.BaseResponse
 // @Router /api/v1/attendance [post]

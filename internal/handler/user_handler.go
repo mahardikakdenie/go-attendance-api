@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"strconv"
 
+	// modelDto "go-attendance-api/internal/dto"
 	"go-attendance-api/internal/model"
 	"go-attendance-api/internal/service"
 	"go-attendance-api/internal/utils"
@@ -72,7 +73,8 @@ type UpdateProfilePhotoRequest struct {
 // @Param sort query string false "Sort direction (asc/desc)"
 // @Param includes query string false "Relations (comma separated: tenant,attendances,attendances.user)"
 // @Security BearerAuth
-// @Success 200 {object} map[string]interface{}
+// @Success 200 {object} modelDto.BaseResponse{data=[]model.UserResponse}
+// @Failure 500 {object} modelDto.BaseResponse
 // @Router /api/v1/users [get]
 func (h *userHandler) GetAllUsers(c *gin.Context) {
 	var filter model.UserFilter
@@ -140,7 +142,9 @@ func (h *userHandler) GetAllUsers(c *gin.Context) {
 // @Param id path int true "User ID"
 // @Param includes query string false "Relations (comma separated: tenant,attendances)"
 // @Security BearerAuth
-// @Success 200 {object} map[string]interface{}
+// @Success 200 {object} modelDto.BaseResponse{data=model.UserResponse}
+// @Failure 400 {object} modelDto.BaseResponse
+// @Failure 404 {object} modelDto.BaseResponse
 // @Router /api/v1/users/{id} [get]
 func (h *userHandler) GetUserByID(c *gin.Context) {
 	ctx := c.Request.Context()
@@ -172,9 +176,9 @@ func (h *userHandler) GetUserByID(c *gin.Context) {
 // @Produce json
 // @Param includes query string false "Relations (comma separated: tenant,attendances)"
 // @Security BearerAuth
-// @Success 200 {object} map[string]interface{}
-// @Failure 401 {object} map[string]interface{}
-// @Failure 404 {object} map[string]interface{}
+// @Success 200 {object} modelDto.BaseResponse{data=model.UserResponse}
+// @Failure 401 {object} modelDto.BaseResponse
+// @Failure 404 {object} modelDto.BaseResponse
 // @Router /api/v1/users/me [get]
 func (h *userHandler) GetMe(c *gin.Context) {
 	userIDVal, exists := c.Get("user_id")
@@ -217,8 +221,9 @@ func (h *userHandler) GetMe(c *gin.Context) {
 // @Tags Users
 // @Produce json
 // @Security BearerAuth
-// @Success 200 {object} map[string]interface{}
-// @Failure 401 {object} map[string]interface{}
+// @Success 200 {object} modelDto.BaseResponse{data=[]model.RecentActivityResponse}
+// @Failure 401 {object} modelDto.BaseResponse
+// @Failure 500 {object} modelDto.BaseResponse
 // @Router /api/v1/users/me/activities [get]
 func (h *userHandler) GetRecentActivities(c *gin.Context) {
 	userIDVal, exists := c.Get("user_id")
@@ -255,10 +260,10 @@ func (h *userHandler) GetRecentActivities(c *gin.Context) {
 // @Produce json
 // @Param body body UpdateProfilePhotoRequest true "Profile Photo Payload"
 // @Security BearerAuth
-// @Success 200 {object} map[string]interface{}
-// @Failure 400 {object} map[string]interface{}
-// @Failure 401 {object} map[string]interface{}
-// @Failure 500 {object} map[string]interface{}
+// @Success 200 {object} modelDto.BaseResponse
+// @Failure 400 {object} modelDto.BaseResponse
+// @Failure 401 {object} modelDto.BaseResponse
+// @Failure 500 {object} modelDto.BaseResponse
 // @Router /api/v1/users/profile-photo [put]
 func (h *userHandler) UpdateProfilePhoto(c *gin.Context) {
 	var req UpdateProfilePhotoRequest
@@ -300,6 +305,8 @@ func (h *userHandler) UpdateProfilePhoto(c *gin.Context) {
 // @Produce json
 // @Param body body model.CreateUserRequest true "User Payload"
 // @Security BearerAuth
+// @Success 201 {object} modelDto.BaseResponse{data=model.UserResponse}
+// @Failure 400 {object} modelDto.BaseResponse
 // @Router /api/v1/users [post]
 func (h *userHandler) CreateUser(c *gin.Context) {
 	var req model.CreateUserRequest

@@ -3,6 +3,7 @@ package handler
 import (
 	"strconv"
 
+	// modelDto "go-attendance-api/internal/dto"
 	"go-attendance-api/internal/model"
 	"go-attendance-api/internal/service"
 	"go-attendance-api/internal/utils"
@@ -29,8 +30,8 @@ func NewTenantHandler(service service.TenantService) TenantHandler {
 // @Accept json
 // @Produce json
 // @Param request body model.Tenant true "Tenant Data"
-// @Success 200 {object} map[string]interface{}
-// @Failure 400 {object} map[string]interface{}
+// @Success 200 {object} modelDto.BaseResponse{data=model.Tenant}
+// @Failure 400 {object} modelDto.BaseResponse
 // @Router /api/v1/tenants [post]
 func (h *tenantHandler) CreateTenant(c *gin.Context) {
 	var req model.Tenant
@@ -52,7 +53,8 @@ func (h *tenantHandler) CreateTenant(c *gin.Context) {
 // @Summary Get All Tenants
 // @Tags Tenant
 // @Produce json
-// @Success 200 {object} map[string]interface{}
+// @Success 200 {object} modelDto.BaseResponse{data=[]model.Tenant}
+// @Failure 500 {object} modelDto.BaseResponse
 // @Router /api/v1/tenants [get]
 func (h *tenantHandler) GetAllTenant(c *gin.Context) {
 	data, err := h.service.GetAllTenants(c.Request.Context())
@@ -68,7 +70,10 @@ func (h *tenantHandler) GetAllTenant(c *gin.Context) {
 // @Tags Tenant
 // @Produce json
 // @Param id path int true "Tenant ID"
-// @Success 200 {object} map[string]interface{}
+// @Success 200 {object} modelDto.BaseResponse{data=model.Tenant}
+// @Failure 400 {object} modelDto.BaseResponse
+// @Failure 403 {object} modelDto.BaseResponse
+// @Failure 404 {object} modelDto.BaseResponse
 // @Router /api/v1/tenants/{id} [get]
 func (h *tenantHandler) GetTenantByID(c *gin.Context) {
 	idParam := c.Param("id")

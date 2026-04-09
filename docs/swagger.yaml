@@ -1,5 +1,20 @@
 basePath: /
 definitions:
+  handler.EmailRequest:
+    properties:
+      html:
+        type: string
+      subject:
+        type: string
+      to:
+        items:
+          type: string
+        type: array
+    required:
+    - html
+    - subject
+    - to
+    type: object
   handler.UpdateProfilePhotoRequest:
     properties:
       media_url:
@@ -16,6 +31,39 @@ definitions:
     properties:
       admin_notes:
         type: string
+    type: object
+  model.Attendance:
+    properties:
+      clockInLatitude:
+        type: number
+      clockInLongitude:
+        type: number
+      clockInMediaUrl:
+        type: string
+      clockInTime:
+        type: string
+      clockOutLatitude:
+        format: float64
+        type: number
+      clockOutLongitude:
+        format: float64
+        type: number
+      clockOutMediaUrl:
+        type: string
+      clockOutTime:
+        type: string
+      id:
+        type: string
+      status:
+        $ref: '#/definitions/model.AttendanceStatus'
+      tenant:
+        $ref: '#/definitions/model.Tenant'
+      tenantID:
+        type: integer
+      user:
+        $ref: '#/definitions/model.User'
+      userID:
+        type: integer
     type: object
   model.AttendanceAction:
     enum:
@@ -48,6 +96,43 @@ definitions:
     - latitude
     - longitude
     type: object
+  model.AttendanceResponse:
+    properties:
+      clock_in_latitude:
+        type: number
+      clock_in_longitude:
+        type: number
+      clock_in_media_url:
+        type: string
+      clock_in_time:
+        type: string
+      clock_out_latitude:
+        type: number
+      clock_out_longitude:
+        type: number
+      clock_out_media_url:
+        type: string
+      clock_out_time:
+        type: string
+      id:
+        type: string
+      status:
+        $ref: '#/definitions/model.AttendanceStatus'
+      user:
+        $ref: '#/definitions/model.UserResponse'
+      user_id:
+        type: integer
+    type: object
+  model.AttendanceStatus:
+    enum:
+    - working
+    - done
+    - late
+    type: string
+    x-enum-varnames:
+    - StatusWorking
+    - StatusDone
+    - StatusLate
   model.AttendanceSummaryResponse:
     properties:
       late_summary:
@@ -130,6 +215,19 @@ definitions:
     - name
     - password
     type: object
+  model.ImageMeta:
+    properties:
+      extension:
+        type: string
+      filename:
+        type: string
+      mime:
+        type: string
+      name:
+        type: string
+      url:
+        type: string
+    type: object
   model.LoginRequest:
     properties:
       email:
@@ -141,6 +239,115 @@ definitions:
     required:
     - email
     - password
+    type: object
+  model.Media:
+    properties:
+      created_at:
+        type: string
+      id:
+        type: integer
+      imgbb_id:
+        type: string
+      meta:
+        $ref: '#/definitions/model.Meta'
+      type:
+        type: string
+      updated_at:
+        type: string
+      url:
+        type: string
+    type: object
+  model.Meta:
+    properties:
+      delete_url:
+        type: string
+      display_url:
+        type: string
+      expiration:
+        type: integer
+      height:
+        type: integer
+      id:
+        type: string
+      image:
+        $ref: '#/definitions/model.ImageMeta'
+      size:
+        type: integer
+      thumb:
+        $ref: '#/definitions/model.ImageMeta'
+      time:
+        type: integer
+      title:
+        type: string
+      url:
+        type: string
+      url_viewer:
+        type: string
+      width:
+        type: integer
+    type: object
+  model.OvertimeResponse:
+    properties:
+      admin_notes:
+        type: string
+      created_at:
+        type: string
+      date:
+        type: string
+      end_time:
+        type: string
+      id:
+        type: integer
+      reason:
+        type: string
+      start_time:
+        type: string
+      status:
+        $ref: '#/definitions/model.OvertimeStatus'
+      updated_at:
+        type: string
+      user:
+        $ref: '#/definitions/model.UserResponse'
+      user_id:
+        type: integer
+    type: object
+  model.OvertimeStatus:
+    enum:
+    - pending
+    - approved
+    - rejected
+    type: string
+    x-enum-varnames:
+    - OvertimeStatusPending
+    - OvertimeStatusApproved
+    - OvertimeStatusRejected
+  model.RecentActivity:
+    properties:
+      action:
+        type: string
+      created_at:
+        type: string
+      id:
+        type: integer
+      status:
+        type: string
+      title:
+        type: string
+      user_id:
+        type: integer
+    type: object
+  model.RecentActivityResponse:
+    properties:
+      action:
+        type: string
+      created_at:
+        type: string
+      id:
+        type: integer
+      status:
+        type: string
+      title:
+        type: string
     type: object
   model.RegisterRequest:
     properties:
@@ -175,6 +382,25 @@ definitions:
     - password
     - tenant_id
     type: object
+  model.Role:
+    properties:
+      created_at:
+        type: string
+      id:
+        type: integer
+      name:
+        example: admin
+        type: string
+      updated_at:
+        type: string
+    type: object
+  model.RoleResponse:
+    properties:
+      id:
+        type: integer
+      name:
+        type: string
+    type: object
   model.Tenant:
     properties:
       code:
@@ -189,6 +415,15 @@ definitions:
         $ref: '#/definitions/model.TenantSetting'
       updatedAt:
         type: string
+    type: object
+  model.TenantResponse:
+    properties:
+      id:
+        type: integer
+      name:
+        type: string
+      tenant_settings:
+        $ref: '#/definitions/model.TenantSetting'
     type: object
   model.TenantSetting:
     properties:
@@ -242,6 +477,145 @@ definitions:
       updated_at:
         example: "2026-04-07T13:21:24Z"
         type: string
+    type: object
+  model.User:
+    properties:
+      address:
+        example: Jl. Sudirman No. 1
+        type: string
+      attendances:
+        items:
+          $ref: '#/definitions/model.Attendance'
+        type: array
+      created_at:
+        example: "2026-04-05T12:00:00Z"
+        type: string
+      department:
+        example: IT
+        type: string
+      email:
+        example: budi@company.com
+        type: string
+      employee_id:
+        example: FT-001
+        type: string
+      id:
+        example: 1
+        type: integer
+      media_url:
+        example: https://cdn.example.com/profile/budi.jpg
+        type: string
+      name:
+        example: Budi Santoso
+        maxLength: 100
+        minLength: 3
+        type: string
+      phone_number:
+        example: "08123456789"
+        type: string
+      recent_activities:
+        items:
+          $ref: '#/definitions/model.RecentActivity'
+        type: array
+      role:
+        $ref: '#/definitions/model.Role'
+      role_id:
+        example: 1
+        type: integer
+      tenant:
+        $ref: '#/definitions/model.Tenant'
+      tenant_id:
+        example: 1
+        type: integer
+      updated_at:
+        example: "2026-04-05T12:30:00Z"
+        type: string
+    required:
+    - email
+    - name
+    type: object
+  model.UserChangeRequestResponse:
+    properties:
+      address:
+        type: string
+      admin_notes:
+        type: string
+      created_at:
+        type: string
+      department:
+        type: string
+      email:
+        type: string
+      id:
+        type: integer
+      name:
+        type: string
+      phone_number:
+        type: string
+      status:
+        $ref: '#/definitions/model.UserChangeRequestStatus'
+      tenant_id:
+        type: integer
+      updated_at:
+        type: string
+      user:
+        $ref: '#/definitions/model.UserResponse'
+      user_id:
+        type: integer
+    type: object
+  model.UserChangeRequestStatus:
+    enum:
+    - pending
+    - approved
+    - rejected
+    type: string
+    x-enum-varnames:
+    - StatusPending
+    - StatusApproved
+    - StatusRejected
+  model.UserResponse:
+    properties:
+      address:
+        example: Jl. Sudirman No. 1
+        type: string
+      attendances:
+        items:
+          $ref: '#/definitions/model.AttendanceResponse'
+        type: array
+      created_at:
+        type: string
+      department:
+        example: IT
+        type: string
+      email:
+        example: budi@company.com
+        type: string
+      employee_id:
+        example: FT-001
+        type: string
+      id:
+        example: 1
+        type: integer
+      media_url:
+        example: https://cdn.example.com/profile/budi.jpg
+        type: string
+      name:
+        example: Budi Santoso
+        type: string
+      phone_number:
+        example: "08123456789"
+        type: string
+      recent_activities:
+        items:
+          $ref: '#/definitions/model.RecentActivityResponse'
+        type: array
+      role:
+        $ref: '#/definitions/model.RoleResponse'
+      tenant:
+        $ref: '#/definitions/model.TenantResponse'
+      tenant_id:
+        example: 1
+        type: integer
     type: object
   modelDto.AttendanceListResponse:
     properties:
@@ -344,7 +718,12 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/modelDto.BaseResponse'
+            allOf:
+            - $ref: '#/definitions/modelDto.BaseResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.AttendanceResponse'
+              type: object
         "400":
           description: Bad Request
           schema:
@@ -399,18 +778,20 @@ paths:
         "200":
           description: OK
           schema:
-            additionalProperties: true
-            type: object
+            allOf:
+            - $ref: '#/definitions/modelDto.BaseResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.UserResponse'
+              type: object
         "400":
           description: Bad Request
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/modelDto.BaseResponse'
         "401":
           description: Unauthorized
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/modelDto.BaseResponse'
       summary: Login employee
       tags:
       - Auth
@@ -422,8 +803,7 @@ paths:
         "200":
           description: OK
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/modelDto.BaseResponse'
       summary: Logout user
       tags:
       - Auth
@@ -444,16 +824,49 @@ paths:
         "200":
           description: OK
           schema:
-            additionalProperties: true
-            type: object
+            allOf:
+            - $ref: '#/definitions/modelDto.BaseResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.User'
+              type: object
         "400":
           description: Bad Request
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/modelDto.BaseResponse'
       summary: Register new employee
       tags:
       - Auth
+  /api/v1/email/test:
+    post:
+      consumes:
+      - application/json
+      description: Send a test email
+      parameters:
+      - description: Email Data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handler.EmailRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/modelDto.BaseResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/modelDto.BaseResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/modelDto.BaseResponse'
+      summary: Send Test Email
+      tags:
+      - Email
   /api/v1/media/upload:
     post:
       consumes:
@@ -478,20 +891,20 @@ paths:
         "200":
           description: OK
           schema:
-            additionalProperties: true
-            type: object
+            allOf:
+            - $ref: '#/definitions/modelDto.BaseResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.Media'
+              type: object
         "400":
           description: Bad Request
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/modelDto.BaseResponse'
         "500":
           description: Internal Server Error
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/modelDto.BaseResponse'
       summary: Upload image to imgbb
       tags:
       - Media
@@ -515,9 +928,30 @@ paths:
         in: query
         name: date_to
         type: string
+      - description: Limit
+        in: query
+        name: limit
+        type: integer
+      - description: Offset
+        in: query
+        name: offset
+        type: integer
       produces:
       - application/json
-      responses: {}
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/modelDto.BaseResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/modelDto.AttendanceListResponse'
+              type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/modelDto.BaseResponse'
       security:
       - CookieAuth: []
       summary: Get All Overtime
@@ -536,7 +970,20 @@ paths:
           $ref: '#/definitions/model.CreateOvertimeRequest'
       produces:
       - application/json
-      responses: {}
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/modelDto.BaseResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.OvertimeResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/modelDto.BaseResponse'
       security:
       - CookieAuth: []
       summary: Create Overtime Request
@@ -552,7 +999,20 @@ paths:
         type: integer
       produces:
       - application/json
-      responses: {}
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/modelDto.BaseResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.OvertimeResponse'
+              type: object
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/modelDto.BaseResponse'
       security:
       - CookieAuth: []
       summary: Get Overtime By ID
@@ -577,7 +1037,20 @@ paths:
           $ref: '#/definitions/model.ApproveOvertimeRequest'
       produces:
       - application/json
-      responses: {}
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/modelDto.BaseResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.OvertimeResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/modelDto.BaseResponse'
       security:
       - CookieAuth: []
       summary: Approve Overtime Request
@@ -602,7 +1075,20 @@ paths:
           $ref: '#/definitions/model.ApproveOvertimeRequest'
       produces:
       - application/json
-      responses: {}
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/modelDto.BaseResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.OvertimeResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/modelDto.BaseResponse'
       security:
       - CookieAuth: []
       summary: Reject Overtime Request
@@ -623,8 +1109,16 @@ paths:
         "200":
           description: OK
           schema:
-            additionalProperties: true
-            type: object
+            allOf:
+            - $ref: '#/definitions/modelDto.BaseResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.TenantSetting'
+              type: object
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/modelDto.BaseResponse'
       security:
       - BearerAuth: []
       summary: Get Tenant Setting
@@ -646,8 +1140,16 @@ paths:
         "200":
           description: OK
           schema:
-            additionalProperties: true
-            type: object
+            allOf:
+            - $ref: '#/definitions/modelDto.BaseResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.TenantSetting'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/modelDto.BaseResponse'
       security:
       - BearerAuth: []
       summary: Update Tenant Setting
@@ -661,8 +1163,18 @@ paths:
         "200":
           description: OK
           schema:
-            additionalProperties: true
-            type: object
+            allOf:
+            - $ref: '#/definitions/modelDto.BaseResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/model.Tenant'
+                  type: array
+              type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/modelDto.BaseResponse'
       summary: Get All Tenants
       tags:
       - Tenant
@@ -682,13 +1194,16 @@ paths:
         "200":
           description: OK
           schema:
-            additionalProperties: true
-            type: object
+            allOf:
+            - $ref: '#/definitions/modelDto.BaseResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.Tenant'
+              type: object
         "400":
           description: Bad Request
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/modelDto.BaseResponse'
       summary: Create Tenant
       tags:
       - Tenant
@@ -706,8 +1221,24 @@ paths:
         "200":
           description: OK
           schema:
-            additionalProperties: true
-            type: object
+            allOf:
+            - $ref: '#/definitions/modelDto.BaseResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.Tenant'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/modelDto.BaseResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/modelDto.BaseResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/modelDto.BaseResponse'
       summary: Get Tenant By ID
       tags:
       - Tenant
@@ -754,8 +1285,18 @@ paths:
         "200":
           description: OK
           schema:
-            additionalProperties: true
-            type: object
+            allOf:
+            - $ref: '#/definitions/modelDto.BaseResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/model.UserResponse'
+                  type: array
+              type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/modelDto.BaseResponse'
       security:
       - BearerAuth: []
       summary: Get All Users
@@ -775,7 +1316,20 @@ paths:
           $ref: '#/definitions/model.CreateUserRequest'
       produces:
       - application/json
-      responses: {}
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/modelDto.BaseResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.UserResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/modelDto.BaseResponse'
       security:
       - BearerAuth: []
       summary: Create User
@@ -800,8 +1354,20 @@ paths:
         "200":
           description: OK
           schema:
-            additionalProperties: true
-            type: object
+            allOf:
+            - $ref: '#/definitions/modelDto.BaseResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.UserResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/modelDto.BaseResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/modelDto.BaseResponse'
       security:
       - BearerAuth: []
       summary: Get User By ID
@@ -822,8 +1388,11 @@ paths:
         "200":
           description: OK
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/modelDto.BaseResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/modelDto.BaseResponse'
       security:
       - BearerAuth: []
       summary: Approve Change Request
@@ -844,21 +1413,53 @@ paths:
         "200":
           description: OK
           schema:
-            additionalProperties: true
-            type: object
+            allOf:
+            - $ref: '#/definitions/modelDto.BaseResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.UserResponse'
+              type: object
         "401":
           description: Unauthorized
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/modelDto.BaseResponse'
         "404":
           description: Not Found
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/modelDto.BaseResponse'
       security:
       - BearerAuth: []
       summary: Get current user
+      tags:
+      - Users
+  /api/v1/users/me/activities:
+    get:
+      description: Get recent activities for the logged-in user
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/modelDto.BaseResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/model.RecentActivityResponse'
+                  type: array
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/modelDto.BaseResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/modelDto.BaseResponse'
+      security:
+      - BearerAuth: []
+      summary: Get user's recent activities
       tags:
       - Users
   /api/v1/users/pending-changes:
@@ -870,8 +1471,18 @@ paths:
         "200":
           description: OK
           schema:
-            additionalProperties: true
-            type: object
+            allOf:
+            - $ref: '#/definitions/modelDto.BaseResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/model.UserChangeRequestResponse'
+                  type: array
+              type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/modelDto.BaseResponse'
       security:
       - BearerAuth: []
       summary: Get Pending Change Requests
@@ -895,23 +1506,19 @@ paths:
         "200":
           description: OK
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/modelDto.BaseResponse'
         "400":
           description: Bad Request
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/modelDto.BaseResponse'
         "401":
           description: Unauthorized
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/modelDto.BaseResponse'
         "500":
           description: Internal Server Error
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/modelDto.BaseResponse'
       security:
       - BearerAuth: []
       summary: Update Profile Photo
@@ -940,8 +1547,11 @@ paths:
         "200":
           description: OK
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/modelDto.BaseResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/modelDto.BaseResponse'
       security:
       - BearerAuth: []
       summary: Reject Change Request
@@ -965,8 +1575,20 @@ paths:
         "201":
           description: Created
           schema:
-            additionalProperties: true
-            type: object
+            allOf:
+            - $ref: '#/definitions/modelDto.BaseResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.UserChangeRequestResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/modelDto.BaseResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/modelDto.BaseResponse'
       security:
       - BearerAuth: []
       summary: Create User Change Request

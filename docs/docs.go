@@ -133,7 +133,19 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/modelDto.BaseResponse"
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/modelDto.BaseResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/model.AttendanceResponse"
+                                        }
+                                    }
+                                }
+                            ]
                         }
                     },
                     "400": {
@@ -221,22 +233,31 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/modelDto.BaseResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/model.UserResponse"
+                                        }
+                                    }
+                                }
+                            ]
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/modelDto.BaseResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/modelDto.BaseResponse"
                         }
                     }
                 }
@@ -255,8 +276,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/modelDto.BaseResponse"
                         }
                     }
                 }
@@ -289,15 +309,71 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/modelDto.BaseResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/model.User"
+                                        }
+                                    }
+                                }
+                            ]
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/modelDto.BaseResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/email/test": {
+            "post": {
+                "description": "Send a test email",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Email"
+                ],
+                "summary": "Send Test Email",
+                "parameters": [
+                    {
+                        "description": "Email Data",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handler.EmailRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/modelDto.BaseResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/modelDto.BaseResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/modelDto.BaseResponse"
                         }
                     }
                 }
@@ -340,26 +416,31 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/modelDto.BaseResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/model.Media"
+                                        }
+                                    }
+                                }
+                            ]
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
+                            "$ref": "#/definitions/modelDto.BaseResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
+                            "$ref": "#/definitions/modelDto.BaseResponse"
                         }
                     }
                 }
@@ -404,9 +485,46 @@ const docTemplate = `{
                         "description": "YYYY-MM-DD",
                         "name": "date_to",
                         "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Limit",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Offset",
+                        "name": "offset",
+                        "in": "query"
                     }
                 ],
-                "responses": {}
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/modelDto.BaseResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/modelDto.AttendanceListResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/modelDto.BaseResponse"
+                        }
+                    }
+                }
             },
             "post": {
                 "security": [
@@ -436,7 +554,32 @@ const docTemplate = `{
                         }
                     }
                 ],
-                "responses": {}
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/modelDto.BaseResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/model.OvertimeResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/modelDto.BaseResponse"
+                        }
+                    }
+                }
             }
         },
         "/api/v1/overtime/approve/{id}": {
@@ -475,7 +618,32 @@ const docTemplate = `{
                         }
                     }
                 ],
-                "responses": {}
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/modelDto.BaseResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/model.OvertimeResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/modelDto.BaseResponse"
+                        }
+                    }
+                }
             }
         },
         "/api/v1/overtime/reject/{id}": {
@@ -514,7 +682,32 @@ const docTemplate = `{
                         }
                     }
                 ],
-                "responses": {}
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/modelDto.BaseResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/model.OvertimeResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/modelDto.BaseResponse"
+                        }
+                    }
+                }
             }
         },
         "/api/v1/overtime/{id}": {
@@ -540,7 +733,32 @@ const docTemplate = `{
                         "required": true
                     }
                 ],
-                "responses": {}
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/modelDto.BaseResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/model.OvertimeResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/modelDto.BaseResponse"
+                        }
+                    }
+                }
             }
         },
         "/api/v1/ping": {
@@ -571,8 +789,25 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/modelDto.BaseResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/model.TenantSetting"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/modelDto.BaseResponse"
                         }
                     }
                 }
@@ -608,8 +843,25 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/modelDto.BaseResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/model.TenantSetting"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/modelDto.BaseResponse"
                         }
                     }
                 }
@@ -628,8 +880,28 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/modelDto.BaseResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/model.Tenant"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/modelDto.BaseResponse"
                         }
                     }
                 }
@@ -660,15 +932,25 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/modelDto.BaseResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/model.Tenant"
+                                        }
+                                    }
+                                }
+                            ]
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/modelDto.BaseResponse"
                         }
                     }
                 }
@@ -696,8 +978,37 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/modelDto.BaseResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/model.Tenant"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/modelDto.BaseResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/modelDto.BaseResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/modelDto.BaseResponse"
                         }
                     }
                 }
@@ -772,8 +1083,28 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/modelDto.BaseResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/model.UserResponse"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/modelDto.BaseResponse"
                         }
                     }
                 }
@@ -806,7 +1137,32 @@ const docTemplate = `{
                         }
                     }
                 ],
-                "responses": {}
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/modelDto.BaseResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/model.UserResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/modelDto.BaseResponse"
+                        }
+                    }
+                }
             }
         },
         "/api/v1/users/approve-change/{id}": {
@@ -837,8 +1193,13 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/modelDto.BaseResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/modelDto.BaseResponse"
                         }
                     }
                 }
@@ -871,22 +1232,83 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/modelDto.BaseResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/model.UserResponse"
+                                        }
+                                    }
+                                }
+                            ]
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/modelDto.BaseResponse"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/modelDto.BaseResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/users/me/activities": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Get recent activities for the logged-in user",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Users"
+                ],
+                "summary": "Get user's recent activities",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/modelDto.BaseResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/model.RecentActivityResponse"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/modelDto.BaseResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/modelDto.BaseResponse"
                         }
                     }
                 }
@@ -911,8 +1333,28 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/modelDto.BaseResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/model.UserChangeRequestResponse"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/modelDto.BaseResponse"
                         }
                     }
                 }
@@ -951,29 +1393,25 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/modelDto.BaseResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/modelDto.BaseResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/modelDto.BaseResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/modelDto.BaseResponse"
                         }
                     }
                 }
@@ -1019,8 +1457,13 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/modelDto.BaseResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/modelDto.BaseResponse"
                         }
                     }
                 }
@@ -1059,8 +1502,31 @@ const docTemplate = `{
                     "201": {
                         "description": "Created",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/modelDto.BaseResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/model.UserChangeRequestResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/modelDto.BaseResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/modelDto.BaseResponse"
                         }
                     }
                 }
@@ -1100,8 +1566,31 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/modelDto.BaseResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/model.UserResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/modelDto.BaseResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/modelDto.BaseResponse"
                         }
                     }
                 }
@@ -1109,6 +1598,28 @@ const docTemplate = `{
         }
     },
     "definitions": {
+        "handler.EmailRequest": {
+            "type": "object",
+            "required": [
+                "html",
+                "subject",
+                "to"
+            ],
+            "properties": {
+                "html": {
+                    "type": "string"
+                },
+                "subject": {
+                    "type": "string"
+                },
+                "to": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
         "handler.UpdateProfilePhotoRequest": {
             "type": "object",
             "required": [
@@ -1133,6 +1644,55 @@ const docTemplate = `{
             "properties": {
                 "admin_notes": {
                     "type": "string"
+                }
+            }
+        },
+        "model.Attendance": {
+            "type": "object",
+            "properties": {
+                "clockInLatitude": {
+                    "type": "number"
+                },
+                "clockInLongitude": {
+                    "type": "number"
+                },
+                "clockInMediaUrl": {
+                    "type": "string"
+                },
+                "clockInTime": {
+                    "type": "string"
+                },
+                "clockOutLatitude": {
+                    "type": "number",
+                    "format": "float64"
+                },
+                "clockOutLongitude": {
+                    "type": "number",
+                    "format": "float64"
+                },
+                "clockOutMediaUrl": {
+                    "type": "string"
+                },
+                "clockOutTime": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "status": {
+                    "$ref": "#/definitions/model.AttendanceStatus"
+                },
+                "tenant": {
+                    "$ref": "#/definitions/model.Tenant"
+                },
+                "tenantID": {
+                    "type": "integer"
+                },
+                "user": {
+                    "$ref": "#/definitions/model.User"
+                },
+                "userID": {
+                    "type": "integer"
                 }
             }
         },
@@ -1180,6 +1740,60 @@ const docTemplate = `{
                     "example": "https://i.pinimg.com/control1/736x/41/e7/99/41e799436291fdfb4c969b80913a19fe.jpg"
                 }
             }
+        },
+        "model.AttendanceResponse": {
+            "type": "object",
+            "properties": {
+                "clock_in_latitude": {
+                    "type": "number"
+                },
+                "clock_in_longitude": {
+                    "type": "number"
+                },
+                "clock_in_media_url": {
+                    "type": "string"
+                },
+                "clock_in_time": {
+                    "type": "string"
+                },
+                "clock_out_latitude": {
+                    "type": "number"
+                },
+                "clock_out_longitude": {
+                    "type": "number"
+                },
+                "clock_out_media_url": {
+                    "type": "string"
+                },
+                "clock_out_time": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "status": {
+                    "$ref": "#/definitions/model.AttendanceStatus"
+                },
+                "user": {
+                    "$ref": "#/definitions/model.UserResponse"
+                },
+                "user_id": {
+                    "type": "integer"
+                }
+            }
+        },
+        "model.AttendanceStatus": {
+            "type": "string",
+            "enum": [
+                "working",
+                "done",
+                "late"
+            ],
+            "x-enum-varnames": [
+                "StatusWorking",
+                "StatusDone",
+                "StatusLate"
+            ]
         },
         "model.AttendanceSummaryResponse": {
             "type": "object",
@@ -1297,6 +1911,26 @@ const docTemplate = `{
                 }
             }
         },
+        "model.ImageMeta": {
+            "type": "object",
+            "properties": {
+                "extension": {
+                    "type": "string"
+                },
+                "filename": {
+                    "type": "string"
+                },
+                "mime": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "url": {
+                    "type": "string"
+                }
+            }
+        },
         "model.LoginRequest": {
             "type": "object",
             "required": [
@@ -1311,6 +1945,170 @@ const docTemplate = `{
                 "password": {
                     "type": "string",
                     "example": "123456"
+                }
+            }
+        },
+        "model.Media": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "imgbb_id": {
+                    "type": "string"
+                },
+                "meta": {
+                    "$ref": "#/definitions/model.Meta"
+                },
+                "type": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                },
+                "url": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.Meta": {
+            "type": "object",
+            "properties": {
+                "delete_url": {
+                    "type": "string"
+                },
+                "display_url": {
+                    "type": "string"
+                },
+                "expiration": {
+                    "type": "integer"
+                },
+                "height": {
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "image": {
+                    "$ref": "#/definitions/model.ImageMeta"
+                },
+                "size": {
+                    "type": "integer"
+                },
+                "thumb": {
+                    "$ref": "#/definitions/model.ImageMeta"
+                },
+                "time": {
+                    "type": "integer"
+                },
+                "title": {
+                    "type": "string"
+                },
+                "url": {
+                    "type": "string"
+                },
+                "url_viewer": {
+                    "type": "string"
+                },
+                "width": {
+                    "type": "integer"
+                }
+            }
+        },
+        "model.OvertimeResponse": {
+            "type": "object",
+            "properties": {
+                "admin_notes": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "date": {
+                    "type": "string"
+                },
+                "end_time": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "reason": {
+                    "type": "string"
+                },
+                "start_time": {
+                    "type": "string"
+                },
+                "status": {
+                    "$ref": "#/definitions/model.OvertimeStatus"
+                },
+                "updated_at": {
+                    "type": "string"
+                },
+                "user": {
+                    "$ref": "#/definitions/model.UserResponse"
+                },
+                "user_id": {
+                    "type": "integer"
+                }
+            }
+        },
+        "model.OvertimeStatus": {
+            "type": "string",
+            "enum": [
+                "pending",
+                "approved",
+                "rejected"
+            ],
+            "x-enum-varnames": [
+                "OvertimeStatusPending",
+                "OvertimeStatusApproved",
+                "OvertimeStatusRejected"
+            ]
+        },
+        "model.RecentActivity": {
+            "type": "object",
+            "properties": {
+                "action": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                },
+                "user_id": {
+                    "type": "integer"
+                }
+            }
+        },
+        "model.RecentActivityResponse": {
+            "type": "object",
+            "properties": {
+                "action": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
                 }
             }
         },
@@ -1358,6 +2156,35 @@ const docTemplate = `{
                 }
             }
         },
+        "model.Role": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string",
+                    "example": "admin"
+                },
+                "updated_at": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.RoleResponse": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
         "model.Tenant": {
             "type": "object",
             "properties": {
@@ -1378,6 +2205,20 @@ const docTemplate = `{
                 },
                 "updatedAt": {
                     "type": "string"
+                }
+            }
+        },
+        "model.TenantResponse": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "tenant_settings": {
+                    "$ref": "#/definitions/model.TenantSetting"
                 }
             }
         },
@@ -1450,6 +2291,202 @@ const docTemplate = `{
                 "updated_at": {
                     "type": "string",
                     "example": "2026-04-07T13:21:24Z"
+                }
+            }
+        },
+        "model.User": {
+            "type": "object",
+            "required": [
+                "email",
+                "name"
+            ],
+            "properties": {
+                "address": {
+                    "type": "string",
+                    "example": "Jl. Sudirman No. 1"
+                },
+                "attendances": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.Attendance"
+                    }
+                },
+                "created_at": {
+                    "type": "string",
+                    "example": "2026-04-05T12:00:00Z"
+                },
+                "department": {
+                    "type": "string",
+                    "example": "IT"
+                },
+                "email": {
+                    "type": "string",
+                    "example": "budi@company.com"
+                },
+                "employee_id": {
+                    "type": "string",
+                    "example": "FT-001"
+                },
+                "id": {
+                    "type": "integer",
+                    "example": 1
+                },
+                "media_url": {
+                    "type": "string",
+                    "example": "https://cdn.example.com/profile/budi.jpg"
+                },
+                "name": {
+                    "type": "string",
+                    "maxLength": 100,
+                    "minLength": 3,
+                    "example": "Budi Santoso"
+                },
+                "phone_number": {
+                    "type": "string",
+                    "example": "08123456789"
+                },
+                "recent_activities": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.RecentActivity"
+                    }
+                },
+                "role": {
+                    "$ref": "#/definitions/model.Role"
+                },
+                "role_id": {
+                    "type": "integer",
+                    "example": 1
+                },
+                "tenant": {
+                    "$ref": "#/definitions/model.Tenant"
+                },
+                "tenant_id": {
+                    "type": "integer",
+                    "example": 1
+                },
+                "updated_at": {
+                    "type": "string",
+                    "example": "2026-04-05T12:30:00Z"
+                }
+            }
+        },
+        "model.UserChangeRequestResponse": {
+            "type": "object",
+            "properties": {
+                "address": {
+                    "type": "string"
+                },
+                "admin_notes": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "department": {
+                    "type": "string"
+                },
+                "email": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "phone_number": {
+                    "type": "string"
+                },
+                "status": {
+                    "$ref": "#/definitions/model.UserChangeRequestStatus"
+                },
+                "tenant_id": {
+                    "type": "integer"
+                },
+                "updated_at": {
+                    "type": "string"
+                },
+                "user": {
+                    "$ref": "#/definitions/model.UserResponse"
+                },
+                "user_id": {
+                    "type": "integer"
+                }
+            }
+        },
+        "model.UserChangeRequestStatus": {
+            "type": "string",
+            "enum": [
+                "pending",
+                "approved",
+                "rejected"
+            ],
+            "x-enum-varnames": [
+                "StatusPending",
+                "StatusApproved",
+                "StatusRejected"
+            ]
+        },
+        "model.UserResponse": {
+            "type": "object",
+            "properties": {
+                "address": {
+                    "type": "string",
+                    "example": "Jl. Sudirman No. 1"
+                },
+                "attendances": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.AttendanceResponse"
+                    }
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "department": {
+                    "type": "string",
+                    "example": "IT"
+                },
+                "email": {
+                    "type": "string",
+                    "example": "budi@company.com"
+                },
+                "employee_id": {
+                    "type": "string",
+                    "example": "FT-001"
+                },
+                "id": {
+                    "type": "integer",
+                    "example": 1
+                },
+                "media_url": {
+                    "type": "string",
+                    "example": "https://cdn.example.com/profile/budi.jpg"
+                },
+                "name": {
+                    "type": "string",
+                    "example": "Budi Santoso"
+                },
+                "phone_number": {
+                    "type": "string",
+                    "example": "08123456789"
+                },
+                "recent_activities": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.RecentActivityResponse"
+                    }
+                },
+                "role": {
+                    "$ref": "#/definitions/model.RoleResponse"
+                },
+                "tenant": {
+                    "$ref": "#/definitions/model.TenantResponse"
+                },
+                "tenant_id": {
+                    "type": "integer",
+                    "example": 1
                 }
             }
         },
