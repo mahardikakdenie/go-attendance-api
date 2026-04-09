@@ -49,6 +49,12 @@ func SetupRoutes(r *gin.Engine, db *gorm.DB) {
 	overtimeService := service.NewOvertimeService(overtimeRepo)
 	overtimeHandler := handler.NewOvertimeHandler(overtimeService)
 
+	leaveRepo := repository.NewLeaveRepository(db)
+	leaveService := service.NewLeaveService(leaveRepo)
+	leaveHandler := handler.NewLeaveHandler(leaveService)
+
+	activityHandler := handler.NewActivityHandler(userService)
+
 	if gin.Mode() != gin.ReleaseMode {
 		r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 	}
@@ -72,6 +78,7 @@ func SetupRoutes(r *gin.Engine, db *gorm.DB) {
 			attendance.POST("", attendanceHandler.RecordAttendance)
 			attendance.GET("", attendanceHandler.GetAllAttendance)
 			attendance.GET("/summary", attendanceHandler.GetAttendanceSummary)
+			attendance.GET("/today", attendanceHandler.GetTodayAttendance)
 		}
 
 		overtime := protected.Group("/overtime")
@@ -128,5 +135,21 @@ func SetupRoutes(r *gin.Engine, db *gorm.DB) {
 
 		protected.POST("/media/upload", mediaHandler.Upload)
 		protected.POST("/auth/logout", authHandler.Logout)
+
+		// Leave routes
+		leaves := api.Group("/leaves")
+		leaves.Use(middleware.SecureAuth(authService))
+		{
+			leaves.POST("/request", leaveHandler.RequestLeave)
+			leaves.GET("", leaveHandler.GetLeaveHistory)
+			leaves.GET("/balances", leaveHandler.GetLeaveBalances)
+		}
+
+		// Activity routes
+		activities := api.Group("/activities")
+		activities.Use(middleware.SecureAuth(authService))
+		{
+			activities.GET("/recent", activityHandler.GetRecentActivities)
+		}
 	}
 }

@@ -18,7 +18,40 @@ type AttendanceHandler interface {
 	RecordAttendance(c *gin.Context)
 	GetAllAttendance(c *gin.Context)
 	GetAttendanceSummary(c *gin.Context)
+	GetTodayAttendance(c *gin.Context)
 	HelloTest(c *gin.Context)
+}
+
+// @Summary Get Today Attendance
+// @Description Get today's attendance status for the logged-in user
+// @Tags Attendance
+// @Produce json
+// @Security BearerAuth
+// @Security CookieAuth
+// @Success 200 {object} utils.APIResponse{data=model.AttendanceResponse}
+// @Failure 401 {object} utils.APIResponse
+// @Router /api/v1/attendance/today [get]
+func (h *attendanceHandler) GetTodayAttendance(c *gin.Context) {
+	userIDVal, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, utils.BuildErrorResponse("Unauthorized", http.StatusUnauthorized, "error", nil))
+		return
+	}
+
+	userID := userIDVal.(uint)
+
+	res, err := h.service.GetTodayAttendance(c.Request.Context(), userID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, utils.BuildErrorResponse("Failed to fetch data", 500, "error", err.Error()))
+		return
+	}
+
+	if res == nil {
+		c.JSON(http.StatusOK, utils.BuildResponse("No attendance record for today", 200, "success", nil))
+		return
+	}
+
+	c.JSON(http.StatusOK, utils.BuildResponse("Success", 200, "success", res))
 }
 
 type attendanceHandler struct {

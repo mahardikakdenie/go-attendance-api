@@ -228,6 +228,98 @@ definitions:
       url:
         type: string
     type: object
+  model.LeaveBalance:
+    properties:
+      balance:
+        description: Remaining days
+        type: integer
+      created_at:
+        type: string
+      id:
+        type: integer
+      leave_type:
+        $ref: '#/definitions/model.LeaveType'
+      leave_type_id:
+        type: integer
+      updated_at:
+        type: string
+      user:
+        $ref: '#/definitions/model.User'
+      user_id:
+        type: integer
+      year:
+        type: integer
+    type: object
+  model.LeaveRequest:
+    properties:
+      end_date:
+        example: "2026-05-03"
+        type: string
+      leave_type_id:
+        type: integer
+      reason:
+        type: string
+      start_date:
+        example: "2026-05-01"
+        type: string
+    required:
+    - end_date
+    - leave_type_id
+    - reason
+    - start_date
+    type: object
+  model.LeaveResponse:
+    properties:
+      created_at:
+        type: string
+      end_date:
+        type: string
+      id:
+        type: integer
+      leave_type_id:
+        type: integer
+      leave_type_name:
+        type: string
+      reason:
+        type: string
+      start_date:
+        type: string
+      status:
+        $ref: '#/definitions/model.LeaveStatus'
+      total_days:
+        type: integer
+      user_id:
+        type: integer
+    type: object
+  model.LeaveStatus:
+    enum:
+    - pending
+    - approved
+    - rejected
+    type: string
+    x-enum-varnames:
+    - LeaveStatusPending
+    - LeaveStatusApproved
+    - LeaveStatusRejected
+  model.LeaveType:
+    properties:
+      code:
+        description: e.g., ANNUAL, SICK
+        type: string
+      created_at:
+        type: string
+      default_days:
+        type: integer
+      id:
+        type: integer
+      name:
+        description: e.g., Annual, Sick, Paternity
+        type: string
+      tenant_id:
+        type: integer
+      updated_at:
+        type: string
+    type: object
   model.LoginRequest:
     properties:
       email:
@@ -664,6 +756,29 @@ info:
   title: Go Attendance API
   version: 1.0.0
 paths:
+  /api/v1/activities/recent:
+    get:
+      description: Get combined recent activities for the logged-in user
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.APIResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/model.RecentActivityResponse'
+                  type: array
+              type: object
+      security:
+      - BearerAuth: []
+      - CookieAuth: []
+      summary: Get Recent Activities
+      tags:
+      - Activity
   /api/v1/attendance:
     get:
       description: Get attendance list with filter & pagination
@@ -780,6 +895,31 @@ paths:
       summary: Get Attendance Summary
       tags:
       - Attendance
+  /api/v1/attendance/today:
+    get:
+      description: Get today's attendance status for the logged-in user
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.AttendanceResponse'
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/utils.APIResponse'
+      security:
+      - BearerAuth: []
+      - CookieAuth: []
+      summary: Get Today Attendance
+      tags:
+      - Attendance
   /api/v1/auth/login:
     post:
       consumes:
@@ -892,6 +1032,95 @@ paths:
       summary: Send Test Email
       tags:
       - Email
+  /api/v1/leaves:
+    get:
+      description: Get leave history for the logged-in user
+      parameters:
+      - description: Limit
+        in: query
+        name: limit
+        type: integer
+      - description: Offset
+        in: query
+        name: offset
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.APIResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/model.LeaveResponse'
+                  type: array
+              type: object
+      security:
+      - BearerAuth: []
+      - CookieAuth: []
+      summary: Get Leave History
+      tags:
+      - Leaves
+  /api/v1/leaves/balances:
+    get:
+      description: Get current year leave balances for the logged-in user
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.APIResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/model.LeaveBalance'
+                  type: array
+              type: object
+      security:
+      - BearerAuth: []
+      - CookieAuth: []
+      summary: Get Leave Balances
+      tags:
+      - Leaves
+  /api/v1/leaves/request:
+    post:
+      consumes:
+      - application/json
+      description: Submit a new leave request
+      parameters:
+      - description: Leave Request Data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.LeaveRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.LeaveResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/utils.APIResponse'
+      security:
+      - BearerAuth: []
+      - CookieAuth: []
+      summary: Request Leave
+      tags:
+      - Leaves
   /api/v1/media/upload:
     post:
       consumes:

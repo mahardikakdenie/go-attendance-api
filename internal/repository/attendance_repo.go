@@ -14,7 +14,7 @@ import (
 type AttendanceRepository interface {
 	Save(ctx context.Context, attendance *model.Attendance) error
 	Update(ctx context.Context, attendance *model.Attendance) error
-	FindTodayByUser(ctx context.Context, userID uint) (*model.Attendance, error)
+	FindTodayByUser(ctx context.Context, userID uint, today time.Time) (*model.Attendance, error)
 	FindAll(ctx context.Context, filter model.AttendanceFilter, includes []string, limit, offset int) ([]model.Attendance, int64, error)
 	GetSummaryCounts(ctx context.Context, tenantID uint, startTime, endTime time.Time) (map[model.AttendanceStatus]int64, error)
 	GetOldestDataDate(ctx context.Context, tenantID uint) (*time.Time, error)
@@ -84,14 +84,15 @@ func (r *attendanceRepository) GetOldestDataDate(ctx context.Context, tenantID u
 	return &attendance.ClockInTime, nil
 }
 
-func (r *attendanceRepository) FindTodayByUser(ctx context.Context, userID uint) (*model.Attendance, error) {
+func (r *attendanceRepository) FindTodayByUser(ctx context.Context, userID uint, today time.Time) (*model.Attendance, error) {
 	var attendance model.Attendance
 
-	startOfDay := time.Now().Truncate(24 * time.Hour)
+	startOfDay := time.Date(today.Year(), today.Month(), today.Day(), 0, 0, 0, 0, today.Location())
 	endOfDay := startOfDay.Add(24 * time.Hour)
 
 	err := r.db.WithContext(ctx).
 		Where("user_id = ? AND clock_in_time >= ? AND clock_in_time < ?", userID, startOfDay, endOfDay).
+		Order("clock_in_time DESC").
 		First(&attendance).Error
 
 	if errors.Is(err, gorm.ErrRecordNotFound) {

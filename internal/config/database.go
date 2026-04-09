@@ -68,6 +68,9 @@ func InitDB() *gorm.DB {
 			&model.Attendance{},
 			&model.Token{},
 			&model.Media{},
+			&model.LeaveType{},
+			&model.LeaveBalance{},
+			&model.Leave{},
 		)
 
 		if err != nil {
