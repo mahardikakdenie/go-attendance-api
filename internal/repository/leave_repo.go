@@ -18,6 +18,7 @@ type LeaveRepository interface {
 
 	CreateLeave(ctx context.Context, l *model.Leave) error
 	GetLeavesByUser(ctx context.Context, userID uint, limit, offset int) ([]model.Leave, int64, error)
+	GetPendingCount(ctx context.Context, userID uint) (int64, error)
 }
 
 type leaveRepository struct {
@@ -26,6 +27,14 @@ type leaveRepository struct {
 
 func NewLeaveRepository(db *gorm.DB) LeaveRepository {
 	return &leaveRepository{db: db}
+}
+
+func (r *leaveRepository) GetPendingCount(ctx context.Context, userID uint) (int64, error) {
+	var count int64
+	err := r.db.WithContext(ctx).Model(&model.Leave{}).
+		Where("user_id = ? AND status = ?", userID, model.LeaveStatusPending).
+		Count(&count).Error
+	return count, err
 }
 
 func (r *leaveRepository) CreateLeaveType(ctx context.Context, lt *model.LeaveType) error {

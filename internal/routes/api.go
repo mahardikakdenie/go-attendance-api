@@ -15,11 +15,11 @@ import (
 func SetupRoutes(r *gin.Engine, db *gorm.DB) {
 
 	authRepo := repository.NewAuthRepository(db)
-	authService := service.NewAuthService(authRepo)
-	authHandler := handler.NewAuthHandler(authService)
-
 	roleRepo := repository.NewRoleRepository(db)
 	activityRepo := repository.NewRecentActivityRepository(db)
+
+	authService := service.NewAuthService(authRepo, activityRepo)
+	authHandler := handler.NewAuthHandler(authService)
 
 	userRepo := repository.NewUserRepository(db)
 	userService := service.NewUserService(userRepo, roleRepo, activityRepo)
@@ -38,7 +38,7 @@ func SetupRoutes(r *gin.Engine, db *gorm.DB) {
 	mediaHandler := handler.NewMediaHandler(mediaService)
 
 	attendanceRepo := repository.NewAttendanceRepository(db)
-	attendanceService := service.NewAttendanceService(attendanceRepo, userRepo, tenantSettingRepo, tenantRepo)
+	attendanceService := service.NewAttendanceService(attendanceRepo, userRepo, tenantSettingRepo, tenantRepo, activityRepo)
 	attendanceHandler := handler.NewAttendanceHandler(attendanceService)
 
 	ucrRepo := repository.NewUserChangeRequestRepository(db)
@@ -53,7 +53,10 @@ func SetupRoutes(r *gin.Engine, db *gorm.DB) {
 	leaveService := service.NewLeaveService(leaveRepo)
 	leaveHandler := handler.NewLeaveHandler(leaveService)
 
-	activityHandler := handler.NewActivityHandler(userService)
+	payrollService := service.NewPayrollService()
+	payrollHandler := handler.NewPayrollHandler(payrollService)
+
+	activityHandler := handler.NewActivityHandler(userService, leaveService, overtimeService)
 
 	if gin.Mode() != gin.ReleaseMode {
 		r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
@@ -73,10 +76,13 @@ func SetupRoutes(r *gin.Engine, db *gorm.DB) {
 	protected := api.Group("")
 	protected.Use(middleware.SecureAuth(authService))
 	{
+		protected.GET("/auth/sessions", authHandler.GetSessions)
+
 		attendance := protected.Group("/attendance")
 		{
 			attendance.POST("", attendanceHandler.RecordAttendance)
 			attendance.GET("", attendanceHandler.GetAllAttendance)
+			attendance.GET("/history", attendanceHandler.GetAttendanceHistory)
 			attendance.GET("/summary", attendanceHandler.GetAttendanceSummary)
 			attendance.GET("/today", attendanceHandler.GetTodayAttendance)
 		}
@@ -133,6 +139,13 @@ func SetupRoutes(r *gin.Engine, db *gorm.DB) {
 			}
 		}
 
+		protected.GET("/employees", userHandler.GetAllUsers)
+
+		payroll := protected.Group("/payroll")
+		{
+			payroll.POST("/calculate", payrollHandler.Calculate)
+		}
+
 		protected.POST("/media/upload", mediaHandler.Upload)
 		protected.POST("/auth/logout", authHandler.Logout)
 
@@ -150,6 +163,7 @@ func SetupRoutes(r *gin.Engine, db *gorm.DB) {
 		activities.Use(middleware.SecureAuth(authService))
 		{
 			activities.GET("/recent", activityHandler.GetRecentActivities)
+			activities.GET("/quick-info", activityHandler.GetQuickInfo)
 		}
 	}
 }

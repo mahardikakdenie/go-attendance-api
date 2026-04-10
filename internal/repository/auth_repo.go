@@ -16,6 +16,7 @@ type AuthRepository interface {
 	RevokeToken(token string) error
 	IsTokenRevoked(token string) (bool, error)
 	CountByTenantID(tenantID uint) (int64, error)
+	FindTokensByUserID(userID uint) ([]model.Token, error)
 }
 
 type authRepository struct {
@@ -26,6 +27,12 @@ func NewAuthRepository(db *gorm.DB) AuthRepository {
 	return &authRepository{
 		db: db,
 	}
+}
+
+func (r *authRepository) FindTokensByUserID(userID uint) ([]model.Token, error) {
+	var tokens []model.Token
+	err := r.db.Where("user_id = ?", userID).Order("created_at DESC").Find(&tokens).Error
+	return tokens, err
 }
 
 func (r *authRepository) Create(user *model.User) error {

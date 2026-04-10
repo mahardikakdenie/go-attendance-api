@@ -34,10 +34,11 @@ type AttendanceService interface {
 }
 
 type attendanceService struct {
-	repo        repository.AttendanceRepository
-	userRepo    repository.UserRepository
-	settingRepo repository.TenantSettingRepository
-	tenantRepo  repository.TenantRepository
+	repo         repository.AttendanceRepository
+	userRepo     repository.UserRepository
+	settingRepo  repository.TenantSettingRepository
+	tenantRepo   repository.TenantRepository
+	activityRepo repository.RecentActivityRepository
 }
 
 func NewAttendanceService(
@@ -45,12 +46,14 @@ func NewAttendanceService(
 	userRepo repository.UserRepository,
 	settingRepo repository.TenantSettingRepository,
 	tenantRepo repository.TenantRepository,
+	activityRepo repository.RecentActivityRepository,
 ) AttendanceService {
 	return &attendanceService{
-		repo:        repo,
-		userRepo:    userRepo,
-		settingRepo: settingRepo,
-		tenantRepo:  tenantRepo,
+		repo:         repo,
+		userRepo:     userRepo,
+		settingRepo:  settingRepo,
+		tenantRepo:   tenantRepo,
+		activityRepo: activityRepo,
 	}
 }
 
@@ -178,6 +181,14 @@ func (s *attendanceService) RecordAttendance(
 			return model.AttendanceResponse{}, err
 		}
 
+		// Record activity
+		_ = s.activityRepo.Create(ctx, &model.RecentActivity{
+			UserID: userID,
+			Title:  "Attendance Clock In",
+			Action: "ClockIn",
+			Status: "success",
+		})
+
 		// Preload user to ensure it's returned in the response
 		userData, _ := s.userRepo.FindByID(ctx, userID, []string{})
 		if userData != nil {
@@ -222,6 +233,14 @@ func (s *attendanceService) RecordAttendance(
 		if err := s.repo.Update(ctx, todayAttendance); err != nil {
 			return model.AttendanceResponse{}, err
 		}
+
+		// Record activity
+		_ = s.activityRepo.Create(ctx, &model.RecentActivity{
+			UserID: userID,
+			Title:  "Attendance Clock Out",
+			Action: "ClockOut",
+			Status: "success",
+		})
 
 		// Preload user to ensure it's returned in the response
 		userData, _ := s.userRepo.FindByID(ctx, userID, []string{})

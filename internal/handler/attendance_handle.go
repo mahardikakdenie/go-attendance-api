@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"math"
 	"net/http"
 	"strconv"
 	"strings"
@@ -17,6 +18,7 @@ import (
 type AttendanceHandler interface {
 	RecordAttendance(c *gin.Context)
 	GetAllAttendance(c *gin.Context)
+	GetAttendanceHistory(c *gin.Context)
 	GetAttendanceSummary(c *gin.Context)
 	GetTodayAttendance(c *gin.Context)
 	HelloTest(c *gin.Context)
@@ -28,7 +30,7 @@ type AttendanceHandler interface {
 // @Produce json
 // @Security BearerAuth
 // @Security CookieAuth
-// @Success 200 {object} utils.APIResponse{data=model.AttendanceResponse}
+// @Success 200 {object} modelDto.TodayAttendanceResponse
 // @Failure 401 {object} utils.APIResponse
 // @Router /api/v1/attendance/today [get]
 func (h *attendanceHandler) GetTodayAttendance(c *gin.Context) {
@@ -47,11 +49,45 @@ func (h *attendanceHandler) GetTodayAttendance(c *gin.Context) {
 	}
 
 	if res == nil {
-		c.JSON(http.StatusOK, utils.BuildResponse("No attendance record for today", 200, "success", nil))
+		c.JSON(http.StatusOK, gin.H{
+			"success": true,
+			"data":    nil,
+		})
 		return
 	}
 
-	c.JSON(http.StatusOK, utils.BuildResponse("Success", 200, "success", res))
+	// Transform to TodayAttendanceResponse
+	status := "On Time"
+	if res.Status == model.StatusLate {
+		status = "Late"
+	}
+
+	duration := "0h 0m"
+	clockOutStr := ""
+	if res.ClockOutTime != nil {
+		diff := res.ClockOutTime.Sub(res.ClockInTime)
+		hours := int(diff.Hours())
+		mins := int(diff.Minutes()) % 60
+		duration = strconv.Itoa(hours) + "h " + strconv.Itoa(mins) + "m"
+		clockOutStr = res.ClockOutTime.Format("03:04 PM")
+	} else {
+		// If still working, calculate duration from now
+		diff := time.Now().Sub(res.ClockInTime)
+		hours := int(diff.Hours())
+		mins := int(diff.Minutes()) % 60
+		duration = strconv.Itoa(hours) + "h " + strconv.Itoa(mins) + "m"
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"data": modelDto.TodayAttendanceResponse{
+			ClockInTime:  res.ClockInTime.Format("03:04 PM"),
+			ClockOutTime: clockOutStr,
+			Status:       status,
+			Duration:     duration,
+			Date:         res.ClockInTime.Format("2006-01-02"),
+		},
+	})
 }
 
 type attendanceHandler struct {
@@ -217,7 +253,125 @@ func (h *attendanceHandler) GetAllAttendance(c *gin.Context) {
 	c.JSON(http.StatusOK, response)
 }
 
+// @Summary Get Attendance History
+// @Description Get attendance history with specific format for dashboard
+// @Tags Attendance
+// @Produce json
+// @Param limit query int false "Limit"
+// @Param page query int false "Page"
+// @Param status query string false "Status filter"
+// @Security BearerAuth
+// @Security CookieAuth
+// @Success 200 {object} modelDto.AttendanceHistoryResponse
+// @Router /api/v1/attendance/history [get]
+func (h *attendanceHandler) GetAttendanceHistory(c *gin.Context) {
+	ctx := c.Request.Context()
+
+	// 1. Get User Info
+	userID := c.MustGet("user_id").(uint)
+	role := c.MustGet("role").(string)
+
+	// 2. Parse Query Params
+	limit := 10
+	if l := c.Query("limit"); l != "" {
+		if val, err := strconv.Atoi(l); err == nil {
+			limit = val
+		}
+	}
+
+	page := 1
+	if p := c.Query("page"); p != "" {
+		if val, err := strconv.Atoi(p); err == nil {
+			page = val
+		}
+	}
+
+	status := c.Query("status")
+
+	// 3. Prepare Filter
+	var filter model.AttendanceFilter
+	if status != "" {
+		filter.Status = model.AttendanceStatus(status)
+	}
+
+	// Logic: If not admin/hr, only show own records
+	isAdmin := role == "superadmin" || role == "admin" || role == "hr"
+	if !isAdmin {
+		filter.UserID = userID
+	}
+
+	offset := (page - 1) * limit
+
+	// 4. Fetch Data
+	data, total, err := h.service.GetAllData(ctx, filter, []string{"user"}, limit, offset)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "message": err.Error()})
+		return
+	}
+
+	// 5. Transform to History Items
+	items := make([]modelDto.AttendanceHistoryItem, 0)
+	for _, a := range data {
+		item := modelDto.AttendanceHistoryItem{
+			ID:   a.ID.String(),
+			Date: a.ClockInTime.Format("2006-01-02"),
+			ClockIn: a.ClockInTime.Format("03:04 PM"),
+			Status:  string(a.Status),
+			Location: "Main Office", // Default mock as requested
+			Overtime: "0h 0m",        // Default mock as requested
+		}
+
+		if a.ClockOutTime != nil {
+			item.ClockOut = a.ClockOutTime.Format("03:04 PM")
+			
+			// Simple overtime calculation: anything after 5:00 PM
+			fivePM := time.Date(a.ClockOutTime.Year(), a.ClockOutTime.Month(), a.ClockOutTime.Day(), 17, 0, 0, 0, a.ClockOutTime.Location())
+			if a.ClockOutTime.After(fivePM) {
+				diff := a.ClockOutTime.Sub(fivePM)
+				hours := int(diff.Hours())
+				mins := int(diff.Minutes()) % 60
+				item.Overtime = strconv.Itoa(hours) + "h " + strconv.Itoa(mins) + "m"
+			}
+		}
+
+		if a.User != nil {
+			item.Employee.ID = strconv.Itoa(int(a.User.ID))
+			item.Employee.Name = a.User.Name
+			item.Employee.Avatar = a.User.MediaUrl
+		}
+
+		// Map status to frontend friendly labels
+		switch a.Status {
+		case model.StatusWorking:
+			item.Status = "On Time"
+		case model.StatusDone:
+			item.Status = "On Time"
+		case model.StatusLate:
+			item.Status = "Late"
+		}
+
+		items = append(items, item)
+	}
+
+	// 6. Build Response
+	lastPage := int(math.Ceil(float64(total) / float64(limit)))
+	if lastPage == 0 {
+		lastPage = 1
+	}
+
+	c.JSON(http.StatusOK, modelDto.AttendanceHistoryResponse{
+		Success: true,
+		Data:    items,
+		Meta: modelDto.PaginationMeta{
+			Total:       total,
+			CurrentPage: page,
+			LastPage:    lastPage,
+		},
+	})
+}
+
 // @Summary Health Check
+
 // @Description Check API status
 // @Tags Health
 // @Produce json

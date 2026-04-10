@@ -14,6 +14,7 @@ type OvertimeService interface {
 	RejectRequest(ctx context.Context, id uint, adminID uint, req model.ApproveOvertimeRequest) (model.OvertimeResponse, error)
 	GetAll(ctx context.Context, filter model.OvertimeFilter) ([]model.OvertimeResponse, int64, error)
 	GetByID(ctx context.Context, id uint) (model.OvertimeResponse, error)
+	GetPendingCount(ctx context.Context, userID uint) (int, error)
 }
 
 type overtimeService struct {
@@ -24,6 +25,11 @@ func NewOvertimeService(repo repository.OvertimeRepository) OvertimeService {
 	return &overtimeService{
 		repo: repo,
 	}
+}
+
+func (s *overtimeService) GetPendingCount(ctx context.Context, userID uint) (int, error) {
+	count, err := s.repo.GetPendingCount(ctx, userID)
+	return int(count), err
 }
 
 func (s *overtimeService) CreateRequest(ctx context.Context, userID uint, tenantID uint, req model.CreateOvertimeRequest) (model.OvertimeResponse, error) {

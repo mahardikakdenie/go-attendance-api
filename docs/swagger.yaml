@@ -493,6 +493,23 @@ definitions:
       name:
         type: string
     type: object
+  model.SessionResponse:
+    properties:
+      device_info:
+        type: string
+      id:
+        type: integer
+      ip_address:
+        type: string
+      is_active:
+        type: boolean
+      is_current:
+        type: boolean
+      last_active:
+        type: string
+      user_agent:
+        type: string
+    type: object
   model.Tenant:
     properties:
       code:
@@ -709,6 +726,43 @@ definitions:
         example: 1
         type: integer
     type: object
+  modelDto.AttendanceHistoryItem:
+    properties:
+      clock_in:
+        type: string
+      clock_out:
+        type: string
+      date:
+        type: string
+      employee:
+        properties:
+          avatar:
+            type: string
+          id:
+            type: string
+          name:
+            type: string
+        type: object
+      id:
+        type: string
+      location:
+        type: string
+      overtime:
+        type: string
+      status:
+        type: string
+    type: object
+  modelDto.AttendanceHistoryResponse:
+    properties:
+      data:
+        items:
+          $ref: '#/definitions/modelDto.AttendanceHistoryItem'
+        type: array
+      meta:
+        $ref: '#/definitions/modelDto.PaginationMeta'
+      success:
+        type: boolean
+    type: object
   modelDto.AttendanceListResponse:
     properties:
       data: {}
@@ -723,6 +777,93 @@ definitions:
         type: integer
       total:
         type: integer
+    type: object
+  modelDto.PaginationMeta:
+    properties:
+      current_page:
+        type: integer
+      last_page:
+        type: integer
+      total:
+        type: integer
+    type: object
+  modelDto.QuickInfoResponse:
+    properties:
+      notifications_count:
+        type: integer
+      pending_leaves:
+        type: integer
+      pending_overtimes:
+        type: integer
+    type: object
+  modelDto.TodayAttendanceResponse:
+    properties:
+      clock_in_time:
+        type: string
+      clock_out_time:
+        type: string
+      date:
+        type: string
+      duration:
+        type: string
+      status:
+        type: string
+    type: object
+  service.PayrollRequest:
+    properties:
+      allowances:
+        type: number
+      attendanceDays:
+        type: integer
+      basicSalary:
+        type: number
+      overtimeHours:
+        type: number
+      ptkpStatus:
+        type: string
+      unpaidLeaveDays:
+        type: integer
+      workingDaysInMonth:
+        type: integer
+    type: object
+  service.PayrollResponse:
+    properties:
+      breakdown:
+        properties:
+          bpjs:
+            properties:
+              health:
+                properties:
+                  company:
+                    type: number
+                  employee:
+                    type: number
+                type: object
+              jht:
+                properties:
+                  company:
+                    type: number
+                  employee:
+                    type: number
+                type: object
+              jkk:
+                type: number
+              jkm:
+                type: number
+            type: object
+          grossIncome:
+            type: number
+          pph21Amount:
+            type: number
+          proratedBasic:
+            type: number
+          unpaidLeaveDeduction:
+            type: number
+        type: object
+      netSalary:
+        type: number
+      totalDeductions:
+        type: number
     type: object
   utils.APIResponse:
     properties:
@@ -756,6 +897,22 @@ info:
   title: Go Attendance API
   version: 1.0.0
 paths:
+  /api/v1/activities/quick-info:
+    get:
+      description: Get summary counters for pending leaves, overtimes, and notifications
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/modelDto.QuickInfoResponse'
+      security:
+      - BearerAuth: []
+      - CookieAuth: []
+      summary: Get Dashboard Quick Info
+      tags:
+      - Activity
   /api/v1/activities/recent:
     get:
       description: Get combined recent activities for the logged-in user
@@ -870,6 +1027,35 @@ paths:
       summary: Record Attendance
       tags:
       - Attendance
+  /api/v1/attendance/history:
+    get:
+      description: Get attendance history with specific format for dashboard
+      parameters:
+      - description: Limit
+        in: query
+        name: limit
+        type: integer
+      - description: Page
+        in: query
+        name: page
+        type: integer
+      - description: Status filter
+        in: query
+        name: status
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/modelDto.AttendanceHistoryResponse'
+      security:
+      - BearerAuth: []
+      - CookieAuth: []
+      summary: Get Attendance History
+      tags:
+      - Attendance
   /api/v1/attendance/summary:
     get:
       description: Get summary of today's attendance with comparison
@@ -904,12 +1090,7 @@ paths:
         "200":
           description: OK
           schema:
-            allOf:
-            - $ref: '#/definitions/utils.APIResponse'
-            - properties:
-                data:
-                  $ref: '#/definitions/model.AttendanceResponse'
-              type: object
+            $ref: '#/definitions/modelDto.TodayAttendanceResponse'
         "401":
           description: Unauthorized
           schema:
@@ -1000,6 +1181,29 @@ paths:
           schema:
             $ref: '#/definitions/utils.APIResponse'
       summary: Register new employee
+      tags:
+      - Auth
+  /api/v1/auth/sessions:
+    get:
+      description: Get all active login sessions for the current user
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.APIResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/model.SessionResponse'
+                  type: array
+              type: object
+      security:
+      - BearerAuth: []
+      - CookieAuth: []
+      summary: Get active sessions
       tags:
       - Auth
   /api/v1/email/test:
@@ -1356,13 +1560,41 @@ paths:
       summary: Reject Overtime Request
       tags:
       - Overtime
+  /api/v1/payroll/calculate:
+    post:
+      consumes:
+      - application/json
+      description: Dynamically calculate payroll based on TER PPh 21 & BPJS
+      parameters:
+      - description: Payroll Data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/service.PayrollRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/service.PayrollResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/utils.APIResponse'
+      security:
+      - BearerAuth: []
+      - CookieAuth: []
+      summary: Calculate Payroll
+      tags:
+      - Payroll
   /api/v1/ping:
     get:
       description: Check API status
       produces:
       - application/json
       responses: {}
-      summary: Health Check
       tags:
       - Health
   /api/v1/tenant-setting:

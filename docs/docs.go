@@ -24,6 +24,34 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
+        "/api/v1/activities/quick-info": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    },
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "description": "Get summary counters for pending leaves, overtimes, and notifications",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Activity"
+                ],
+                "summary": "Get Dashboard Quick Info",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/modelDto.QuickInfoResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/activities/recent": {
             "get": {
                 "security": [
@@ -221,6 +249,54 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/attendance/history": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    },
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "description": "Get attendance history with specific format for dashboard",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Attendance"
+                ],
+                "summary": "Get Attendance History",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Limit",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Page",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Status filter",
+                        "name": "status",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/modelDto.AttendanceHistoryResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/attendance/summary": {
             "get": {
                 "security": [
@@ -289,19 +365,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/utils.APIResponse"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/model.AttendanceResponse"
-                                        }
-                                    }
-                                }
-                            ]
+                            "$ref": "#/definitions/modelDto.TodayAttendanceResponse"
                         }
                     },
                     "401": {
@@ -446,6 +510,49 @@ const docTemplate = `{
                         "description": "Bad Request",
                         "schema": {
                             "$ref": "#/definitions/utils.APIResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/auth/sessions": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    },
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "description": "Get all active login sessions for the current user",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Get active sessions",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/utils.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/model.SessionResponse"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
                         }
                     }
                 }
@@ -1062,6 +1169,54 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/payroll/calculate": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    },
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "description": "Dynamically calculate payroll based on TER PPh 21 \u0026 BPJS",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Payroll"
+                ],
+                "summary": "Calculate Payroll",
+                "parameters": [
+                    {
+                        "description": "Payroll Data",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/service.PayrollRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/service.PayrollResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/utils.APIResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/ping": {
             "get": {
                 "description": "Check API status",
@@ -1071,7 +1226,6 @@ const docTemplate = `{
                 "tags": [
                     "Health"
                 ],
-                "summary": "Health Check",
                 "responses": {}
             }
         },
@@ -2688,6 +2842,32 @@ const docTemplate = `{
                 }
             }
         },
+        "model.SessionResponse": {
+            "type": "object",
+            "properties": {
+                "device_info": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "ip_address": {
+                    "type": "string"
+                },
+                "is_active": {
+                    "type": "boolean"
+                },
+                "is_current": {
+                    "type": "boolean"
+                },
+                "last_active": {
+                    "type": "string"
+                },
+                "user_agent": {
+                    "type": "string"
+                }
+            }
+        },
         "model.Tenant": {
             "type": "object",
             "properties": {
@@ -2993,6 +3173,63 @@ const docTemplate = `{
                 }
             }
         },
+        "modelDto.AttendanceHistoryItem": {
+            "type": "object",
+            "properties": {
+                "clock_in": {
+                    "type": "string"
+                },
+                "clock_out": {
+                    "type": "string"
+                },
+                "date": {
+                    "type": "string"
+                },
+                "employee": {
+                    "type": "object",
+                    "properties": {
+                        "avatar": {
+                            "type": "string"
+                        },
+                        "id": {
+                            "type": "string"
+                        },
+                        "name": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "id": {
+                    "type": "string"
+                },
+                "location": {
+                    "type": "string"
+                },
+                "overtime": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                }
+            }
+        },
+        "modelDto.AttendanceHistoryResponse": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/modelDto.AttendanceHistoryItem"
+                    }
+                },
+                "meta": {
+                    "$ref": "#/definitions/modelDto.PaginationMeta"
+                },
+                "success": {
+                    "type": "boolean"
+                }
+            }
+        },
         "modelDto.AttendanceListResponse": {
             "type": "object",
             "properties": {
@@ -3013,6 +3250,141 @@ const docTemplate = `{
                 },
                 "total": {
                     "type": "integer"
+                }
+            }
+        },
+        "modelDto.PaginationMeta": {
+            "type": "object",
+            "properties": {
+                "current_page": {
+                    "type": "integer"
+                },
+                "last_page": {
+                    "type": "integer"
+                },
+                "total": {
+                    "type": "integer"
+                }
+            }
+        },
+        "modelDto.QuickInfoResponse": {
+            "type": "object",
+            "properties": {
+                "notifications_count": {
+                    "type": "integer"
+                },
+                "pending_leaves": {
+                    "type": "integer"
+                },
+                "pending_overtimes": {
+                    "type": "integer"
+                }
+            }
+        },
+        "modelDto.TodayAttendanceResponse": {
+            "type": "object",
+            "properties": {
+                "clock_in_time": {
+                    "type": "string"
+                },
+                "clock_out_time": {
+                    "type": "string"
+                },
+                "date": {
+                    "type": "string"
+                },
+                "duration": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                }
+            }
+        },
+        "service.PayrollRequest": {
+            "type": "object",
+            "properties": {
+                "allowances": {
+                    "type": "number"
+                },
+                "attendanceDays": {
+                    "type": "integer"
+                },
+                "basicSalary": {
+                    "type": "number"
+                },
+                "overtimeHours": {
+                    "type": "number"
+                },
+                "ptkpStatus": {
+                    "type": "string"
+                },
+                "unpaidLeaveDays": {
+                    "type": "integer"
+                },
+                "workingDaysInMonth": {
+                    "type": "integer"
+                }
+            }
+        },
+        "service.PayrollResponse": {
+            "type": "object",
+            "properties": {
+                "breakdown": {
+                    "type": "object",
+                    "properties": {
+                        "bpjs": {
+                            "type": "object",
+                            "properties": {
+                                "health": {
+                                    "type": "object",
+                                    "properties": {
+                                        "company": {
+                                            "type": "number"
+                                        },
+                                        "employee": {
+                                            "type": "number"
+                                        }
+                                    }
+                                },
+                                "jht": {
+                                    "type": "object",
+                                    "properties": {
+                                        "company": {
+                                            "type": "number"
+                                        },
+                                        "employee": {
+                                            "type": "number"
+                                        }
+                                    }
+                                },
+                                "jkk": {
+                                    "type": "number"
+                                },
+                                "jkm": {
+                                    "type": "number"
+                                }
+                            }
+                        },
+                        "grossIncome": {
+                            "type": "number"
+                        },
+                        "pph21Amount": {
+                            "type": "number"
+                        },
+                        "proratedBasic": {
+                            "type": "number"
+                        },
+                        "unpaidLeaveDeduction": {
+                            "type": "number"
+                        }
+                    }
+                },
+                "netSalary": {
+                    "type": "number"
+                },
+                "totalDeductions": {
+                    "type": "number"
                 }
             }
         },

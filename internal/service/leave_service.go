@@ -12,6 +12,7 @@ type LeaveService interface {
 	RequestLeave(ctx context.Context, userID uint, tenantID uint, req model.LeaveRequest) (model.LeaveResponse, error)
 	GetLeaveBalances(ctx context.Context, userID uint) ([]model.LeaveBalance, error)
 	GetLeaveHistory(ctx context.Context, userID uint, limit, offset int) ([]model.LeaveResponse, int64, error)
+	GetPendingCount(ctx context.Context, userID uint) (int, error)
 }
 
 type leaveService struct {
@@ -20,6 +21,11 @@ type leaveService struct {
 
 func NewLeaveService(repo repository.LeaveRepository) LeaveService {
 	return &leaveService{repo: repo}
+}
+
+func (s *leaveService) GetPendingCount(ctx context.Context, userID uint) (int, error) {
+	count, err := s.repo.GetPendingCount(ctx, userID)
+	return int(count), err
 }
 
 func (s *leaveService) RequestLeave(ctx context.Context, userID uint, tenantID uint, req model.LeaveRequest) (model.LeaveResponse, error) {

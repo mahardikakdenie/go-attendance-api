@@ -16,18 +16,21 @@ import (
 
 type AuthService interface {
 	Register(req model.RegisterRequest) (model.User, error)
-	Login(req model.LoginRequest) (string, model.UserResponse, error)
+	Login(req model.LoginRequest, ip, ua, device string) (string, model.UserResponse, error)
 	Logout(token string) error
 	GetMe(token string) (model.UserResponse, error)
+	GetSessions(userID uint, currentToken string) ([]model.SessionResponse, error)
 }
 
 type authService struct {
-	repo repository.AuthRepository
+	repo         repository.AuthRepository
+	activityRepo repository.RecentActivityRepository
 }
 
-func NewAuthService(repo repository.AuthRepository) AuthService {
+func NewAuthService(repo repository.AuthRepository, activityRepo repository.RecentActivityRepository) AuthService {
 	return &authService{
-		repo: repo,
+		repo:         repo,
+		activityRepo: activityRepo,
 	}
 }
 
@@ -64,10 +67,18 @@ func (s *authService) Register(req model.RegisterRequest) (model.User, error) {
 		return model.User{}, errors.New("failed to create user, email might already exist")
 	}
 
+	// Record registration activity
+	_ = s.activityRepo.Create(config.Ctx, &model.RecentActivity{
+		UserID: user.ID,
+		Title:  "User Registration",
+		Action: "Register",
+		Status: "success",
+	})
+
 	return user, nil
 }
 
-func (s *authService) Login(req model.LoginRequest) (string, model.UserResponse, error) {
+func (s *authService) Login(req model.LoginRequest, ip, ua, device string) (string, model.UserResponse, error) {
 	user, err := s.repo.FindByEmail(req.Email)
 	if err != nil {
 		return "", model.UserResponse{}, errors.New("invalid email or password")
@@ -105,13 +116,24 @@ func (s *authService) Login(req model.LoginRequest) (string, model.UserResponse,
 	}
 
 	err = s.repo.SaveToken(&model.Token{
-		UserID:    user.ID,
-		Token:     tokenString,
-		IsRevoked: false,
+		UserID:     user.ID,
+		Token:      tokenString,
+		IPAddress:  ip,
+		UserAgent:  ua,
+		DeviceInfo: device,
+		IsRevoked:  false,
 	})
 	if err != nil {
 		return "", model.UserResponse{}, errors.New("failed to store token")
 	}
+
+	// Record login activity
+	_ = s.activityRepo.Create(config.Ctx, &model.RecentActivity{
+		UserID: user.ID,
+		Title:  "User Login",
+		Action: "Login",
+		Status: "success",
+	})
 
 	userResponse := model.UserResponse{
 		ID:       user.ID,
@@ -130,10 +152,35 @@ func (s *authService) Login(req model.LoginRequest) (string, model.UserResponse,
 	return tokenString, userResponse, nil
 }
 
+func (s *authService) GetSessions(userID uint, currentToken string) ([]model.SessionResponse, error) {
+	tokens, err := s.repo.FindTokensByUserID(userID)
+	if err != nil {
+		return nil, err
+	}
+
+	var sessions []model.SessionResponse
+	for _, t := range tokens {
+		sessions = append(sessions, model.SessionResponse{
+			ID:         t.ID,
+			IPAddress:  t.IPAddress,
+			UserAgent:  t.UserAgent,
+			DeviceInfo: t.DeviceInfo,
+			IsActive:   !t.IsRevoked,
+			IsCurrent:  t.Token == currentToken,
+			LastActive: t.CreatedAt,
+		})
+	}
+
+	return sessions, nil
+}
+
 func (s *authService) Logout(token string) error {
 	if token == "" {
 		return nil
 	}
+
+	// Get user ID before revoking
+	me, err := s.GetMe(token)
 
 	// 1. Database revocation
 	_ = s.repo.RevokeToken(token)
@@ -142,6 +189,16 @@ func (s *authService) Logout(token string) error {
 	// We set expiration to 24h to match token max age
 	blacklistKey := fmt.Sprintf("blacklist:%s", token)
 	_ = config.NewRedis().Set(config.Ctx, blacklistKey, "1", 24*time.Hour).Err()
+
+	// Record logout activity if user was found
+	if err == nil {
+		_ = s.activityRepo.Create(config.Ctx, &model.RecentActivity{
+			UserID: me.ID,
+			Title:  "User Logout",
+			Action: "Logout",
+			Status: "success",
+		})
+	}
 
 	return nil
 }

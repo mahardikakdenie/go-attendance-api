@@ -12,6 +12,7 @@ type OvertimeRepository interface {
 	Update(ctx context.Context, overtime *model.Overtime) error
 	FindByID(ctx context.Context, id uint) (*model.Overtime, error)
 	FindAll(ctx context.Context, filter model.OvertimeFilter) ([]model.Overtime, int64, error)
+	GetPendingCount(ctx context.Context, userID uint) (int64, error)
 }
 
 type overtimeRepository struct {
@@ -22,6 +23,14 @@ func NewOvertimeRepository(db *gorm.DB) OvertimeRepository {
 	return &overtimeRepository{
 		db: db,
 	}
+}
+
+func (r *overtimeRepository) GetPendingCount(ctx context.Context, userID uint) (int64, error) {
+	var count int64
+	err := r.db.WithContext(ctx).Model(&model.Overtime{}).
+		Where("user_id = ? AND status = ?", userID, model.OvertimeStatusPending).
+		Count(&count).Error
+	return count, err
 }
 
 func (r *overtimeRepository) Save(ctx context.Context, overtime *model.Overtime) error {

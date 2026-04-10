@@ -14,6 +14,7 @@ type AuthHandler interface {
 	Register(c *gin.Context)
 	Login(c *gin.Context)
 	Logout(c *gin.Context)
+	GetSessions(c *gin.Context)
 }
 
 type authHandler struct {
@@ -66,7 +67,10 @@ func (h *authHandler) Register(c *gin.Context) {
 // @Failure 401 {object} utils.APIResponse
 // @Router /api/v1/auth/login [post]
 func (h *authHandler) Login(c *gin.Context) {
-	var req model.LoginRequest
+	var req struct {
+		model.LoginRequest
+		DeviceInfo string `json:"device_info"`
+	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
 		response := utils.BuildErrorResponse("Invalid request", http.StatusBadRequest, "error", err.Error())
@@ -74,7 +78,10 @@ func (h *authHandler) Login(c *gin.Context) {
 		return
 	}
 
-	token, user, err := h.service.Login(req)
+	ip := c.ClientIP()
+	ua := c.Request.UserAgent()
+
+	token, user, err := h.service.Login(req.LoginRequest, ip, ua, req.DeviceInfo)
 	if err != nil {
 		response := utils.BuildErrorResponse("Login failed", http.StatusUnauthorized, "error", err.Error())
 		c.JSON(http.StatusUnauthorized, response)
@@ -85,9 +92,9 @@ func (h *authHandler) Login(c *gin.Context) {
 		Name:     "access_token",
 		Value:    token,
 		Path:     "/",
-		HttpOnly: false,
-		Secure:   false,
-		SameSite: http.SameSiteLaxMode,
+		HttpOnly: true,
+		Secure:   true, // Requirement: Secure
+		SameSite: http.SameSiteStrictMode,
 		MaxAge:   86400,
 	})
 
@@ -113,11 +120,32 @@ func (h *authHandler) Logout(c *gin.Context) {
 		Value:    "",
 		Path:     "/",
 		HttpOnly: true,
-		Secure:   false,
-		SameSite: http.SameSiteLaxMode,
+		Secure:   true,
+		SameSite: http.SameSiteStrictMode,
 		MaxAge:   -1,
 	})
 
 	response := utils.BuildResponse("Logout successful", http.StatusOK, "success", nil)
 	c.JSON(http.StatusOK, response)
+}
+
+// @Summary Get active sessions
+// @Description Get all active login sessions for the current user
+// @Tags Auth
+// @Produce json
+// @Security BearerAuth
+// @Security CookieAuth
+// @Success 200 {object} utils.APIResponse{data=[]model.SessionResponse}
+// @Router /api/v1/auth/sessions [get]
+func (h *authHandler) GetSessions(c *gin.Context) {
+	userID := c.MustGet("user_id").(uint)
+	token, _ := c.Cookie("access_token")
+
+	sessions, err := h.service.GetSessions(userID, token)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, utils.BuildErrorResponse("Failed to fetch sessions", 500, "error", err.Error()))
+		return
+	}
+
+	c.JSON(http.StatusOK, utils.BuildResponse("Sessions fetched successfully", 200, "success", sessions))
 }
