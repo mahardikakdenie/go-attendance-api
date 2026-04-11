@@ -390,12 +390,16 @@ func (s *attendanceService) GetSummary(ctx context.Context, tenantID uint) (mode
 		}
 	}
 
+	var todayTotal int64
+	for _, count := range todayCounts {
+		todayTotal += count
+	}
+
 	var compTotal int64
 	for _, count := range comparisonCounts {
 		compTotal += count
 	}
 
-	todayTotal := todayCounts[model.StatusWorking] + todayCounts[model.StatusDone] + todayCounts[model.StatusLate]
 	todayOntime := todayCounts[model.StatusWorking] + todayCounts[model.StatusDone]
 	todayLate := todayCounts[model.StatusLate]
 
