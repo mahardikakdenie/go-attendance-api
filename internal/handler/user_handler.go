@@ -112,6 +112,8 @@ func (h *userHandler) GetAllUsers(c *gin.Context) {
 		}
 	}
 
+	filter.RequesterID = c.MustGet("user_id").(uint)
+
 	includes := parseIncludeParams(c)
 
 	data, total, err := h.service.GetAllUsers(ctx, filter, includes)
@@ -204,7 +206,7 @@ func (h *userHandler) GetMe(c *gin.Context) {
 	includes := parseIncludeParams(c)
 
 	// Always include required relations for GetMe as requested for efficiency
-	requiredIncludes := []string{"tenant", "tenant.tenant_settings", "attendances", "role", "recent_activities"}
+	requiredIncludes := []string{"tenant", "tenant.tenant_settings", "attendances", "role", "recent_activities", "role.permissions"}
 	for _, inc := range requiredIncludes {
 		if !contains(includes, inc) {
 			includes = append(includes, inc)

@@ -136,17 +136,33 @@ func (s *authService) Login(req model.LoginRequest, ip, ua, device string) (stri
 	})
 
 	userResponse := model.UserResponse{
-		ID:       user.ID,
-		Name:     user.Name,
-		Email:    user.Email,
-		TenantID: user.TenantID,
+		ID:          user.ID,
+		Name:        user.Name,
+		Email:       user.Email,
+		TenantID:    user.TenantID,
+		EmployeeID:  user.EmployeeID,
+		Department:  user.Department,
+		MediaUrl:    user.MediaUrl,
+		Address:     user.Address,
+		PhoneNumber: user.PhoneNumber,
+		CreatedAt:   user.CreatedAt,
 	}
 
 	if user.Role != nil {
 		userResponse.Role = &model.RoleResponse{
-			ID:   user.Role.ID,
-			Name: user.Role.Name,
+			ID:          user.Role.ID,
+			Name:        user.Role.Name,
+			Description: user.Role.Description,
+			BaseRole:    user.Role.BaseRole,
+			IsSystem:    user.Role.IsSystem,
 		}
+		
+		permissions := make([]string, len(user.Role.Permissions))
+		for i, p := range user.Role.Permissions {
+			permissions[i] = p.ID
+		}
+		userResponse.Permissions = permissions
+		userResponse.IsOwner = user.Role.BaseRole == model.BaseRoleAdmin
 	}
 
 	return tokenString, userResponse, nil
@@ -250,18 +266,34 @@ func (s *authService) GetMe(token string) (model.UserResponse, error) {
 	}
 
 	userResponse := model.UserResponse{
-		ID:       user.ID,
-		Name:     user.Name,
-		Email:    user.Email,
-		TenantID: user.TenantID,
-		Tenant:   tenantResponse,
+		ID:          user.ID,
+		Name:        user.Name,
+		Email:       user.Email,
+		TenantID:    user.TenantID,
+		Tenant:      tenantResponse,
+		EmployeeID:  user.EmployeeID,
+		Department:  user.Department,
+		MediaUrl:    user.MediaUrl,
+		Address:     user.Address,
+		PhoneNumber: user.PhoneNumber,
+		CreatedAt:   user.CreatedAt,
 	}
 
 	if user.Role != nil {
 		userResponse.Role = &model.RoleResponse{
-			ID:   user.Role.ID,
-			Name: user.Role.Name,
+			ID:          user.Role.ID,
+			Name:        user.Role.Name,
+			Description: user.Role.Description,
+			BaseRole:    user.Role.BaseRole,
+			IsSystem:    user.Role.IsSystem,
 		}
+
+		permissions := make([]string, len(user.Role.Permissions))
+		for i, p := range user.Role.Permissions {
+			permissions[i] = p.ID
+		}
+		userResponse.Permissions = permissions
+		userResponse.IsOwner = user.Role.BaseRole == model.BaseRoleAdmin
 	}
 
 	return userResponse, nil

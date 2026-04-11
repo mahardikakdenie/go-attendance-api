@@ -44,6 +44,8 @@ var userPreloadMap = map[string]string{
 	"attendances":             "Attendances",
 	"attendances.user":        "Attendances.User",
 	"role":                    "Role",
+	"role.permissions":        "Role.Permissions",
+	"position":                "Position",
 	"recent_activities":       "RecentActivities",
 	"manager":                 "Manager",
 	"delegate":                "Delegate",
@@ -90,12 +92,16 @@ func (r *userRepository) FindAll(
 		query = query.Where("role_id = ?", filter.RoleID)
 	}
 
+	if len(filter.AllowedRoleIDs) > 0 {
+		query = query.Where("role_id IN ?", filter.AllowedRoleIDs)
+	}
+
 	if filter.TenantID != 0 {
-		query = query.Where("tenant_id = ?", filter.TenantID)
+		query = query.Where("users.tenant_id = ?", filter.TenantID)
 	}
 
 	if filter.EmployeeID != "" {
-		query = query.Where("employee_id ILIKE ?", "%"+filter.EmployeeID+"%")
+		query = query.Where("users.employee_id ILIKE ?", "%"+filter.EmployeeID+"%")
 	}
 
 	if err := query.Count(&total).Error; err != nil {

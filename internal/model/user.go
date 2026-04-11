@@ -37,6 +37,8 @@ type User struct {
 	DelegateID *uint `gorm:"index" json:"delegate_id" example:"2"`
 	Delegate   *User `gorm:"foreignKey:DelegateID" json:"delegate,omitempty"`
 
+	BaseSalary float64 `gorm:"type:decimal(15,2);default:0" json:"base_salary"`
+
 	Attendances      []Attendance     `gorm:"foreignKey:UserID" json:"attendances,omitempty"`
 	RecentActivities []RecentActivity `gorm:"foreignKey:UserID" json:"recent_activities,omitempty"`
 
@@ -47,11 +49,13 @@ type User struct {
 }
 
 type UserFilter struct {
-	Name       string
-	Email      string
-	RoleID     uint
-	TenantID   uint
-	EmployeeID string
+	RequesterID    uint
+	Name           string
+	Email          string
+	RoleID         uint
+	AllowedRoleIDs []uint
+	TenantID       uint
+	EmployeeID     string
 
 	OrderBy string
 	Sort    string
@@ -89,6 +93,9 @@ type UserResponse struct {
 	ManagerID   *uint         `json:"manager_id"`
 	DelegateID  *uint         `json:"delegate_id"`
 	CreatedAt   time.Time     `json:"created_at"`
+
+	Permissions []string `json:"permissions,omitempty"`
+	IsOwner     bool     `json:"is_owner"`
 
 	Tenant           *TenantResponse          `json:"tenant,omitempty"`
 	Attendances      []AttendanceResponse     `json:"attendances,omitempty"`

@@ -42,60 +42,79 @@ func SeedUsers(db *gorm.DB) {
 	db.Where("name = ?", "hr").First(&hrRole)
 	db.Where("name = ?", "employee").First(&employeeRole)
 
+	// Positions
+	var ceoPos, managerPos, staffPos model.Position
+	db.Where("name = ? AND tenant_id = ?", "CEO", friendshipTenant.ID).First(&ceoPos)
+	db.Where("name = ? AND tenant_id = ?", "Manager", friendshipTenant.ID).First(&managerPos)
+	db.Where("name = ? AND tenant_id = ?", "Staff", friendshipTenant.ID).First(&staffPos)
+
 	mediaUrl := "http://i.ibb.co.com/p6119B1C/attendance-1775556680532.png"
 
-	users := []model.User{
-		{
-			Name:        "Super Admin",
-			Email:       "superadmin@yopmail.com",
-			Password:    string(hashedPassword),
-			TenantID:    systemTenant.ID,
-			RoleID:      superAdminRole.ID,
-			EmployeeID:  "SA-001",
-			Department:  "SaaS Owner",
-			Address:     "System HQ",
-			PhoneNumber: "0000000000",
-		},
-		{
-			Name:        "Admin PT Friendship",
-			Email:       "admin@friendship.com",
-			Password:    string(hashedPassword),
-			TenantID:    friendshipTenant.ID,
-			RoleID:      adminRole.ID,
-			EmployeeID:  "ADM-001",
-			Department:  "Owner",
-			Address:     "Friendship Office",
-			PhoneNumber: "0811111111",
-		},
-		{
-			Name:        "HR Manager",
-			Email:       "hr@friendship.com",
-			Password:    string(hashedPassword),
-			TenantID:    friendshipTenant.ID,
-			RoleID:      hrRole.ID,
-			EmployeeID:  "HR-001",
-			Department:  "HRD",
-			Address:     "Friendship Office",
-			PhoneNumber: "0822222222",
-			MediaUrl:    mediaUrl,
-		},
-		{
-			Name:        "Employee User",
-			Email:       "employee@friendship.com",
-			Password:    string(hashedPassword),
-			TenantID:    friendshipTenant.ID,
-			RoleID:      employeeRole.ID,
-			EmployeeID:  "EMP-001",
-			Department:  "Operations",
-			Address:     "Friendship Office",
-			PhoneNumber: "0833333333",
-			MediaUrl:    mediaUrl,
-		},
+	// 1. Super Admin
+	sa := model.User{
+		Name:        "Super Admin",
+		Email:       "superadmin@yopmail.com",
+		Password:    string(hashedPassword),
+		TenantID:    systemTenant.ID,
+		RoleID:      superAdminRole.ID,
+		EmployeeID:  "SA-001",
+		Department:  "SaaS Owner",
+		Address:     "System HQ",
+		PhoneNumber: "0000000000",
 	}
+	db.Create(&sa)
 
-	if err := db.Create(&users).Error; err != nil {
-		log.Fatalf("Gagal menjalankan seeder user: %v", err)
+	// 2. Admin Tenant (CEO)
+	admin := model.User{
+		Name:        "Admin PT Friendship",
+		Email:       "admin@friendship.com",
+		Password:    string(hashedPassword),
+		TenantID:    friendshipTenant.ID,
+		RoleID:      adminRole.ID,
+		PositionID:  &ceoPos.ID,
+		EmployeeID:  "ADM-001",
+		Department:  "Owner",
+		Address:     "Friendship Office",
+		PhoneNumber: "0811111111",
+		BaseSalary:  50000000,
 	}
+	db.Create(&admin)
 
-	log.Println("Seeder: Berhasil menambahkan SuperAdmin, Admin, HR, dan Employee")
+	// 3. HR Manager (Reports to Admin)
+	hr := model.User{
+		Name:        "HR Manager",
+		Email:       "hr@friendship.com",
+		Password:    string(hashedPassword),
+		TenantID:    friendshipTenant.ID,
+		RoleID:      hrRole.ID,
+		PositionID:  &managerPos.ID,
+		ManagerID:   &admin.ID,
+		EmployeeID:  "HR-001",
+		Department:  "HRD",
+		Address:     "Friendship Office",
+		PhoneNumber: "0822222222",
+		MediaUrl:    mediaUrl,
+		BaseSalary:  15000000,
+	}
+	db.Create(&hr)
+
+	// 4. Employee User (Reports to HR)
+	emp := model.User{
+		Name:        "Employee User",
+		Email:       "employee@friendship.com",
+		Password:    string(hashedPassword),
+		TenantID:    friendshipTenant.ID,
+		RoleID:      employeeRole.ID,
+		PositionID:  &staffPos.ID,
+		ManagerID:   &hr.ID,
+		EmployeeID:  "EMP-001",
+		Department:  "Operations",
+		Address:     "Friendship Office",
+		PhoneNumber: "0833333333",
+		MediaUrl:    mediaUrl,
+		BaseSalary:  8000000,
+	}
+	db.Create(&emp)
+
+	log.Println("Seeder: Users with Hierarchy added")
 }
