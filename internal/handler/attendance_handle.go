@@ -114,6 +114,20 @@ func (h *attendanceHandler) GetAttendanceSummary(c *gin.Context) {
 
 	var filter model.AttendanceFilter
 
+	if userIDStr := c.Query("user_id"); userIDStr != "" {
+		if userID, err := strconv.Atoi(userIDStr); err == nil {
+			filter.UserID = uint(userID)
+		}
+	}
+
+	if status := c.Query("status"); status != "" {
+		filter.Status = model.AttendanceStatus(status)
+	}
+
+	if search := c.Query("search"); search != "" {
+		filter.Search = search
+	}
+
 	if dateFrom := c.Query("date_from"); dateFrom != "" {
 		if t, err := time.Parse("2006-01-02", dateFrom); err == nil {
 			filter.DateFrom = &t

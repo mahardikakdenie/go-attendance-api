@@ -16,7 +16,7 @@ type AttendanceRepository interface {
 	Update(ctx context.Context, attendance *model.Attendance) error
 	FindTodayByUser(ctx context.Context, userID uint, today time.Time) (*model.Attendance, error)
 	FindAll(ctx context.Context, filter model.AttendanceFilter, includes []string, limit, offset int) ([]model.Attendance, int64, error)
-	GetSummaryCounts(ctx context.Context, tenantID uint, startTime, endTime time.Time) (map[model.AttendanceStatus]int64, error)
+	GetSummaryCounts(ctx context.Context, filter model.AttendanceFilter) (map[model.AttendanceStatus]int64, error)
 	GetOldestDataDate(ctx context.Context, tenantID uint) (*time.Time, error)
 }
 
@@ -38,7 +38,7 @@ func (r *attendanceRepository) Update(ctx context.Context, attendance *model.Att
 	return r.db.WithContext(ctx).Save(attendance).Error
 }
 
-func (r *attendanceRepository) GetSummaryCounts(ctx context.Context, tenantID uint, startTime, endTime time.Time) (map[model.AttendanceStatus]int64, error) {
+func (r *attendanceRepository) GetSummaryCounts(ctx context.Context, filter model.AttendanceFilter) (map[model.AttendanceStatus]int64, error) {
 	var results []struct {
 		Status model.AttendanceStatus
 		Count  int64
@@ -47,15 +47,35 @@ func (r *attendanceRepository) GetSummaryCounts(ctx context.Context, tenantID ui
 	query := r.db.WithContext(ctx).Model(&model.Attendance{}).
 		Select("status, count(*) as count")
 
-	if !startTime.IsZero() {
-		query = query.Where("clock_in_time >= ?", startTime)
-	}
-	if !endTime.IsZero() {
-		query = query.Where("clock_in_time <= ?", endTime)
+	if filter.UserID != 0 {
+		query = query.Where("attendances.user_id = ?", filter.UserID)
 	}
 
-	if tenantID != 0 {
-		query = query.Where("attendances.tenant_id = ?", tenantID)
+	if filter.TenantID != 0 {
+		query = query.Where("attendances.tenant_id = ?", filter.TenantID)
+	}
+
+	if filter.Status != "" {
+		query = query.Where("attendances.status = ?", filter.Status)
+	}
+
+	if filter.DateFrom != nil {
+		query = query.Where("clock_in_time >= ?", *filter.DateFrom)
+	}
+
+	if filter.DateTo != nil {
+		query = query.Where("clock_in_time <= ?", *filter.DateTo)
+	}
+
+	if len(filter.AllowedRoleIDs) > 0 || filter.Search != "" {
+		query = query.Joins("User")
+		if len(filter.AllowedRoleIDs) > 0 {
+			query = query.Where("\"User\".role_id IN ?", filter.AllowedRoleIDs)
+		}
+		if filter.Search != "" {
+			searchTerm := "%" + filter.Search + "%"
+			query = query.Where("\"User\".name ILIKE ? OR \"User\".employee_id ILIKE ?", searchTerm, searchTerm)
+		}
 	}
 
 	err := query.Group("status").Scan(&results).Error

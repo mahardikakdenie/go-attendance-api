@@ -354,25 +354,23 @@ func (s *attendanceService) GetAllData(
 }
 
 func (s *attendanceService) GetSummary(ctx context.Context, tenantID uint, filter model.AttendanceFilter) (model.AttendanceSummaryResponse, error) {
-	var startTime, endTime time.Time
-	if filter.DateFrom != nil {
-		startTime = *filter.DateFrom
-	}
-	if filter.DateTo != nil {
-		endTime = *filter.DateTo
-	}
+	filter.TenantID = tenantID
 
-	currentCounts, err := s.repo.GetSummaryCounts(ctx, tenantID, startTime, endTime)
+	currentCounts, err := s.repo.GetSummaryCounts(ctx, filter)
 	if err != nil {
 		return model.AttendanceSummaryResponse{}, err
 	}
 
 	var comparisonCounts map[model.AttendanceStatus]int64
-	if !startTime.IsZero() && !endTime.IsZero() {
-		duration := endTime.Sub(startTime)
-		compStartTime := startTime.Add(-duration)
-		compEndTime := startTime
-		comparisonCounts, _ = s.repo.GetSummaryCounts(ctx, tenantID, compStartTime, compEndTime)
+	if filter.DateFrom != nil && filter.DateTo != nil {
+		duration := filter.DateTo.Sub(*filter.DateFrom)
+		compFilter := filter
+		compDateFrom := filter.DateFrom.Add(-duration)
+		compDateTo := *filter.DateFrom
+		compFilter.DateFrom = &compDateFrom
+		compFilter.DateTo = &compDateTo
+
+		comparisonCounts, _ = s.repo.GetSummaryCounts(ctx, compFilter)
 	}
 
 	var todayTotal int64
