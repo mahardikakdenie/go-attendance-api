@@ -1,14 +1,13 @@
 package handler
 
 import (
-	"net/http"
-	"strconv"
-	"time"
-
-	modelDto "go-attendance-api/internal/dto"
 	"go-attendance-api/internal/model"
 	"go-attendance-api/internal/service"
 	"go-attendance-api/internal/utils"
+	"math"
+	"net/http"
+	"strconv"
+	"time"
 
 	"github.com/gin-gonic/gin"
 )
@@ -166,10 +165,21 @@ func (h *overtimeHandler) GetAll(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, utils.BuildResponse("Success", http.StatusOK, "success", modelDto.AttendanceListResponse{
-		Data: data,
-		Meta: modelDto.Meta{Total: total, Limit: limit, Offset: offset},
-	}))
+	if limit <= 0 {
+		limit = 10
+	}
+
+	pagination := utils.Pagination{
+		Total:       total,
+		PerPage:     limit,
+		CurrentPage: (offset / limit) + 1,
+		LastPage:    int(math.Ceil(float64(total) / float64(limit))),
+	}
+	if pagination.LastPage == 0 {
+		pagination.LastPage = 1
+	}
+
+	c.JSON(http.StatusOK, utils.BuildResponseWithPagination("Success", http.StatusOK, "success", data, pagination))
 }
 
 // @Summary Get Overtime By ID

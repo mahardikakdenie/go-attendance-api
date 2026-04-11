@@ -7,9 +7,17 @@ type APIResponse struct {
 }
 
 type Meta struct {
-	Message string `json:"message"`
-	Code    int    `json:"code"`
-	Status  string `json:"status"`
+	Message    string      `json:"message"`
+	Code       int         `json:"code"`
+	Status     string      `json:"status"`
+	Pagination *Pagination `json:"pagination,omitempty"`
+}
+
+type Pagination struct {
+	Total       int64 `json:"total"`
+	PerPage     int   `json:"per_page"`
+	CurrentPage int   `json:"current_page"`
+	LastPage    int   `json:"last_page"`
 }
 
 // BuildResponse untuk memformat respons sukses
@@ -18,6 +26,21 @@ func BuildResponse(message string, code int, status string, data interface{}) AP
 		Message: message,
 		Code:    code,
 		Status:  status,
+	}
+
+	return APIResponse{
+		Meta: meta,
+		Data: data,
+	}
+}
+
+// BuildResponseWithPagination untuk memformat respons sukses dengan pagination
+func BuildResponseWithPagination(message string, code int, status string, data interface{}, pagination Pagination) APIResponse {
+	meta := Meta{
+		Message:    message,
+		Code:       code,
+		Status:     status,
+		Pagination: &pagination,
 	}
 
 	return APIResponse{

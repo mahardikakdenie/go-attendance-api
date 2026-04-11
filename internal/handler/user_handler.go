@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"math"
 	"net/http"
 	"strconv"
 
@@ -121,18 +122,24 @@ func (h *userHandler) GetAllUsers(c *gin.Context) {
 		return
 	}
 
-	meta := map[string]interface{}{
-		"total":    total,
-		"limit":    filter.Limit,
-		"offset":   filter.Offset,
-		"includes": includes,
+	limit := filter.Limit
+	if limit <= 0 {
+		limit = 10
+	}
+	offset := filter.Offset
+
+	pagination := utils.Pagination{
+		Total:       total,
+		PerPage:     limit,
+		CurrentPage: (offset / limit) + 1,
+		LastPage:    int(math.Ceil(float64(total) / float64(limit))),
+	}
+	if pagination.LastPage == 0 {
+		pagination.LastPage = 1
 	}
 
 	c.JSON(http.StatusOK,
-		utils.BuildResponse("Users fetched successfully", 200, "success", gin.H{
-			"data": data,
-			"meta": meta,
-		}),
+		utils.BuildResponseWithPagination("Users fetched successfully", 200, "success", data, pagination),
 	)
 }
 

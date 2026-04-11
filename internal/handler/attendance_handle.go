@@ -72,7 +72,7 @@ func (h *attendanceHandler) GetTodayAttendance(c *gin.Context) {
 		clockOutStr = res.ClockOutTime.Format("03:04 PM")
 	} else {
 		// If still working, calculate duration from now
-		diff := time.Now().Sub(res.ClockInTime)
+		diff := time.Since(res.ClockInTime)
 		hours := int(diff.Hours())
 		mins := int(diff.Minutes()) % 60
 		duration = strconv.Itoa(hours) + "h " + strconv.Itoa(mins) + "m"
@@ -234,20 +234,22 @@ func (h *attendanceHandler) GetAllAttendance(c *gin.Context) {
 		return
 	}
 
-	meta := modelDto.Meta{
-		Total:  total,
-		Limit:  limit,
-		Offset: offset,
+	pagination := utils.Pagination{
+		Total:       total,
+		PerPage:     limit,
+		CurrentPage: (offset / limit) + 1,
+		LastPage:    int(math.Ceil(float64(total) / float64(limit))),
+	}
+	if pagination.LastPage == 0 {
+		pagination.LastPage = 1
 	}
 
-	response := utils.BuildResponse(
+	response := utils.BuildResponseWithPagination(
 		"Attendance data fetched successfully",
 		http.StatusOK,
 		"success",
-		modelDto.AttendanceListResponse{
-			Data: data,
-			Meta: meta,
-		},
+		data,
+		pagination,
 	)
 
 	c.JSON(http.StatusOK, response)
@@ -262,7 +264,7 @@ func (h *attendanceHandler) GetAllAttendance(c *gin.Context) {
 // @Param status query string false "Status filter"
 // @Security BearerAuth
 // @Security CookieAuth
-// @Success 200 {object} modelDto.AttendanceHistoryResponse
+// @Success 200 {object} utils.APIResponse{data=[]modelDto.AttendanceHistoryItem}
 // @Router /api/v1/attendance/history [get]
 func (h *attendanceHandler) GetAttendanceHistory(c *gin.Context) {
 	ctx := c.Request.Context()
@@ -305,7 +307,7 @@ func (h *attendanceHandler) GetAttendanceHistory(c *gin.Context) {
 	// 4. Fetch Data
 	data, total, err := h.service.GetAllData(ctx, filter, []string{"user"}, limit, offset)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "message": err.Error()})
+		c.JSON(http.StatusInternalServerError, utils.BuildErrorResponse("Failed to fetch history", http.StatusInternalServerError, "error", err.Error()))
 		return
 	}
 
@@ -313,17 +315,17 @@ func (h *attendanceHandler) GetAttendanceHistory(c *gin.Context) {
 	items := make([]modelDto.AttendanceHistoryItem, 0)
 	for _, a := range data {
 		item := modelDto.AttendanceHistoryItem{
-			ID:   a.ID.String(),
-			Date: a.ClockInTime.Format("2006-01-02"),
-			ClockIn: a.ClockInTime.Format("03:04 PM"),
-			Status:  string(a.Status),
+			ID:       a.ID.String(),
+			Date:     a.ClockInTime.Format("2006-01-02"),
+			ClockIn:  a.ClockInTime.Format("03:04 PM"),
+			Status:   string(a.Status),
 			Location: "Main Office", // Default mock as requested
-			Overtime: "0h 0m",        // Default mock as requested
+			Overtime: "0h 0m",       // Default mock as requested
 		}
 
 		if a.ClockOutTime != nil {
 			item.ClockOut = a.ClockOutTime.Format("03:04 PM")
-			
+
 			// Simple overtime calculation: anything after 5:00 PM
 			fivePM := time.Date(a.ClockOutTime.Year(), a.ClockOutTime.Month(), a.ClockOutTime.Day(), 17, 0, 0, 0, a.ClockOutTime.Location())
 			if a.ClockOutTime.After(fivePM) {
@@ -359,15 +361,20 @@ func (h *attendanceHandler) GetAttendanceHistory(c *gin.Context) {
 		lastPage = 1
 	}
 
-	c.JSON(http.StatusOK, modelDto.AttendanceHistoryResponse{
-		Success: true,
-		Data:    items,
-		Meta: modelDto.PaginationMeta{
-			Total:       total,
-			CurrentPage: page,
-			LastPage:    lastPage,
-		},
-	})
+	pagination := utils.Pagination{
+		Total:       total,
+		PerPage:     limit,
+		CurrentPage: page,
+		LastPage:    lastPage,
+	}
+
+	c.JSON(http.StatusOK, utils.BuildResponseWithPagination(
+		"Attendance history fetched successfully",
+		http.StatusOK,
+		"success",
+		items,
+		pagination,
+	))
 }
 
 // @Summary Health Check

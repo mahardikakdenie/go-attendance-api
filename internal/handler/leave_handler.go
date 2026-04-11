@@ -4,6 +4,7 @@ import (
 	"go-attendance-api/internal/model"
 	"go-attendance-api/internal/service"
 	"go-attendance-api/internal/utils"
+	"math"
 	"net/http"
 	"strconv"
 
@@ -75,10 +76,21 @@ func (h *leaveHandler) GetLeaveHistory(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, utils.BuildResponse("History fetched successfully", 200, "success", gin.H{
-		"data": res,
-		"meta": gin.H{"total": total, "limit": limit, "offset": offset},
-	}))
+	if limit <= 0 {
+		limit = 10
+	}
+
+	pagination := utils.Pagination{
+		Total:       total,
+		PerPage:     limit,
+		CurrentPage: (offset / limit) + 1,
+		LastPage:    int(math.Ceil(float64(total) / float64(limit))),
+	}
+	if pagination.LastPage == 0 {
+		pagination.LastPage = 1
+	}
+
+	c.JSON(http.StatusOK, utils.BuildResponseWithPagination("History fetched successfully", 200, "success", res, pagination))
 }
 
 // @Summary Get Leave Balances
