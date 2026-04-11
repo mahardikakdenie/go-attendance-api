@@ -8,6 +8,7 @@ const (
 	RoleSuperAdmin UserRole = "superadmin"
 	RoleAdmin      UserRole = "admin"
 	RoleHR         UserRole = "hr"
+	RoleFinance    UserRole = "finance"
 	RoleEmployee   UserRole = "employee"
 )
 
@@ -27,6 +28,14 @@ type User struct {
 
 	RoleID uint  `gorm:"not null" json:"role_id" example:"1"`
 	Role   *Role `gorm:"foreignKey:RoleID" json:"role,omitempty"`
+
+	PositionID *uint     `gorm:"index" json:"position_id" example:"1"`
+	Position   *Position `gorm:"foreignKey:PositionID" json:"position,omitempty"`
+
+	ManagerID  *uint `gorm:"index" json:"manager_id" example:"1"`
+	Manager    *User `gorm:"foreignKey:ManagerID" json:"manager,omitempty"`
+	DelegateID *uint `gorm:"index" json:"delegate_id" example:"2"`
+	Delegate   *User `gorm:"foreignKey:DelegateID" json:"delegate,omitempty"`
 
 	Attendances      []Attendance     `gorm:"foreignKey:UserID" json:"attendances,omitempty"`
 	RecentActivities []RecentActivity `gorm:"foreignKey:UserID" json:"recent_activities,omitempty"`
@@ -60,6 +69,8 @@ type CreateUserRequest struct {
 	Department  string `json:"department" example:"IT"`
 	Address     string `json:"address" example:"Jl. Sudirman No. 1"`
 	PhoneNumber string `json:"phone_number" example:"08123456789"`
+	ManagerID   *uint  `json:"manager_id"`
+	PositionID  *uint  `json:"position_id"`
 }
 
 type UserResponse struct {
@@ -67,12 +78,16 @@ type UserResponse struct {
 	Name        string        `json:"name" example:"Budi Santoso"`
 	Email       string        `json:"email" example:"budi@company.com"`
 	Role        *RoleResponse `json:"role,omitempty"`
+	PositionID  *uint         `json:"position_id"`
+	Position    string        `json:"position_name"`
 	TenantID    uint          `json:"tenant_id" example:"1"`
 	EmployeeID  string        `json:"employee_id" example:"FT-001"`
 	Department  string        `json:"department" example:"IT"`
 	Address     string        `json:"address" example:"Jl. Sudirman No. 1"`
 	MediaUrl    string        `gorm:"type:varchar(255)" json:"media_url" example:"https://cdn.example.com/profile/budi.jpg" binding:"omitempty,url"`
 	PhoneNumber string        `json:"phone_number" example:"08123456789"`
+	ManagerID   *uint         `json:"manager_id"`
+	DelegateID  *uint         `json:"delegate_id"`
 	CreatedAt   time.Time     `json:"created_at"`
 
 	Tenant           *TenantResponse          `json:"tenant,omitempty"`

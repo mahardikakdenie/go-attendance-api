@@ -45,6 +45,8 @@ var userPreloadMap = map[string]string{
 	"attendances.user":        "Attendances.User",
 	"role":                    "Role",
 	"recent_activities":       "RecentActivities",
+	"manager":                 "Manager",
+	"delegate":                "Delegate",
 }
 
 func (r *userRepository) FindByID(ctx context.Context, id uint, includes []string) (*model.User, error) {
