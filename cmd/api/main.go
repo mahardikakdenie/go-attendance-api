@@ -65,7 +65,7 @@ func main() {
 	r := gin.Default()
 	r.Use(middleware.RateLimiter())
 
-	routes.SetupRoutes(r, db)
+	routes.SetupRoutes(r, db, rdb)
 
 	if err := r.Run(":" + appPort); err != nil {
 		log.Fatalf("Gagal menjalankan server: %v", err)

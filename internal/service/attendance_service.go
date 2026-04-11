@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"math"
@@ -9,6 +10,8 @@ import (
 
 	"go-attendance-api/internal/model"
 	"go-attendance-api/internal/repository"
+
+	"github.com/redis/go-redis/v9"
 )
 
 // Inisialisasi zona waktu UTC+7 (WIB) secara global untuk package service
@@ -39,6 +42,17 @@ type attendanceService struct {
 	settingRepo  repository.TenantSettingRepository
 	tenantRepo   repository.TenantRepository
 	activityRepo repository.RecentActivityRepository
+	redis        *redis.Client
+	// Queue for background processing
+	recordQueue chan attendanceTask
+}
+
+type attendanceTask struct {
+	ctx      context.Context
+	userID   uint
+	tenantID uint
+	data     *model.Attendance
+	isUpdate bool
 }
 
 func NewAttendanceService(
@@ -47,13 +61,50 @@ func NewAttendanceService(
 	settingRepo repository.TenantSettingRepository,
 	tenantRepo repository.TenantRepository,
 	activityRepo repository.RecentActivityRepository,
+	redis *redis.Client,
 ) AttendanceService {
-	return &attendanceService{
+	s := &attendanceService{
 		repo:         repo,
 		userRepo:     userRepo,
 		settingRepo:  settingRepo,
 		tenantRepo:   tenantRepo,
 		activityRepo: activityRepo,
+		redis:        redis,
+		recordQueue:  make(chan attendanceTask, 1000), // Buffer for 1000 requests
+	}
+
+	// Start background workers (e.g., 5 workers)
+	for i := 0; i < 5; i++ {
+		go s.attendanceWorker()
+	}
+
+	return s
+}
+
+func (s *attendanceService) attendanceWorker() {
+	for task := range s.recordQueue {
+		// Use a fresh context or background context for DB operations
+		bgCtx := context.Background()
+		if task.isUpdate {
+			_ = s.repo.Update(bgCtx, task.data)
+		} else {
+			_ = s.repo.Save(bgCtx, task.data)
+		}
+
+		// Record activity in background
+		title := "Attendance Clock In"
+		action := "ClockIn"
+		if task.isUpdate {
+			title = "Attendance Clock Out"
+			action = "ClockOut"
+		}
+
+		_ = s.activityRepo.Create(bgCtx, &model.RecentActivity{
+			UserID: task.userID,
+			Title:  title,
+			Action: action,
+			Status: "success",
+		})
 	}
 }
 
@@ -91,6 +142,19 @@ func (s *attendanceService) RecordAttendance(
 	if userID == 0 {
 		return model.AttendanceResponse{}, errors.New("invalid user")
 	}
+
+	// 1. Redis Distributed Lock
+	lockKey := fmt.Sprintf("lock:attendance:%d", userID)
+	// Lock for 5 seconds to prevent double submit
+	locked, err := s.redis.SetNX(ctx, lockKey, "locked", 5*time.Second).Result()
+	if err != nil {
+		return model.AttendanceResponse{}, fmt.Errorf("redis error: %v", err)
+	}
+	if !locked {
+		return model.AttendanceResponse{}, errors.New("terlalu banyak permintaan, harap tunggu sebentar")
+	}
+	// Release lock after process finishes
+	defer s.redis.Del(ctx, lockKey)
 
 	user, err := s.userRepo.FindByID(ctx, userID, []string{""})
 	if err != nil {
@@ -177,17 +241,18 @@ func (s *attendanceService) RecordAttendance(
 			Status:           status,
 		}
 
-		if err := s.repo.Save(ctx, &data); err != nil {
-			return model.AttendanceResponse{}, err
+		// 2. Queue for background processing (Peak hour handling)
+		s.recordQueue <- attendanceTask{
+			ctx:      ctx,
+			userID:   userID,
+			tenantID: user.TenantID,
+			data:     &data,
+			isUpdate: false,
 		}
 
-		// Record activity
-		_ = s.activityRepo.Create(ctx, &model.RecentActivity{
-			UserID: userID,
-			Title:  "Attendance Clock In",
-			Action: "ClockIn",
-			Status: "success",
-		})
+		// Invalidate Cache immediately
+		cacheKey := fmt.Sprintf("cache:attendance:today:%d:%s", userID, now.Format("2006-01-02"))
+		s.redis.Del(ctx, cacheKey)
 
 		// Preload user to ensure it's returned in the response
 		userData, _ := s.userRepo.FindByID(ctx, userID, []string{})
@@ -230,17 +295,18 @@ func (s *attendanceService) RecordAttendance(
 			todayAttendance.Status = model.StatusDone
 		}
 
-		if err := s.repo.Update(ctx, todayAttendance); err != nil {
-			return model.AttendanceResponse{}, err
+		// 2. Queue for background processing (Peak hour handling)
+		s.recordQueue <- attendanceTask{
+			ctx:      ctx,
+			userID:   userID,
+			tenantID: user.TenantID,
+			data:     todayAttendance,
+			isUpdate: true,
 		}
 
-		// Record activity
-		_ = s.activityRepo.Create(ctx, &model.RecentActivity{
-			UserID: userID,
-			Title:  "Attendance Clock Out",
-			Action: "ClockOut",
-			Status: "success",
-		})
+		// Invalidate Cache immediately
+		cacheKey := fmt.Sprintf("cache:attendance:today:%d:%s", userID, now.Format("2006-01-02"))
+		s.redis.Del(ctx, cacheKey)
 
 		// Preload user to ensure it's returned in the response
 		userData, _ := s.userRepo.FindByID(ctx, userID, []string{})
@@ -343,6 +409,19 @@ func (s *attendanceService) GetSummary(ctx context.Context, tenantID uint) (mode
 // @Tags Attendance
 func (s *attendanceService) GetTodayAttendance(ctx context.Context, userID uint) (*model.AttendanceResponse, error) {
 	now := time.Now().In(WIB)
+	dateStr := now.Format("2006-01-02")
+	cacheKey := fmt.Sprintf("cache:attendance:today:%d:%s", userID, dateStr)
+
+	// 1. Try get from cache
+	cachedData, err := s.redis.Get(ctx, cacheKey).Result()
+	if err == nil && cachedData != "" {
+		var res model.AttendanceResponse
+		if err := json.Unmarshal([]byte(cachedData), &res); err == nil {
+			return &res, nil
+		}
+	}
+
+	// 2. Get from DB
 	attendance, err := s.repo.FindTodayByUser(ctx, userID, now)
 	if err != nil {
 		return nil, err
@@ -352,6 +431,11 @@ func (s *attendanceService) GetTodayAttendance(ctx context.Context, userID uint)
 	}
 
 	res := applyPreloads(attendance, []string{})
+
+	// 3. Save to cache (TTL 24h)
+	jsonData, _ := json.Marshal(res)
+	s.redis.Set(ctx, cacheKey, string(jsonData), 24*time.Hour)
+
 	return &res, nil
 }
 
