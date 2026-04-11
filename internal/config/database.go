@@ -29,38 +29,41 @@ func InitDB() *gorm.DB {
 		log.Fatalf("❌ Gagal koneksi ke database: %v", err)
 	}
 
-	// Register Tenant Plugin
-	if err := db.Use(&TenantPlugin{}); err != nil {
-		log.Fatalf("❌ Gagal inisialisasi TenantPlugin: %v", err)
-	}
-
-	log.Println("✅ Database connected with TenantPlugin enabled")
+	log.Println("✅ Database connected")
 
 	if os.Getenv("RESET_DB") == "true" {
-		err := db.Migrator().DropTable(
-			&model.Token{},
-			&model.Media{},
-			&model.Attendance{},
-			&model.Overtime{},
-			&model.UserChangeRequest{},
-			&model.RecentActivity{},
-			&model.User{},
-			&model.Role{},
-			&model.TenantSetting{},
-			&model.Tenant{},
-		)
-		if err != nil {
-			log.Fatalf("❌ Gagal reset database: %v", err)
-		}
-		log.Println("⚠️ Semua tabel berhasil di-reset")
+		log.Println("⚠️ Resetting database tables...")
+		// Disable FK checks for clean drop if possible or drop in strict reverse order
+		db.Exec("DROP TABLE IF EXISTS leaves, leave_balances, leave_types, attendances, overtimes, user_change_requests, recent_activities, tokens, media, users, role_hierarchies, role_permissions, permissions, roles, tenant_settings, tenants CASCADE")
+		log.Println("⚠️ Semua tabel berhasil di-reset (CASCADE)")
 	}
 
 	if os.Getenv("RUN_MIGRATION") == "true" || os.Getenv("RESET_DB") == "true" {
+		log.Println("🔄 Running migrations...")
 
+		// Stage 1: Absolute Base (No dependencies)
 		err = db.AutoMigrate(
 			&model.Tenant{},
+			&model.Permission{},
 			&model.Role{},
+			&model.Position{},
+		)
+		if err != nil {
+			log.Fatalf("❌ Gagal migrasi Stage 1: %v", err)
+		}
+
+		// Stage 2: Hierarchies and User (Depends on Stage 1)
+		err = db.AutoMigrate(
+			&model.RolePermission{},
+			&model.RoleHierarchy{},
 			&model.User{},
+		)
+		if err != nil {
+			log.Fatalf("❌ Gagal migrasi Stage 2: %v", err)
+		}
+
+		// Stage 3: Business Logic (Depends on User)
+		err = db.AutoMigrate(
 			&model.RecentActivity{},
 			&model.UserChangeRequest{},
 			&model.Overtime{},
@@ -72,22 +75,32 @@ func InitDB() *gorm.DB {
 			&model.LeaveBalance{},
 			&model.Leave{},
 		)
-
 		if err != nil {
-			log.Fatalf("❌ Gagal migrasi database: %v", err)
+			log.Fatalf("❌ Gagal migrasi Stage 3: %v", err)
 		}
 
 		log.Println("✅ Migrasi database berhasil")
 	}
+
+	// Register Tenant Plugin AFTER migration to avoid interference with schema changes
+	if err := db.Use(&TenantPlugin{}); err != nil {
+		log.Fatalf("❌ Gagal inisialisasi TenantPlugin: %v", err)
+	}
+	log.Println("✅ TenantPlugin enabled")
 
 	if os.Getenv("RUN_SEEDER") == "true" {
 		log.Println("🌱 Running seeder...")
 
 		seeder.SeedTenant(db)
 		seeder.SeedRoles(db)
+		seeder.SeedRoleHierarchy(db)
+		seeder.SeedPositions(db)
 		seeder.SeedUsers(db)
 		seeder.SeedTenantSetting(db)
 		seeder.SeedRecentActivities(db)
+		seeder.SeedLeaves(db)
+		seeder.SeedAttendanceHistory(db)
+		seeder.SeedOvertimes(db)
 
 		log.Println("✅ Seeder selesai")
 	}

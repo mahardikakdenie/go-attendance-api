@@ -2,8 +2,9 @@ package utils
 
 // Struct utama untuk semua respons API
 type APIResponse struct {
-	Meta Meta        `json:"meta"`
-	Data interface{} `json:"data,omitempty"`
+	Success bool        `json:"success"`
+	Meta    Meta        `json:"meta"`
+	Data    interface{} `json:"data,omitempty"`
 }
 
 type Meta struct {
@@ -29,8 +30,9 @@ func BuildResponse(message string, code int, status string, data interface{}) AP
 	}
 
 	return APIResponse{
-		Meta: meta,
-		Data: data,
+		Success: true,
+		Meta:    meta,
+		Data:    data,
 	}
 }
 
@@ -44,8 +46,9 @@ func BuildResponseWithPagination(message string, code int, status string, data i
 	}
 
 	return APIResponse{
-		Meta: meta,
-		Data: data,
+		Success: true,
+		Meta:    meta,
+		Data:    data,
 	}
 }
 
@@ -58,7 +61,8 @@ func BuildErrorResponse(message string, code int, status string, errors interfac
 	}
 
 	return APIResponse{
-		Meta: meta,
-		Data: errors,
+		Success: false,
+		Meta:    meta,
+		Data:    errors,
 	}
 }

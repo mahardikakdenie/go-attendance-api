@@ -1,6 +1,7 @@
 package config
 
 import (
+	"fmt"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )
@@ -35,10 +36,18 @@ func (p *TenantPlugin) applyTenantFilter(db *gorm.DB) {
 			tenantIDVal := db.Statement.Context.Value("tenant_id")
 			if tenantIDVal != nil {
 				if tenantID, ok := tenantIDVal.(uint); ok && tenantID != 0 {
-					// Apply WHERE tenant_id = ?
-					// We use a custom clause to avoid overriding existing where clauses
+					tableName := db.Statement.Table
+					if tableName == "" {
+						tableName = db.Statement.Schema.Table
+					}
+
+					// Apply WHERE (table.tenant_id = ? OR table.tenant_id IS NULL) 
+					// Using explicit table name prefix to avoid SQL ambiguity during JOINs
 					db.Statement.AddClause(clause.Where{Exprs: []clause.Expression{
-						clause.Eq{Column: clause.Column{Table: db.Statement.Table, Name: "tenant_id"}, Value: tenantID},
+						clause.Or(
+							clause.Eq{Column: clause.Column{Table: tableName, Name: "tenant_id"}, Value: tenantID},
+							clause.Expr{SQL: fmt.Sprintf("%s.tenant_id IS NULL", tableName)},
+						),
 					}})
 				}
 			}

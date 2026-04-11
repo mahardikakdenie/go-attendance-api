@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"go-attendance-api/internal/config"
+	"go-attendance-api/internal/model"
 	"go-attendance-api/internal/service"
 
 	"github.com/gin-gonic/gin"
@@ -137,19 +138,55 @@ func SecureAuth(authService service.AuthService) gin.HandlerFunc {
 		////////////////////////////////////////////////////////
 		// 6. SET CONTEXT
 		////////////////////////////////////////////////////////
-		
+
 		// Inject into standard context for GORM plugin
 		ctx := context.WithValue(c.Request.Context(), "tenant_id", user.TenantID)
 		c.Request = c.Request.WithContext(ctx)
 
 		c.Set("user_id", user.ID)
 		c.Set("tenant_id", user.TenantID)
-		
+		c.Set("permissions", user.Permissions)
+
 		// Set role name string for RequireRole middleware
 		if user.Role != nil {
 			c.Set("role", user.Role.Name)
+			c.Set("base_role", user.Role.BaseRole)
 		} else {
 			c.Set("role", "")
+			c.Set("base_role", "")
+		}
+
+		c.Next()
+	}
+}
+
+func HasPermission(permissionID string) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		// Dual-nature Superadmin logic: If it's ADMIN base role, bypass permission check
+		baseRole, _ := c.Get("base_role")
+		if baseRole == string(model.BaseRoleAdmin) {
+			c.Next()
+			return
+		}
+
+		permissionsVal, exists := c.Get("permissions")
+		if !exists {
+			c.AbortWithStatusJSON(403, gin.H{"message": "Forbidden: No permissions assigned"})
+			return
+		}
+
+		permissions := permissionsVal.([]string)
+		hasPermission := false
+		for _, p := range permissions {
+			if p == permissionID {
+				hasPermission = true
+				break
+			}
+		}
+
+		if !hasPermission {
+			c.AbortWithStatusJSON(403, gin.H{"message": fmt.Sprintf("Forbidden: Missing permission %s", permissionID)})
+			return
 		}
 
 		c.Next()
