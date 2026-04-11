@@ -32,7 +32,7 @@ type AttendanceService interface {
 		limit, offset int,
 	) ([]model.AttendanceResponse, int64, error)
 
-	GetSummary(ctx context.Context, tenantID uint) (model.AttendanceSummaryResponse, error)
+	GetSummary(ctx context.Context, tenantID uint, filter model.AttendanceFilter) (model.AttendanceSummaryResponse, error)
 
 	GetTodayAttendance(ctx context.Context, userID uint) (*model.AttendanceResponse, error)
 }
@@ -353,45 +353,30 @@ func (s *attendanceService) GetAllData(
 	return responses, total, nil
 }
 
-func (s *attendanceService) GetSummary(ctx context.Context, tenantID uint) (model.AttendanceSummaryResponse, error) {
-	now := time.Now().In(WIB)
-	todayStart := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, WIB)
-	todayEnd := todayStart.Add(24 * time.Hour)
+func (s *attendanceService) GetSummary(ctx context.Context, tenantID uint, filter model.AttendanceFilter) (model.AttendanceSummaryResponse, error) {
+	var startTime, endTime time.Time
+	if filter.DateFrom != nil {
+		startTime = *filter.DateFrom
+	}
+	if filter.DateTo != nil {
+		endTime = *filter.DateTo
+	}
 
-	yesterdayStart := todayStart.Add(-24 * time.Hour)
-	yesterdayEnd := todayStart
-
-	todayCounts, err := s.repo.GetSummaryCounts(ctx, tenantID, todayStart, todayEnd)
+	currentCounts, err := s.repo.GetSummaryCounts(ctx, tenantID, startTime, endTime)
 	if err != nil {
 		return model.AttendanceSummaryResponse{}, err
 	}
 
-	yesterdayCounts, err := s.repo.GetSummaryCounts(ctx, tenantID, yesterdayStart, yesterdayEnd)
-	if err != nil {
-		return model.AttendanceSummaryResponse{}, err
-	}
-
-	// Check if yesterday has any data
-	var yesterdayTotal int64
-	for _, count := range yesterdayCounts {
-		yesterdayTotal += count
-	}
-
-	comparisonCounts := yesterdayCounts
-	if yesterdayTotal == 0 {
-		// Try oldest data date
-		oldestDate, _ := s.repo.GetOldestDataDate(ctx, tenantID)
-		if oldestDate != nil {
-			oldestStart := time.Date(oldestDate.Year(), oldestDate.Month(), oldestDate.Day(), 0, 0, 0, 0, oldestDate.Location())
-			oldestEnd := oldestStart.Add(24 * time.Hour)
-			if oldestStart.Before(todayStart) {
-				comparisonCounts, _ = s.repo.GetSummaryCounts(ctx, tenantID, oldestStart, oldestEnd)
-			}
-		}
+	var comparisonCounts map[model.AttendanceStatus]int64
+	if !startTime.IsZero() && !endTime.IsZero() {
+		duration := endTime.Sub(startTime)
+		compStartTime := startTime.Add(-duration)
+		compEndTime := startTime
+		comparisonCounts, _ = s.repo.GetSummaryCounts(ctx, tenantID, compStartTime, compEndTime)
 	}
 
 	var todayTotal int64
-	for _, count := range todayCounts {
+	for _, count := range currentCounts {
 		todayTotal += count
 	}
 
@@ -400,8 +385,8 @@ func (s *attendanceService) GetSummary(ctx context.Context, tenantID uint) (mode
 		compTotal += count
 	}
 
-	todayOntime := todayCounts[model.StatusWorking] + todayCounts[model.StatusDone]
-	todayLate := todayCounts[model.StatusLate]
+	todayOntime := currentCounts[model.StatusWorking] + currentCounts[model.StatusDone]
+	todayLate := currentCounts[model.StatusLate]
 
 	compOntime := comparisonCounts[model.StatusWorking] + comparisonCounts[model.StatusDone]
 	compLate := comparisonCounts[model.StatusLate]

@@ -112,13 +112,27 @@ func NewAttendanceHandler(service service.AttendanceService) AttendanceHandler {
 func (h *attendanceHandler) GetAttendanceSummary(c *gin.Context) {
 	ctx := c.Request.Context()
 
+	var filter model.AttendanceFilter
+
+	if dateFrom := c.Query("date_from"); dateFrom != "" {
+		if t, err := time.Parse("2006-01-02", dateFrom); err == nil {
+			filter.DateFrom = &t
+		}
+	}
+
+	if dateTo := c.Query("date_to"); dateTo != "" {
+		if t, err := time.Parse("2006-01-02", dateTo); err == nil {
+			filter.DateTo = &t
+		}
+	}
+
 	tenantIDVal, _ := c.Get("tenant_id")
 	var tenantID uint
 	if tenantIDVal != nil {
 		tenantID = tenantIDVal.(uint)
 	}
 
-	summary, err := h.service.GetSummary(ctx, tenantID)
+	summary, err := h.service.GetSummary(ctx, tenantID, filter)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, utils.BuildErrorResponse("Failed to fetch summary", http.StatusInternalServerError, "error", err.Error()))
 		return

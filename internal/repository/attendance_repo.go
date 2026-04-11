@@ -45,8 +45,14 @@ func (r *attendanceRepository) GetSummaryCounts(ctx context.Context, tenantID ui
 	}
 
 	query := r.db.WithContext(ctx).Model(&model.Attendance{}).
-		Select("status, count(*) as count").
-		Where("clock_in_time >= ? AND clock_in_time < ?", startTime, endTime)
+		Select("status, count(*) as count")
+
+	if !startTime.IsZero() {
+		query = query.Where("clock_in_time >= ?", startTime)
+	}
+	if !endTime.IsZero() {
+		query = query.Where("clock_in_time <= ?", endTime)
+	}
 
 	if tenantID != 0 {
 		query = query.Where("attendances.tenant_id = ?", tenantID)
