@@ -147,8 +147,15 @@ func (r *attendanceRepository) FindAll(
 		query = query.Where("clock_in_time <= ?", *filter.DateTo)
 	}
 
-	if len(filter.AllowedRoleIDs) > 0 {
-		query = query.Joins("User").Where("\"User\".role_id IN ?", filter.AllowedRoleIDs)
+	if len(filter.AllowedRoleIDs) > 0 || filter.Search != "" {
+		query = query.Joins("User")
+		if len(filter.AllowedRoleIDs) > 0 {
+			query = query.Where("\"User\".role_id IN ?", filter.AllowedRoleIDs)
+		}
+		if filter.Search != "" {
+			searchTerm := "%" + filter.Search + "%"
+			query = query.Where("\"User\".name ILIKE ? OR \"User\".employee_id ILIKE ?", searchTerm, searchTerm)
+		}
 	}
 
 	if err := query.Count(&total).Error; err != nil {

@@ -81,6 +81,7 @@ type AttendanceSummaryResponse struct {
 type AttendanceFilter struct {
 	UserID         uint
 	TenantID       uint
+	Search         string
 	Status         AttendanceStatus
 	AllowedRoleIDs []uint
 	limit          int

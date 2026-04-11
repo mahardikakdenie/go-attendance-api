@@ -195,6 +195,10 @@ func (h *attendanceHandler) GetAllAttendance(c *gin.Context) {
 		filter.Status = model.AttendanceStatus(status)
 	}
 
+	if search := c.Query("search"); search != "" {
+		filter.Search = search
+	}
+
 	if dateFrom := c.Query("date_from"); dateFrom != "" {
 		if t, err := time.Parse("2006-01-02", dateFrom); err == nil {
 			filter.DateFrom = &t
@@ -291,11 +295,16 @@ func (h *attendanceHandler) GetAttendanceHistory(c *gin.Context) {
 	}
 
 	status := c.Query("status")
+	search := c.Query("search")
 
 	// 3. Prepare Filter
 	var filter model.AttendanceFilter
 	if status != "" {
 		filter.Status = model.AttendanceStatus(status)
+	}
+
+	if search != "" {
+		filter.Search = search
 	}
 
 	// Logic: If not admin/hr, only show own records
