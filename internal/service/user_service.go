@@ -7,6 +7,7 @@ import (
 
 	"go-attendance-api/internal/model"
 	"go-attendance-api/internal/repository"
+	"go-attendance-api/internal/utils"
 
 	"golang.org/x/crypto/bcrypt"
 )
@@ -256,13 +257,15 @@ func (s *userService) CreateUser(ctx context.Context, adminID uint, req model.Cr
 
 	switch adminRole {
 	case "superadmin":
+		// Superadmin can create any role in any tenant
 		tenantID = req.TenantID
 		if tenantID == 0 {
 			tenantID = admin.TenantID
 		}
 	case "admin":
-		if targetRoleName != "hr" && targetRoleName != "employee" {
-			return model.UserResponse{}, errors.New("admin can only create HR or Employee accounts")
+		// Admin (Owner) can only create HR, Finance, and Employee in their own tenant
+		if targetRoleName != "hr" && targetRoleName != "employee" && targetRoleName != "finance" {
+			return model.UserResponse{}, errors.New("admin can only create HR, Finance, or Employee accounts")
 		}
 		tenantID = admin.TenantID
 	default:
@@ -281,6 +284,8 @@ func (s *userService) CreateUser(ctx context.Context, adminID uint, req model.Cr
 		prefix = "ADM"
 	case "superadmin":
 		prefix = "SA"
+	case "finance":
+		prefix = "FIN"
 	}
 	employeeID := fmt.Sprintf("%s-%03d", prefix, count+1)
 
@@ -303,17 +308,27 @@ func (s *userService) CreateUser(ctx context.Context, adminID uint, req model.Cr
 			return err
 		}
 
-		// Log Activity (multi-table operation)
+		// Log Activity
 		activity := model.RecentActivity{
-			UserID: adminID, // Log who created the user
+			UserID: adminID,
 			Title:  "User Management",
 			Action: fmt.Sprintf("Created new user: %s (%s)", user.Name, user.EmployeeID),
 			Status: "success",
 		}
+		_ = s.activityRepo.Create(ctx, &activity)
+
+		// 5. Send Welcome Email
+		emailHtml := utils.GetWelcomeEmailTemplate(user.Name, user.Email, req.Password)
+		subject := "Welcome to Attendance System - Your Account Details"
 		
-		// Note: Ideally activityRepo should also support transaction or use a shared DB instance.
-		// For now, we focus on the user creation integrity.
-		return s.activityRepo.Create(ctx, &activity)
+		// We use a goroutine for email to not block user creation, 
+		// but since it's a critical info, we could also do it sync. 
+		// For UX, async is better.
+		go func() {
+			_ = utils.SendEmail([]string{user.Email}, subject, emailHtml)
+		}()
+
+		return nil
 	})
 
 	if err != nil {

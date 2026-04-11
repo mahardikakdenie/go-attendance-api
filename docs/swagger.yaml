@@ -194,6 +194,8 @@ definitions:
       email:
         example: budi@company.com
         type: string
+      manager_id:
+        type: integer
       name:
         example: Budi Santoso
         type: string
@@ -204,6 +206,8 @@ definitions:
       phone_number:
         example: "08123456789"
         type: string
+      position_id:
+        type: integer
       role_id:
         example: 1
         type: integer
@@ -252,6 +256,8 @@ definitions:
     type: object
   model.LeaveRequest:
     properties:
+      delegate_id:
+        type: integer
       end_date:
         example: "2026-05-03"
         type: string
@@ -378,6 +384,23 @@ definitions:
       width:
         type: integer
     type: object
+  model.OrgNode:
+    properties:
+      avatar:
+        type: string
+      id:
+        type: integer
+      level:
+        type: integer
+      name:
+        type: string
+      position:
+        type: string
+      subordinates:
+        items:
+          $ref: '#/definitions/model.OrgNode'
+        type: array
+    type: object
   model.OvertimeResponse:
     properties:
       admin_notes:
@@ -413,6 +436,23 @@ definitions:
     - OvertimeStatusPending
     - OvertimeStatusApproved
     - OvertimeStatusRejected
+  model.Position:
+    properties:
+      created_at:
+        type: string
+      id:
+        type: integer
+      level:
+        description: 1 for C-Level, 2 for VP, etc.
+        type: integer
+      name:
+        description: e.g., CEO, VP, Manager
+        type: string
+      tenant_id:
+        type: integer
+      updated_at:
+        type: string
+    type: object
   model.RecentActivity:
     properties:
       action:
@@ -599,6 +639,11 @@ definitions:
       created_at:
         example: "2026-04-05T12:00:00Z"
         type: string
+      delegate:
+        $ref: '#/definitions/model.User'
+      delegate_id:
+        example: 2
+        type: integer
       department:
         example: IT
         type: string
@@ -609,6 +654,11 @@ definitions:
         example: FT-001
         type: string
       id:
+        example: 1
+        type: integer
+      manager:
+        $ref: '#/definitions/model.User'
+      manager_id:
         example: 1
         type: integer
       media_url:
@@ -622,6 +672,11 @@ definitions:
       phone_number:
         example: "08123456789"
         type: string
+      position:
+        $ref: '#/definitions/model.Position'
+      position_id:
+        example: 1
+        type: integer
       recent_activities:
         items:
           $ref: '#/definitions/model.RecentActivity'
@@ -693,6 +748,8 @@ definitions:
         type: array
       created_at:
         type: string
+      delegate_id:
+        type: integer
       department:
         example: IT
         type: string
@@ -705,6 +762,8 @@ definitions:
       id:
         example: 1
         type: integer
+      manager_id:
+        type: integer
       media_url:
         example: https://cdn.example.com/profile/budi.jpg
         type: string
@@ -713,6 +772,10 @@ definitions:
         type: string
       phone_number:
         example: "08123456789"
+        type: string
+      position_id:
+        type: integer
+      position_name:
         type: string
       recent_activities:
         items:
@@ -752,17 +815,6 @@ definitions:
       status:
         type: string
     type: object
-  modelDto.AttendanceHistoryResponse:
-    properties:
-      data:
-        items:
-          $ref: '#/definitions/modelDto.AttendanceHistoryItem'
-        type: array
-      meta:
-        $ref: '#/definitions/modelDto.PaginationMeta'
-      success:
-        type: boolean
-    type: object
   modelDto.AttendanceListResponse:
     properties:
       data: {}
@@ -774,15 +826,6 @@ definitions:
       limit:
         type: integer
       offset:
-        type: integer
-      total:
-        type: integer
-    type: object
-  modelDto.PaginationMeta:
-    properties:
-      current_page:
-        type: integer
-      last_page:
         type: integer
       total:
         type: integer
@@ -877,8 +920,21 @@ definitions:
         type: integer
       message:
         type: string
+      pagination:
+        $ref: '#/definitions/utils.Pagination'
       status:
         type: string
+    type: object
+  utils.Pagination:
+    properties:
+      current_page:
+        type: integer
+      last_page:
+        type: integer
+      per_page:
+        type: integer
+      total:
+        type: integer
     type: object
 host: localhost:8080
 info:
@@ -1049,7 +1105,14 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/modelDto.AttendanceHistoryResponse'
+            allOf:
+            - $ref: '#/definitions/utils.APIResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/modelDto.AttendanceHistoryItem'
+                  type: array
+              type: object
       security:
       - BearerAuth: []
       - CookieAuth: []
@@ -1369,6 +1432,60 @@ paths:
       summary: Upload image to imgbb
       tags:
       - Media
+  /api/v1/organization/chart:
+    get:
+      description: Get the full hierarchical tree of the organization
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.APIResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/model.OrgNode'
+                  type: array
+              type: object
+      security:
+      - BearerAuth: []
+      - CookieAuth: []
+      summary: Get Organization Chart
+      tags:
+      - Organization
+  /api/v1/organization/positions:
+    get:
+      produces:
+      - application/json
+      responses: {}
+      security:
+      - BearerAuth: []
+      - CookieAuth: []
+      summary: Get Positions
+      tags:
+      - Organization
+    post:
+      consumes:
+      - application/json
+      description: Create a new job level/position
+      parameters:
+      - description: Position Data
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/model.Position'
+      produces:
+      - application/json
+      responses: {}
+      security:
+      - BearerAuth: []
+      - CookieAuth: []
+      summary: Create Position
+      tags:
+      - Organization
   /api/v1/overtime:
     get:
       description: Get overtime list with filters

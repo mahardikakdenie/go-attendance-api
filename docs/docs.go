@@ -291,7 +291,22 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/modelDto.AttendanceHistoryResponse"
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/utils.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/modelDto.AttendanceHistoryItem"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
                         }
                     }
                 }
@@ -837,6 +852,102 @@ const docTemplate = `{
                         }
                     }
                 }
+            }
+        },
+        "/api/v1/organization/chart": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    },
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "description": "Get the full hierarchical tree of the organization",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Organization"
+                ],
+                "summary": "Get Organization Chart",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/utils.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/model.OrgNode"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/organization/positions": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    },
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Organization"
+                ],
+                "summary": "Get Positions",
+                "responses": {}
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    },
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "description": "Create a new job level/position",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Organization"
+                ],
+                "summary": "Create Position",
+                "parameters": [
+                    {
+                        "description": "Position Data",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.Position"
+                        }
+                    }
+                ],
+                "responses": {}
             }
         },
         "/api/v1/overtime": {
@@ -2411,6 +2522,9 @@ const docTemplate = `{
                     "type": "string",
                     "example": "budi@company.com"
                 },
+                "manager_id": {
+                    "type": "integer"
+                },
                 "name": {
                     "type": "string",
                     "example": "Budi Santoso"
@@ -2423,6 +2537,9 @@ const docTemplate = `{
                 "phone_number": {
                     "type": "string",
                     "example": "08123456789"
+                },
+                "position_id": {
+                    "type": "integer"
                 },
                 "role_id": {
                     "type": "integer",
@@ -2496,6 +2613,9 @@ const docTemplate = `{
                 "start_date"
             ],
             "properties": {
+                "delegate_id": {
+                    "type": "integer"
+                },
                 "end_date": {
                     "type": "string",
                     "example": "2026-05-03"
@@ -2675,6 +2795,32 @@ const docTemplate = `{
                 }
             }
         },
+        "model.OrgNode": {
+            "type": "object",
+            "properties": {
+                "avatar": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "level": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "position": {
+                    "type": "string"
+                },
+                "subordinates": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.OrgNode"
+                    }
+                }
+            }
+        },
         "model.OvertimeResponse": {
             "type": "object",
             "properties": {
@@ -2725,6 +2871,31 @@ const docTemplate = `{
                 "OvertimeStatusApproved",
                 "OvertimeStatusRejected"
             ]
+        },
+        "model.Position": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "level": {
+                    "description": "1 for C-Level, 2 for VP, etc.",
+                    "type": "integer"
+                },
+                "name": {
+                    "description": "e.g., CEO, VP, Manager",
+                    "type": "string"
+                },
+                "tenant_id": {
+                    "type": "integer"
+                },
+                "updated_at": {
+                    "type": "string"
+                }
+            }
         },
         "model.RecentActivity": {
             "type": "object",
@@ -2998,6 +3169,13 @@ const docTemplate = `{
                     "type": "string",
                     "example": "2026-04-05T12:00:00Z"
                 },
+                "delegate": {
+                    "$ref": "#/definitions/model.User"
+                },
+                "delegate_id": {
+                    "type": "integer",
+                    "example": 2
+                },
                 "department": {
                     "type": "string",
                     "example": "IT"
@@ -3014,6 +3192,13 @@ const docTemplate = `{
                     "type": "integer",
                     "example": 1
                 },
+                "manager": {
+                    "$ref": "#/definitions/model.User"
+                },
+                "manager_id": {
+                    "type": "integer",
+                    "example": 1
+                },
                 "media_url": {
                     "type": "string",
                     "example": "https://cdn.example.com/profile/budi.jpg"
@@ -3027,6 +3212,13 @@ const docTemplate = `{
                 "phone_number": {
                     "type": "string",
                     "example": "08123456789"
+                },
+                "position": {
+                    "$ref": "#/definitions/model.Position"
+                },
+                "position_id": {
+                    "type": "integer",
+                    "example": 1
                 },
                 "recent_activities": {
                     "type": "array",
@@ -3127,6 +3319,9 @@ const docTemplate = `{
                 "created_at": {
                     "type": "string"
                 },
+                "delegate_id": {
+                    "type": "integer"
+                },
                 "department": {
                     "type": "string",
                     "example": "IT"
@@ -3143,6 +3338,9 @@ const docTemplate = `{
                     "type": "integer",
                     "example": 1
                 },
+                "manager_id": {
+                    "type": "integer"
+                },
                 "media_url": {
                     "type": "string",
                     "example": "https://cdn.example.com/profile/budi.jpg"
@@ -3154,6 +3352,12 @@ const docTemplate = `{
                 "phone_number": {
                     "type": "string",
                     "example": "08123456789"
+                },
+                "position_id": {
+                    "type": "integer"
+                },
+                "position_name": {
+                    "type": "string"
                 },
                 "recent_activities": {
                     "type": "array",
@@ -3213,23 +3417,6 @@ const docTemplate = `{
                 }
             }
         },
-        "modelDto.AttendanceHistoryResponse": {
-            "type": "object",
-            "properties": {
-                "data": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/modelDto.AttendanceHistoryItem"
-                    }
-                },
-                "meta": {
-                    "$ref": "#/definitions/modelDto.PaginationMeta"
-                },
-                "success": {
-                    "type": "boolean"
-                }
-            }
-        },
         "modelDto.AttendanceListResponse": {
             "type": "object",
             "properties": {
@@ -3246,20 +3433,6 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "offset": {
-                    "type": "integer"
-                },
-                "total": {
-                    "type": "integer"
-                }
-            }
-        },
-        "modelDto.PaginationMeta": {
-            "type": "object",
-            "properties": {
-                "current_page": {
-                    "type": "integer"
-                },
-                "last_page": {
                     "type": "integer"
                 },
                 "total": {
@@ -3406,8 +3579,28 @@ const docTemplate = `{
                 "message": {
                     "type": "string"
                 },
+                "pagination": {
+                    "$ref": "#/definitions/utils.Pagination"
+                },
                 "status": {
                     "type": "string"
+                }
+            }
+        },
+        "utils.Pagination": {
+            "type": "object",
+            "properties": {
+                "current_page": {
+                    "type": "integer"
+                },
+                "last_page": {
+                    "type": "integer"
+                },
+                "per_page": {
+                    "type": "integer"
+                },
+                "total": {
+                    "type": "integer"
                 }
             }
         }
