@@ -26,6 +26,7 @@ type AttendanceService interface {
 
 	GetAllData(
 		ctx context.Context,
+		requesterID uint,
 		filter model.AttendanceFilter,
 		includes []string,
 		limit, offset int,
@@ -42,6 +43,7 @@ type attendanceService struct {
 	settingRepo  repository.TenantSettingRepository
 	tenantRepo   repository.TenantRepository
 	activityRepo repository.RecentActivityRepository
+	userService  UserService
 	redis        *redis.Client
 	// Queue for background processing
 	recordQueue chan attendanceTask
@@ -61,6 +63,7 @@ func NewAttendanceService(
 	settingRepo repository.TenantSettingRepository,
 	tenantRepo repository.TenantRepository,
 	activityRepo repository.RecentActivityRepository,
+	userService UserService,
 	redis *redis.Client,
 ) AttendanceService {
 	s := &attendanceService{
@@ -69,6 +72,7 @@ func NewAttendanceService(
 		settingRepo:  settingRepo,
 		tenantRepo:   tenantRepo,
 		activityRepo: activityRepo,
+		userService:  userService,
 		redis:        redis,
 		recordQueue:  make(chan attendanceTask, 1000), // Buffer for 1000 requests
 	}
@@ -323,11 +327,18 @@ func (s *attendanceService) RecordAttendance(
 
 func (s *attendanceService) GetAllData(
 	ctx context.Context,
+	requesterID uint,
 	filter model.AttendanceFilter,
 	includes []string,
 	limit, offset int,
 ) ([]model.AttendanceResponse, int64, error) {
 	includes = filterAttendanceIncludes(includes)
+
+	// Apply Hierarchical Scoping
+	if requesterID != 0 {
+		allowedRoleIDs, _ := s.userService.GetAllowedRoleIDs(ctx, requesterID)
+		filter.AllowedRoleIDs = allowedRoleIDs
+	}
 
 	data, total, err := s.repo.FindAll(ctx, filter, includes, limit, offset)
 	if err != nil {

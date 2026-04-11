@@ -159,7 +159,9 @@ func (h *overtimeHandler) GetAll(c *gin.Context) {
 	filter.Limit = limit
 	filter.Offset = offset
 
-	data, total, err := h.service.GetAll(c.Request.Context(), filter)
+	requesterID := c.MustGet("user_id").(uint)
+
+	data, total, err := h.service.GetAll(c.Request.Context(), requesterID, filter)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, utils.BuildErrorResponse("Failed", http.StatusInternalServerError, "error", err.Error()))
 		return

@@ -12,18 +12,20 @@ type OvertimeService interface {
 	CreateRequest(ctx context.Context, userID uint, tenantID uint, req model.CreateOvertimeRequest) (model.OvertimeResponse, error)
 	ApproveRequest(ctx context.Context, id uint, adminID uint, req model.ApproveOvertimeRequest) (model.OvertimeResponse, error)
 	RejectRequest(ctx context.Context, id uint, adminID uint, req model.ApproveOvertimeRequest) (model.OvertimeResponse, error)
-	GetAll(ctx context.Context, filter model.OvertimeFilter) ([]model.OvertimeResponse, int64, error)
+	GetAll(ctx context.Context, requesterID uint, filter model.OvertimeFilter) ([]model.OvertimeResponse, int64, error)
 	GetByID(ctx context.Context, id uint) (model.OvertimeResponse, error)
 	GetPendingCount(ctx context.Context, userID uint) (int, error)
 }
 
 type overtimeService struct {
-	repo repository.OvertimeRepository
+	repo        repository.OvertimeRepository
+	userService UserService
 }
 
-func NewOvertimeService(repo repository.OvertimeRepository) OvertimeService {
+func NewOvertimeService(repo repository.OvertimeRepository, userService UserService) OvertimeService {
 	return &overtimeService{
-		repo: repo,
+		repo:        repo,
+		userService: userService,
 	}
 }
 
@@ -101,7 +103,13 @@ func (s *overtimeService) RejectRequest(ctx context.Context, id uint, adminID ui
 	return s.mapToResponse(*overtime), nil
 }
 
-func (s *overtimeService) GetAll(ctx context.Context, filter model.OvertimeFilter) ([]model.OvertimeResponse, int64, error) {
+func (s *overtimeService) GetAll(ctx context.Context, requesterID uint, filter model.OvertimeFilter) ([]model.OvertimeResponse, int64, error) {
+	// Apply Hierarchical Scoping
+	if requesterID != 0 {
+		allowedRoleIDs, _ := s.userService.GetAllowedRoleIDs(ctx, requesterID)
+		filter.AllowedRoleIDs = allowedRoleIDs
+	}
+
 	data, total, err := s.repo.FindAll(ctx, filter)
 	if err != nil {
 		return nil, 0, err

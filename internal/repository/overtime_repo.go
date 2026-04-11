@@ -28,7 +28,7 @@ func NewOvertimeRepository(db *gorm.DB) OvertimeRepository {
 func (r *overtimeRepository) GetPendingCount(ctx context.Context, userID uint) (int64, error) {
 	var count int64
 	err := r.db.WithContext(ctx).Model(&model.Overtime{}).
-		Where("user_id = ? AND status = ?", userID, model.OvertimeStatusPending).
+		Where("overtimes.user_id = ? AND overtimes.status = ?", userID, model.OvertimeStatusPending).
 		Count(&count).Error
 	return count, err
 }
@@ -57,15 +57,15 @@ func (r *overtimeRepository) FindAll(ctx context.Context, filter model.OvertimeF
 	query := r.db.WithContext(ctx).Model(&model.Overtime{})
 
 	if filter.TenantID != 0 {
-		query = query.Where("tenant_id = ?", filter.TenantID)
+		query = query.Where("overtimes.tenant_id = ?", filter.TenantID)
 	}
 
 	if filter.UserID != 0 {
-		query = query.Where("user_id = ?", filter.UserID)
+		query = query.Where("overtimes.user_id = ?", filter.UserID)
 	}
 
 	if filter.Status != "" {
-		query = query.Where("status = ?", filter.Status)
+		query = query.Where("overtimes.status = ?", filter.Status)
 	}
 
 	if filter.DateFrom != nil {
@@ -74,6 +74,10 @@ func (r *overtimeRepository) FindAll(ctx context.Context, filter model.OvertimeF
 
 	if filter.DateTo != nil {
 		query = query.Where("date <= ?", *filter.DateTo)
+	}
+
+	if len(filter.AllowedRoleIDs) > 0 {
+		query = query.Joins("User").Where("\"User\".role_id IN ?", filter.AllowedRoleIDs)
 	}
 
 	if err := query.Count(&total).Error; err != nil {

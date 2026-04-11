@@ -79,13 +79,15 @@ type AttendanceSummaryResponse struct {
 }
 
 type AttendanceFilter struct {
-	UserID   uint
-	Status   AttendanceStatus
-	limit    int
-	offset   int
-	includes []string
-	DateFrom *time.Time
-	DateTo   *time.Time
+	UserID         uint
+	TenantID       uint
+	Status         AttendanceStatus
+	AllowedRoleIDs []uint
+	limit          int
+	offset         int
+	includes       []string
+	DateFrom       *time.Time
+	DateTo         *time.Time
 }
 
 var ErrNotFound = errors.New("data not found")

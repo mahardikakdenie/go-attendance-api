@@ -60,11 +60,12 @@ type OvertimeResponse struct {
 }
 
 type OvertimeFilter struct {
-	UserID   uint
-	TenantID uint
-	Status   OvertimeStatus
-	DateFrom *time.Time
-	DateTo   *time.Time
-	Limit    int
-	Offset   int
+	UserID         uint
+	TenantID       uint
+	Status         OvertimeStatus
+	AllowedRoleIDs []uint
+	DateFrom       *time.Time
+	DateTo         *time.Time
+	Limit          int
+	Offset         int
 }

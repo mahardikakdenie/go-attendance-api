@@ -49,7 +49,7 @@ func (r *attendanceRepository) GetSummaryCounts(ctx context.Context, tenantID ui
 		Where("clock_in_time >= ? AND clock_in_time < ?", startTime, endTime)
 
 	if tenantID != 0 {
-		query = query.Where("tenant_id = ?", tenantID)
+		query = query.Where("attendances.tenant_id = ?", tenantID)
 	}
 
 	err := query.Group("status").Scan(&results).Error
@@ -70,7 +70,7 @@ func (r *attendanceRepository) GetOldestDataDate(ctx context.Context, tenantID u
 	query := r.db.WithContext(ctx).Model(&model.Attendance{}).Order("clock_in_time ASC")
 
 	if tenantID != 0 {
-		query = query.Where("tenant_id = ?", tenantID)
+		query = query.Where("attendances.tenant_id = ?", tenantID)
 	}
 
 	err := query.First(&attendance).Error
@@ -128,11 +128,15 @@ func (r *attendanceRepository) FindAll(
 	query = utils.ApplyPreloads(query, includes, attendancePreloadMap)
 
 	if filter.UserID != 0 {
-		query = query.Where("user_id = ?", filter.UserID)
+		query = query.Where("attendances.user_id = ?", filter.UserID)
+	}
+
+	if filter.TenantID != 0 {
+		query = query.Where("attendances.tenant_id = ?", filter.TenantID)
 	}
 
 	if filter.Status != "" {
-		query = query.Where("status = ?", filter.Status)
+		query = query.Where("attendances.status = ?", filter.Status)
 	}
 
 	if filter.DateFrom != nil {
@@ -141,6 +145,10 @@ func (r *attendanceRepository) FindAll(
 
 	if filter.DateTo != nil {
 		query = query.Where("clock_in_time <= ?", *filter.DateTo)
+	}
+
+	if len(filter.AllowedRoleIDs) > 0 {
+		query = query.Joins("User").Where("\"User\".role_id IN ?", filter.AllowedRoleIDs)
 	}
 
 	if err := query.Count(&total).Error; err != nil {

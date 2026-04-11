@@ -227,7 +227,9 @@ func (h *attendanceHandler) GetAllAttendance(c *gin.Context) {
 		includes = strings.Split(inc, ",")
 	}
 
-	data, total, err := h.service.GetAllData(ctx, filter, includes, limit, offset)
+	requesterID := c.MustGet("user_id").(uint)
+
+	data, total, err := h.service.GetAllData(ctx, requesterID, filter, includes, limit, offset)
 	if err != nil {
 		response := utils.BuildErrorResponse("Failed to fetch attendance data", http.StatusInternalServerError, "error", err.Error())
 		c.JSON(http.StatusInternalServerError, response)
@@ -305,7 +307,7 @@ func (h *attendanceHandler) GetAttendanceHistory(c *gin.Context) {
 	offset := (page - 1) * limit
 
 	// 4. Fetch Data
-	data, total, err := h.service.GetAllData(ctx, filter, []string{"user"}, limit, offset)
+	data, total, err := h.service.GetAllData(ctx, userID, filter, []string{"user"}, limit, offset)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, utils.BuildErrorResponse("Failed to fetch history", http.StatusInternalServerError, "error", err.Error()))
 		return
