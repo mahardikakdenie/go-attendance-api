@@ -14,54 +14,52 @@ import (
 )
 
 func SetupRoutes(r *gin.Engine, db *gorm.DB, rdb *redis.Client) {
-
+	// Repositories
 	authRepo := repository.NewAuthRepository(db)
 	roleRepo := repository.NewRoleRepository(db)
-	activityRepo := repository.NewRecentActivityRepository(db)
-
-	authService := service.NewAuthService(authRepo, activityRepo)
-	authHandler := handler.NewAuthHandler(authService)
-
 	userRepo := repository.NewUserRepository(db)
-	userService := service.NewUserService(userRepo, roleRepo, activityRepo)
-	userHandler := handler.NewUserHandler(userService)
-
 	tenantRepo := repository.NewTenantRepository(db)
-	tenantService := service.NewTenantService(tenantRepo)
-	tenantHandler := handler.NewTenantHandler(tenantService)
-
 	tenantSettingRepo := repository.NewTenantSettingRepository(db)
-	tenantSettingService := service.NewTenantSettingService(tenantSettingRepo)
-	tenantSettingHandler := handler.NewTenantSettingHandler(tenantSettingService)
-
 	mediaRepo := repository.NewMediaRepository(db)
-	mediaService := service.NewMediaService(mediaRepo)
-	mediaHandler := handler.NewMediaHandler(mediaService)
-
+	activityRepo := repository.NewRecentActivityRepository(db)
 	attendanceRepo := repository.NewAttendanceRepository(db)
-	attendanceService := service.NewAttendanceService(attendanceRepo, userRepo, tenantSettingRepo, tenantRepo, activityRepo, rdb)
-	attendanceHandler := handler.NewAttendanceHandler(attendanceService)
-
-	ucrRepo := repository.NewUserChangeRequestRepository(db)
-	ucrService := service.NewUserChangeRequestService(ucrRepo, userRepo)
-	ucrHandler := handler.NewUserChangeRequestHandler(ucrService)
-
-	overtimeRepo := repository.NewOvertimeRepository(db)
-	overtimeService := service.NewOvertimeService(overtimeRepo)
-	overtimeHandler := handler.NewOvertimeHandler(overtimeService)
-
 	leaveRepo := repository.NewLeaveRepository(db)
+	overtimeRepo := repository.NewOvertimeRepository(db)
+	ucrRepo := repository.NewUserChangeRequestRepository(db)
 	positionRepo := repository.NewPositionRepository(db)
+	permissionRepo := repository.NewPermissionRepository(db)
+	hierarchyRepo := repository.NewRoleHierarchyRepository(db)
+
+	// Services
+	authService := service.NewAuthService(authRepo, activityRepo)
+	userService := service.NewUserService(userRepo, roleRepo, activityRepo, hierarchyRepo)
+	tenantService := service.NewTenantService(tenantRepo)
+	tenantSettingService := service.NewTenantSettingService(tenantSettingRepo)
+	mediaService := service.NewMediaService(mediaRepo)
+	attendanceService := service.NewAttendanceService(attendanceRepo, userRepo, tenantSettingRepo, tenantRepo, activityRepo, userService, rdb)
 	orgService := service.NewOrganizationService(userRepo, leaveRepo, positionRepo)
-	orgHandler := handler.NewOrganizationHandler(orgService)
-
-	leaveService := service.NewLeaveService(leaveRepo, activityRepo, userRepo, orgService)
-	leaveHandler := handler.NewLeaveHandler(leaveService)
-
+	leaveService := service.NewLeaveService(leaveRepo, activityRepo, userRepo, orgService, userService, rdb)
+	overtimeService := service.NewOvertimeService(overtimeRepo, userService)
+	ucrService := service.NewUserChangeRequestService(ucrRepo, userRepo)
 	payrollService := service.NewPayrollService()
-	payrollHandler := handler.NewPayrollHandler(payrollService)
+	dashboardService := service.NewDashboardService(tenantRepo, userRepo, attendanceRepo, leaveRepo, overtimeRepo, rdb)
+	tenantRoleService := service.NewTenantRoleService(roleRepo, permissionRepo, hierarchyRepo)
 
+	// Handlers
+	authHandler := handler.NewAuthHandler(authService)
+	userHandler := handler.NewUserHandler(userService)
+	tenantHandler := handler.NewTenantHandler(tenantService)
+	tenantSettingHandler := handler.NewTenantSettingHandler(tenantSettingService)
+	mediaHandler := handler.NewMediaHandler(mediaService)
+	attendanceHandler := handler.NewAttendanceHandler(attendanceService)
+	orgHandler := handler.NewOrganizationHandler(orgService)
+	leaveHandler := handler.NewLeaveHandler(leaveService)
+	overtimeHandler := handler.NewOvertimeHandler(overtimeService)
+	ucrHandler := handler.NewUserChangeRequestHandler(ucrService)
+	payrollHandler := handler.NewPayrollHandler(payrollService)
+	dashboardHandler := handler.NewDashboardHandler(dashboardService)
 	activityHandler := handler.NewActivityHandler(userService, leaveService, overtimeService)
+	tenantRoleHandler := handler.NewTenantRoleHandler(tenantRoleService)
 
 	if gin.Mode() != gin.ReleaseMode {
 		r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
@@ -69,19 +67,22 @@ func SetupRoutes(r *gin.Engine, db *gorm.DB, rdb *redis.Client) {
 
 	api := r.Group("/api/v1")
 
-	auth := api.Group("/auth")
+	// Public routes
+	authGroup := api.Group("/auth")
 	{
-		auth.POST("/register", authHandler.Register)
-		auth.POST("/login", authHandler.Login)
+		authGroup.POST("/register", authHandler.Register)
+		authGroup.POST("/login", authHandler.Login)
 	}
 
 	api.GET("/ping", attendanceHandler.HelloTest)
 	api.POST("/email/test", handler.SendEmailTest)
 
+	// Protected routes
 	protected := api.Group("")
 	protected.Use(middleware.SecureAuth(authService))
 	{
 		protected.GET("/auth/sessions", authHandler.GetSessions)
+		protected.POST("/auth/logout", authHandler.Logout)
 
 		attendance := protected.Group("/attendance")
 		{
@@ -98,21 +99,14 @@ func SetupRoutes(r *gin.Engine, db *gorm.DB, rdb *redis.Client) {
 			overtime.GET("", overtimeHandler.GetAll)
 			overtime.GET("/:id", overtimeHandler.GetByID)
 
-			adminOnly := overtime.Group("")
-			adminOnly.Use(middleware.RequireRole("superadmin", "admin", "hr"))
-			{
-				adminOnly.POST("/approve/:id", overtimeHandler.ApproveRequest)
-				adminOnly.POST("/reject/:id", overtimeHandler.RejectRequest)
-			}
+			overtime.POST("/approve/:id", middleware.RequireRole("superadmin", "admin", "hr"), overtimeHandler.ApproveRequest)
+			overtime.POST("/reject/:id", middleware.RequireRole("superadmin", "admin", "hr"), overtimeHandler.RejectRequest)
 		}
 
 		tenants := protected.Group("/tenants")
 		{
-			// Only superadmin can list all or create tenants
 			tenants.GET("", middleware.RequireRole("superadmin"), tenantHandler.GetAllTenant)
 			tenants.POST("", middleware.RequireRole("superadmin"), tenantHandler.CreateTenant)
-			
-			// GetByID can be accessed by admin/hr but with ownership check in handler
 			tenants.GET("/:id", tenantHandler.GetTenantByID)
 		}
 
@@ -128,11 +122,7 @@ func SetupRoutes(r *gin.Engine, db *gorm.DB, rdb *redis.Client) {
 			users.GET("/me", userHandler.GetMe)
 			users.GET("/me/activities", userHandler.GetRecentActivities)
 			users.POST("", middleware.RequireRole("superadmin", "admin"), userHandler.CreateUser)
-
-			// ✅ NEW: update profile photo
 			users.PUT("/profile-photo", userHandler.UpdateProfilePhoto)
-
-			// ✅ NEW: Request Change System
 			users.POST("/request-change", ucrHandler.CreateRequest)
 			
 			adminOnly := users.Group("")
@@ -151,33 +141,47 @@ func SetupRoutes(r *gin.Engine, db *gorm.DB, rdb *redis.Client) {
 			payroll.POST("/calculate", payrollHandler.Calculate)
 		}
 
-		protected.POST("/media/upload", mediaHandler.Upload)
-		protected.POST("/auth/logout", authHandler.Logout)
+		dashboards := protected.Group("/dashboards")
+		{
+			dashboards.GET("/admin", middleware.RequireRole("superadmin"), dashboardHandler.GetAdminDashboard)
+			dashboards.GET("/hr", middleware.RequireRole("superadmin", "admin", "hr"), dashboardHandler.GetHrDashboard)
+			dashboards.GET("/finance", middleware.RequireRole("superadmin", "admin", "finance"), dashboardHandler.GetFinanceDashboard)
+			dashboards.GET("/heatmap", middleware.RequireRole("superadmin", "admin", "hr"), dashboardHandler.GetHeatmap)
+		}
 
-		// Leave routes
-		leaves := api.Group("/leaves")
-		leaves.Use(middleware.SecureAuth(authService))
+		protected.POST("/media/upload", mediaHandler.Upload)
+
+		leaves := protected.Group("/leaves")
 		{
 			leaves.POST("/request", leaveHandler.RequestLeave)
 			leaves.GET("", leaveHandler.GetLeaveHistory)
 			leaves.GET("/balances", leaveHandler.GetLeaveBalances)
+			leaves.POST("/approve/:id", middleware.RequireRole("superadmin", "admin", "hr"), leaveHandler.ApproveLeave)
+			leaves.POST("/reject/:id", middleware.RequireRole("superadmin", "admin", "hr"), leaveHandler.RejectLeave)
 		}
 
-		// Activity routes
-		activities := api.Group("/activities")
-		activities.Use(middleware.SecureAuth(authService))
+		activities := protected.Group("/activities")
 		{
 			activities.GET("/recent", activityHandler.GetRecentActivities)
 			activities.GET("/quick-info", activityHandler.GetQuickInfo)
 		}
 
-		// Organization routes
-		org := api.Group("/organization")
-		org.Use(middleware.SecureAuth(authService))
+		org := protected.Group("/organization")
 		{
 			org.GET("/chart", orgHandler.GetOrgTree)
 			org.GET("/positions", orgHandler.GetPositions)
 			org.POST("/positions", middleware.RequireRole("superadmin", "admin"), orgHandler.CreatePosition)
+		}
+
+		// Custom Tenant Roles
+		tenantRoles := protected.Group("/tenant-roles")
+		{
+			tenantRoles.GET("", middleware.RequireRole("superadmin", "admin"), tenantRoleHandler.ListRoles)
+			tenantRoles.POST("", middleware.RequireRole("superadmin", "admin"), tenantRoleHandler.CreateRole)
+			tenantRoles.PATCH("/:id", middleware.RequireRole("superadmin", "admin"), tenantRoleHandler.UpdateRole)
+			tenantRoles.DELETE("/:id", middleware.RequireRole("superadmin", "admin"), tenantRoleHandler.DeleteRole)
+			tenantRoles.GET("/:id/hierarchy", middleware.RequireRole("superadmin", "admin"), tenantRoleHandler.GetHierarchy)
+			tenantRoles.POST("/hierarchy", middleware.RequireRole("superadmin", "admin"), tenantRoleHandler.SaveHierarchy)
 		}
 	}
 }

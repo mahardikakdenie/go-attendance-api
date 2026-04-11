@@ -1269,6 +1269,39 @@ paths:
       summary: Get active sessions
       tags:
       - Auth
+  /api/v1/dashboards/admin:
+    get:
+      produces:
+      - application/json
+      responses: {}
+      security:
+      - BearerAuth: []
+      - CookieAuth: []
+      summary: Get Admin Dashboard Data
+      tags:
+      - Dashboard
+  /api/v1/dashboards/finance:
+    get:
+      produces:
+      - application/json
+      responses: {}
+      security:
+      - BearerAuth: []
+      - CookieAuth: []
+      summary: Get Finance Dashboard Data
+      tags:
+      - Dashboard
+  /api/v1/dashboards/hr:
+    get:
+      produces:
+      - application/json
+      responses: {}
+      security:
+      - BearerAuth: []
+      - CookieAuth: []
+      summary: Get HR Dashboard Data
+      tags:
+      - Dashboard
   /api/v1/email/test:
     post:
       consumes:

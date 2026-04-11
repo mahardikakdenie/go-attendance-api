@@ -573,6 +573,66 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/dashboards/admin": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    },
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Dashboard"
+                ],
+                "summary": "Get Admin Dashboard Data",
+                "responses": {}
+            }
+        },
+        "/api/v1/dashboards/finance": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    },
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Dashboard"
+                ],
+                "summary": "Get Finance Dashboard Data",
+                "responses": {}
+            }
+        },
+        "/api/v1/dashboards/hr": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    },
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Dashboard"
+                ],
+                "summary": "Get HR Dashboard Data",
+                "responses": {}
+            }
+        },
         "/api/v1/email/test": {
             "post": {
                 "description": "Send a test email",
