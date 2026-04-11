@@ -48,12 +48,14 @@ type Leave struct {
 	Reason      string         `gorm:"type:text" json:"reason"`
 	Status      LeaveStatus    `gorm:"type:varchar(20);default:'pending'" json:"status"`
 	AdminNotes  string         `gorm:"type:text" json:"admin_notes,omitempty"`
+	DelegateID  *uint          `gorm:"index" json:"delegate_id,omitempty"`
 	CreatedAt   time.Time      `json:"created_at"`
 	UpdatedAt   time.Time      `json:"updated_at"`
 	DeletedAt   gorm.DeletedAt `gorm:"index" json:"-"`
 
 	User      *User      `gorm:"foreignKey:UserID" json:"user,omitempty"`
 	LeaveType *LeaveType `gorm:"foreignKey:LeaveTypeID" json:"leave_type,omitempty"`
+	Delegate  *User      `gorm:"foreignKey:DelegateID" json:"delegate,omitempty"`
 }
 
 type LeaveRequest struct {
@@ -61,6 +63,7 @@ type LeaveRequest struct {
 	StartDate   string `json:"start_date" binding:"required" example:"2026-05-01"`
 	EndDate     string `json:"end_date" binding:"required" example:"2026-05-03"`
 	Reason      string `json:"reason" binding:"required"`
+	DelegateID  *uint  `json:"delegate_id"`
 }
 
 type LeaveResponse struct {

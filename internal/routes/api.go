@@ -9,10 +9,11 @@ import (
 	"github.com/gin-gonic/gin"
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
+	"github.com/redis/go-redis/v9"
 	"gorm.io/gorm"
 )
 
-func SetupRoutes(r *gin.Engine, db *gorm.DB) {
+func SetupRoutes(r *gin.Engine, db *gorm.DB, rdb *redis.Client) {
 
 	authRepo := repository.NewAuthRepository(db)
 	roleRepo := repository.NewRoleRepository(db)
@@ -38,7 +39,7 @@ func SetupRoutes(r *gin.Engine, db *gorm.DB) {
 	mediaHandler := handler.NewMediaHandler(mediaService)
 
 	attendanceRepo := repository.NewAttendanceRepository(db)
-	attendanceService := service.NewAttendanceService(attendanceRepo, userRepo, tenantSettingRepo, tenantRepo, activityRepo)
+	attendanceService := service.NewAttendanceService(attendanceRepo, userRepo, tenantSettingRepo, tenantRepo, activityRepo, rdb)
 	attendanceHandler := handler.NewAttendanceHandler(attendanceService)
 
 	ucrRepo := repository.NewUserChangeRequestRepository(db)
@@ -50,7 +51,11 @@ func SetupRoutes(r *gin.Engine, db *gorm.DB) {
 	overtimeHandler := handler.NewOvertimeHandler(overtimeService)
 
 	leaveRepo := repository.NewLeaveRepository(db)
-	leaveService := service.NewLeaveService(leaveRepo)
+	positionRepo := repository.NewPositionRepository(db)
+	orgService := service.NewOrganizationService(userRepo, leaveRepo, positionRepo)
+	orgHandler := handler.NewOrganizationHandler(orgService)
+
+	leaveService := service.NewLeaveService(leaveRepo, activityRepo, userRepo, orgService)
 	leaveHandler := handler.NewLeaveHandler(leaveService)
 
 	payrollService := service.NewPayrollService()
@@ -164,6 +169,15 @@ func SetupRoutes(r *gin.Engine, db *gorm.DB) {
 		{
 			activities.GET("/recent", activityHandler.GetRecentActivities)
 			activities.GET("/quick-info", activityHandler.GetQuickInfo)
+		}
+
+		// Organization routes
+		org := api.Group("/organization")
+		org.Use(middleware.SecureAuth(authService))
+		{
+			org.GET("/chart", orgHandler.GetOrgTree)
+			org.GET("/positions", orgHandler.GetPositions)
+			org.POST("/positions", middleware.RequireRole("superadmin", "admin"), orgHandler.CreatePosition)
 		}
 	}
 }

@@ -3,8 +3,10 @@ package service
 import (
 	"context"
 	"errors"
+	"fmt"
 	"go-attendance-api/internal/model"
 	"go-attendance-api/internal/repository"
+	"go-attendance-api/internal/utils"
 	"time"
 )
 
@@ -16,11 +18,24 @@ type LeaveService interface {
 }
 
 type leaveService struct {
-	repo repository.LeaveRepository
+	repo         repository.LeaveRepository
+	activityRepo repository.RecentActivityRepository
+	userRepo     repository.UserRepository
+	orgService   OrganizationService
 }
 
-func NewLeaveService(repo repository.LeaveRepository) LeaveService {
-	return &leaveService{repo: repo}
+func NewLeaveService(
+	repo repository.LeaveRepository,
+	activityRepo repository.RecentActivityRepository,
+	userRepo repository.UserRepository,
+	orgService OrganizationService,
+) LeaveService {
+	return &leaveService{
+		repo:         repo,
+		activityRepo: activityRepo,
+		userRepo:     userRepo,
+		orgService:   orgService,
+	}
 }
 
 func (s *leaveService) GetPendingCount(ctx context.Context, userID uint) (int, error) {
@@ -52,9 +67,17 @@ func (s *leaveService) RequestLeave(ctx context.Context, userID uint, tenantID u
 		return model.LeaveResponse{}, err
 	}
 
+	fmt.Println("Balance ", balance)
+
 	if balance == nil || balance.Balance < totalDays {
 		return model.LeaveResponse{}, errors.New("insufficient leave balance")
 	}
+
+	// Get User info
+	user, _ := s.userRepo.FindByID(ctx, userID, nil)
+
+	// Get the correct manager for approval (with escalation if on leave)
+	approvalManager, _ := s.orgService.GetApprovalManager(ctx, userID, startDate)
 
 	leave := &model.Leave{
 		TenantID:    tenantID,
@@ -64,10 +87,17 @@ func (s *leaveService) RequestLeave(ctx context.Context, userID uint, tenantID u
 		EndDate:     endDate,
 		Reason:      req.Reason,
 		Status:      model.LeaveStatusPending,
+		DelegateID:  req.DelegateID,
 	}
 
 	if err := s.repo.CreateLeave(ctx, leave); err != nil {
 		return model.LeaveResponse{}, err
+	}
+
+	// Update User's Delegate for this period (Simple implementation)
+	if req.DelegateID != nil && user != nil {
+		user.DelegateID = req.DelegateID
+		s.userRepo.Update(ctx, user)
 	}
 
 	// Update balance (deduct)
@@ -77,6 +107,47 @@ func (s *leaveService) RequestLeave(ctx context.Context, userID uint, tenantID u
 	}
 
 	lt, _ := s.repo.GetLeaveTypeByID(ctx, req.LeaveTypeID)
+
+	// Record activity
+	s.activityRepo.Create(ctx, &model.RecentActivity{
+		UserID: userID,
+		Title:  fmt.Sprintf("Requested %s for %d days", lt.Name, totalDays),
+		Action: "Leave Request",
+		Status: "Pending",
+	})
+
+	// NOTIFICATION LOGIC
+	// 1. Notify Approval Manager (Could be direct manager or escalated)
+	if approvalManager != nil && user != nil {
+		subject := fmt.Sprintf("Leave Approval Needed: %s", user.Name)
+		html := utils.GetLeaveApprovalRequestTemplate(
+			approvalManager.Name,
+			user.Name,
+			lt.Name,
+			req.StartDate,
+			req.EndDate,
+			totalDays,
+			req.Reason,
+		)
+		
+		utils.SendEmail([]string{approvalManager.Email}, subject, html)
+	}
+
+	// 2. Notify Delegate
+	if req.DelegateID != nil {
+		delegate, _ := s.userRepo.FindByID(ctx, *req.DelegateID, nil)
+		if delegate != nil {
+			subject := fmt.Sprintf("Leave Delegation: %s", user.Name)
+			html := utils.GetLeaveDelegationTemplate(
+				delegate.Name,
+				user.Name,
+				req.StartDate,
+				req.EndDate,
+			)
+			
+			utils.SendEmail([]string{delegate.Email}, subject, html)
+		}
+	}
 
 	return model.LeaveResponse{
 		ID:          leave.ID,
@@ -93,9 +164,12 @@ func (s *leaveService) RequestLeave(ctx context.Context, userID uint, tenantID u
 }
 
 func (s *leaveService) GetLeaveBalances(ctx context.Context, userID uint) ([]model.LeaveBalance, error) {
-	// Not implemented in repo yet, but usually we'd need a GetBalancesByUser
-	// For now, let's assume we return empty or implement GetBalancesByUser in repo
-	return nil, nil
+	year := time.Now().Year()
+	balances, err := s.repo.GetBalancesByUser(ctx, userID, year)
+	if err != nil {
+		return nil, err
+	}
+	return balances, nil
 }
 
 func (s *leaveService) GetLeaveHistory(ctx context.Context, userID uint, limit, offset int) ([]model.LeaveResponse, int64, error) {

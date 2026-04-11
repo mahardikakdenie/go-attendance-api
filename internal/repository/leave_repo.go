@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"go-attendance-api/internal/model"
+	"time"
 
 	"gorm.io/gorm"
 )
@@ -19,6 +20,8 @@ type LeaveRepository interface {
 	CreateLeave(ctx context.Context, l *model.Leave) error
 	GetLeavesByUser(ctx context.Context, userID uint, limit, offset int) ([]model.Leave, int64, error)
 	GetPendingCount(ctx context.Context, userID uint) (int64, error)
+	GetBalancesByUser(ctx context.Context, userID uint, year int) ([]model.LeaveBalance, error)
+	CheckOnLeave(ctx context.Context, userID uint, date time.Time) (bool, error)
 }
 
 type leaveRepository struct {
@@ -81,4 +84,22 @@ func (r *leaveRepository) GetLeavesByUser(ctx context.Context, userID uint, limi
 	query.Count(&total)
 	err := query.Order("created_at DESC").Limit(limit).Offset(offset).Preload("LeaveType").Find(&results).Error
 	return results, total, err
+}
+
+func (r *leaveRepository) GetBalancesByUser(ctx context.Context, userID uint, year int) ([]model.LeaveBalance, error) {
+	var results []model.LeaveBalance
+	err := r.db.WithContext(ctx).
+		Where("user_id = ? AND year = ?", userID, year).
+		Preload("LeaveType").
+		Find(&results).Error
+	return results, err
+}
+
+func (r *leaveRepository) CheckOnLeave(ctx context.Context, userID uint, date time.Time) (bool, error) {
+	var count int64
+	err := r.db.WithContext(ctx).Model(&model.Leave{}).
+		Where("user_id = ? AND status = ? AND start_date <= ? AND end_date >= ?",
+			userID, model.LeaveStatusApproved, date, date).
+		Count(&count).Error
+	return count > 0, err
 }
