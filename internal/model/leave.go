@@ -78,3 +78,12 @@ type LeaveResponse struct {
 	Status      LeaveStatus `json:"status"`
 	CreatedAt   time.Time   `json:"created_at"`
 }
+
+type LeaveFilter struct {
+	TenantID       uint
+	UserID         uint
+	Status         LeaveStatus
+	AllowedRoleIDs []uint
+	DateFrom       *time.Time
+	DateTo         *time.Time
+}

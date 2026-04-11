@@ -15,6 +15,8 @@ type LeaveHandler interface {
 	RequestLeave(c *gin.Context)
 	GetLeaveHistory(c *gin.Context)
 	GetLeaveBalances(c *gin.Context)
+	ApproveLeave(c *gin.Context)
+	RejectLeave(c *gin.Context)
 }
 
 type leaveHandler struct {
@@ -23,6 +25,60 @@ type leaveHandler struct {
 
 func NewLeaveHandler(service service.LeaveService) LeaveHandler {
 	return &leaveHandler{service: service}
+}
+
+type ReviewLeaveRequest struct {
+	Notes string `json:"notes"`
+}
+
+// @Summary Approve Leave
+// @Description Approve a pending leave request (HR/Manager only)
+// @Tags Leaves
+// @Accept json
+// @Produce json
+// @Param id path int true "Leave ID"
+// @Param body body ReviewLeaveRequest false "Notes"
+// @Security BearerAuth
+// @Security CookieAuth
+// @Router /api/v1/leaves/approve/{id} [post]
+func (h *leaveHandler) ApproveLeave(c *gin.Context) {
+	id, _ := strconv.Atoi(c.Param("id"))
+	var req ReviewLeaveRequest
+	_ = c.ShouldBindJSON(&req)
+
+	approverID := c.MustGet("user_id").(uint)
+
+	if err := h.service.ApproveLeave(c.Request.Context(), approverID, uint(id), req.Notes); err != nil {
+		c.JSON(http.StatusInternalServerError, utils.BuildErrorResponse(err.Error(), 500, "error", nil))
+		return
+	}
+
+	c.JSON(http.StatusOK, utils.BuildResponse("Leave approved successfully", 200, "success", nil))
+}
+
+// @Summary Reject Leave
+// @Description Reject a pending leave request (HR/Manager only)
+// @Tags Leaves
+// @Accept json
+// @Produce json
+// @Param id path int true "Leave ID"
+// @Param body body ReviewLeaveRequest false "Notes"
+// @Security BearerAuth
+// @Security CookieAuth
+// @Router /api/v1/leaves/reject/{id} [post]
+func (h *leaveHandler) RejectLeave(c *gin.Context) {
+	id, _ := strconv.Atoi(c.Param("id"))
+	var req ReviewLeaveRequest
+	_ = c.ShouldBindJSON(&req)
+
+	approverID := c.MustGet("user_id").(uint)
+
+	if err := h.service.RejectLeave(c.Request.Context(), approverID, uint(id), req.Notes); err != nil {
+		c.JSON(http.StatusInternalServerError, utils.BuildErrorResponse(err.Error(), 500, "error", nil))
+		return
+	}
+
+	c.JSON(http.StatusOK, utils.BuildResponse("Leave rejected successfully", 200, "success", nil))
 }
 
 // @Summary Request Leave
@@ -70,7 +126,15 @@ func (h *leaveHandler) GetLeaveHistory(c *gin.Context) {
 	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "10"))
 	offset, _ := strconv.Atoi(c.DefaultQuery("offset", "0"))
 
-	res, total, err := h.service.GetLeaveHistory(c.Request.Context(), userID, limit, offset)
+	var filter model.LeaveFilter
+	// Logic: If not admin/hr, only show own records (scoping will handle the rest)
+	role := c.MustGet("role").(string)
+	isAdmin := role == "superadmin" || role == "admin" || role == "hr"
+	if !isAdmin {
+		filter.UserID = userID
+	}
+
+	res, total, err := h.service.GetLeaveHistory(c.Request.Context(), userID, filter, limit, offset)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, utils.BuildErrorResponse("Failed to fetch history", 500, "error", err.Error()))
 		return

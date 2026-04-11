@@ -19,9 +19,12 @@ type LeaveRepository interface {
 
 	CreateLeave(ctx context.Context, l *model.Leave) error
 	GetLeavesByUser(ctx context.Context, userID uint, limit, offset int) ([]model.Leave, int64, error)
-	GetPendingCount(ctx context.Context, userID uint) (int64, error)
+	GetPendingCount(ctx context.Context, tenantID uint) (int64, error)
 	GetBalancesByUser(ctx context.Context, userID uint, year int) ([]model.LeaveBalance, error)
 	CheckOnLeave(ctx context.Context, userID uint, date time.Time) (bool, error)
+	FindAll(ctx context.Context, filter model.LeaveFilter) ([]model.Leave, int64, error)
+	FindByID(ctx context.Context, id uint) (*model.Leave, error)
+	Update(ctx context.Context, l *model.Leave) error
 }
 
 type leaveRepository struct {
@@ -32,10 +35,10 @@ func NewLeaveRepository(db *gorm.DB) LeaveRepository {
 	return &leaveRepository{db: db}
 }
 
-func (r *leaveRepository) GetPendingCount(ctx context.Context, userID uint) (int64, error) {
+func (r *leaveRepository) GetPendingCount(ctx context.Context, tenantID uint) (int64, error) {
 	var count int64
 	err := r.db.WithContext(ctx).Model(&model.Leave{}).
-		Where("user_id = ? AND status = ?", userID, model.LeaveStatusPending).
+		Where("leaves.tenant_id = ? AND leaves.status = ?", tenantID, model.LeaveStatusPending).
 		Count(&count).Error
 	return count, err
 }
@@ -102,4 +105,60 @@ func (r *leaveRepository) CheckOnLeave(ctx context.Context, userID uint, date ti
 			userID, model.LeaveStatusApproved, date, date).
 		Count(&count).Error
 	return count > 0, err
+}
+
+func (r *leaveRepository) FindAll(ctx context.Context, filter model.LeaveFilter) ([]model.Leave, int64, error) {
+	var leaves []model.Leave
+	var total int64
+
+	query := r.db.WithContext(ctx).Model(&model.Leave{})
+
+	if filter.TenantID != 0 {
+		query = query.Where("leaves.tenant_id = ?", filter.TenantID)
+	}
+
+	if filter.UserID != 0 {
+		query = query.Where("leaves.user_id = ?", filter.UserID)
+	}
+
+	if filter.Status != "" {
+		query = query.Where("leaves.status = ?", filter.Status)
+	}
+
+
+	if filter.DateFrom != nil {
+		query = query.Where("start_date >= ?", *filter.DateFrom)
+	}
+
+	if filter.DateTo != nil {
+		query = query.Where("start_date <= ?", *filter.DateTo)
+	}
+
+	if len(filter.AllowedRoleIDs) > 0 {
+		query = query.Joins("User").Where("\"User\".role_id IN ?", filter.AllowedRoleIDs)
+	}
+
+	if err := query.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+
+	err := query.Order("created_at DESC").Preload("LeaveType").Find(&leaves).Error
+	if err != nil {
+		return nil, 0, err
+	}
+
+	return leaves, total, nil
+}
+
+func (r *leaveRepository) FindByID(ctx context.Context, id uint) (*model.Leave, error) {
+	var leave model.Leave
+	err := r.db.WithContext(ctx).Preload("LeaveType").Preload("User").First(&leave, id).Error
+	if err != nil {
+		return nil, err
+	}
+	return &leave, nil
+}
+
+func (r *leaveRepository) Update(ctx context.Context, l *model.Leave) error {
+	return r.db.WithContext(ctx).Save(l).Error
 }
