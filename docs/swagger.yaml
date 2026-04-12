@@ -15,6 +15,23 @@ definitions:
     - subject
     - to
     type: object
+  handler.ReviewLeaveRequest:
+    properties:
+      notes:
+        type: string
+    type: object
+  handler.SaveHierarchyRequest:
+    properties:
+      child_role_ids:
+        items:
+          type: integer
+        type: array
+      parent_role_id:
+        type: integer
+    required:
+    - child_role_ids
+    - parent_role_id
+    type: object
   handler.UpdateProfilePhotoRequest:
     properties:
       media_url:
@@ -148,6 +165,20 @@ definitions:
       total_record_diff:
         type: number
     type: object
+  model.BaseRole:
+    enum:
+    - SUPERADMIN
+    - ADMIN
+    - HR
+    - FINANCE
+    - EMPLOYEE
+    type: string
+    x-enum-varnames:
+    - BaseRoleSuperAdmin
+    - BaseRoleAdmin
+    - BaseRoleHR
+    - BaseRoleFinance
+    - BaseRoleEmployee
   model.CreateOvertimeRequest:
     properties:
       date:
@@ -219,6 +250,30 @@ definitions:
     - name
     - password
     type: object
+  model.EmployeeCountRange:
+    enum:
+    - 1-10
+    - 11-50
+    - 51-200
+    - 201+
+    type: string
+    x-enum-varnames:
+    - EmployeeCountRange1To10
+    - EmployeeCountRange11To50
+    - EmployeeCountRange51To200
+    - EmployeeCountRange201Plus
+  model.HolidayType:
+    enum:
+    - National Holiday
+    - Company Event
+    - Mandatory Leave
+    - Other
+    type: string
+    x-enum-varnames:
+    - HolidayTypeNational
+    - HolidayTypeCompanyEvent
+    - HolidayTypeMandatoryLeave
+    - HolidayTypeOther
   model.ImageMeta:
     properties:
       extension:
@@ -436,6 +491,22 @@ definitions:
     - OvertimeStatusPending
     - OvertimeStatusApproved
     - OvertimeStatusRejected
+  model.Permission:
+    properties:
+      action:
+        example: view
+        type: string
+      created_at:
+        type: string
+      id:
+        example: attendance.view
+        type: string
+      module:
+        example: attendance
+        type: string
+      updated_at:
+        type: string
+    type: object
   model.Position:
     properties:
       created_at:
@@ -453,6 +524,18 @@ definitions:
       updated_at:
         type: string
     type: object
+  model.ProvisioningTicketStatus:
+    enum:
+    - WAITING
+    - EXECUTING
+    - COMPLETED
+    - FAILED
+    type: string
+    x-enum-varnames:
+    - ProvisioningTicketStatusWaiting
+    - ProvisioningTicketStatusExecuting
+    - ProvisioningTicketStatusCompleted
+    - ProvisioningTicketStatusFailed
   model.RecentActivity:
     properties:
       action:
@@ -516,22 +599,44 @@ definitions:
     type: object
   model.Role:
     properties:
+      base_role:
+        $ref: '#/definitions/model.BaseRole'
       created_at:
+        type: string
+      description:
         type: string
       id:
         type: integer
+      is_system:
+        type: boolean
       name:
         example: admin
         type: string
+      permissions:
+        items:
+          $ref: '#/definitions/model.Permission'
+        type: array
+      tenant_id:
+        type: integer
       updated_at:
         type: string
     type: object
   model.RoleResponse:
     properties:
+      base_role:
+        $ref: '#/definitions/model.BaseRole'
+      description:
+        type: string
       id:
         type: integer
+      is_system:
+        type: boolean
       name:
         type: string
+      permissions:
+        items:
+          $ref: '#/definitions/model.Permission'
+        type: array
     type: object
   model.SessionResponse:
     properties:
@@ -550,6 +655,38 @@ definitions:
       user_agent:
         type: string
     type: object
+  model.ShiftType:
+    enum:
+    - Morning
+    - Afternoon
+    - Night
+    type: string
+    x-enum-varnames:
+    - ShiftTypeMorning
+    - ShiftTypeAfternoon
+    - ShiftTypeNight
+  model.SupportCategory:
+    enum:
+    - TECHNICAL
+    - BILLING
+    - FEATURE
+    - OTHER
+    type: string
+    x-enum-varnames:
+    - SupportCategoryTechnical
+    - SupportCategoryBilling
+    - SupportCategoryFeature
+    - SupportCategoryOther
+  model.SupportStatus:
+    enum:
+    - PENDING
+    - IN_PROGRESS
+    - RESOLVED
+    type: string
+    x-enum-varnames:
+    - SupportStatusPending
+    - SupportStatusInProgress
+    - SupportStatusResolved
   model.Tenant:
     properties:
       code:
@@ -559,6 +696,9 @@ definitions:
       id:
         type: integer
       name:
+        type: string
+      plan:
+        description: Basic, Pro, Enterprise
         type: string
       tenant_settings:
         $ref: '#/definitions/model.TenantSetting'
@@ -623,10 +763,24 @@ definitions:
       tenant_id:
         example: 1
         type: integer
+      tenant_logo:
+        type: string
       updated_at:
         example: "2026-04-07T13:21:24Z"
         type: string
     type: object
+  model.TrialRequestStatus:
+    enum:
+    - NEW
+    - QUALIFIED
+    - APPROVED
+    - REJECTED
+    type: string
+    x-enum-varnames:
+    - TrialRequestStatusNew
+    - TrialRequestStatusQualified
+    - TrialRequestStatusApproved
+    - TrialRequestStatusRejected
   model.User:
     properties:
       address:
@@ -636,6 +790,8 @@ definitions:
         items:
           $ref: '#/definitions/model.Attendance'
         type: array
+      base_salary:
+        type: number
       created_at:
         example: "2026-04-05T12:00:00Z"
         type: string
@@ -762,6 +918,8 @@ definitions:
       id:
         example: 1
         type: integer
+      is_owner:
+        type: boolean
       manager_id:
         type: integer
       media_url:
@@ -770,6 +928,10 @@ definitions:
       name:
         example: Budi Santoso
         type: string
+      permissions:
+        items:
+          type: string
+        type: array
       phone_number:
         example: "08123456789"
         type: string
@@ -788,6 +950,8 @@ definitions:
       tenant_id:
         example: 1
         type: integer
+      tenant_setting:
+        $ref: '#/definitions/model.TenantSetting'
     type: object
   modelDto.AttendanceHistoryItem:
     properties:
@@ -821,6 +985,55 @@ definitions:
       meta:
         $ref: '#/definitions/modelDto.Meta'
     type: object
+  modelDto.CreateHolidayRequest:
+    properties:
+      date:
+        description: YYYY-MM-DD
+        type: string
+      is_paid:
+        type: boolean
+      name:
+        type: string
+      type:
+        $ref: '#/definitions/model.HolidayType'
+    required:
+    - date
+    - name
+    - type
+    type: object
+  modelDto.CreateSupportMessageRequest:
+    properties:
+      category:
+        $ref: '#/definitions/model.SupportCategory'
+      message:
+        type: string
+      subject:
+        type: string
+    required:
+    - category
+    - message
+    - subject
+    type: object
+  modelDto.CreateTrialRequestRequest:
+    properties:
+      company_name:
+        type: string
+      contact_name:
+        type: string
+      email:
+        type: string
+      employee_count_range:
+        $ref: '#/definitions/model.EmployeeCountRange'
+      industry:
+        type: string
+      phone_number:
+        type: string
+    required:
+    - company_name
+    - contact_name
+    - email
+    - employee_count_range
+    type: object
   modelDto.Meta:
     properties:
       limit:
@@ -830,6 +1043,25 @@ definitions:
       total:
         type: integer
     type: object
+  modelDto.ProvisioningTicketResponse:
+    properties:
+      completed_at:
+        type: string
+      created_at:
+        type: string
+      error_log:
+        type: string
+      executed_by:
+        type: integer
+      id:
+        type: string
+      status:
+        $ref: '#/definitions/model.ProvisioningTicketStatus'
+      trial_request:
+        $ref: '#/definitions/modelDto.TrialRequestResponse'
+      trial_request_id:
+        type: string
+    type: object
   modelDto.QuickInfoResponse:
     properties:
       notifications_count:
@@ -837,6 +1069,55 @@ definitions:
       pending_leaves:
         type: integer
       pending_overtimes:
+        type: integer
+    type: object
+  modelDto.RosterAssignment:
+    properties:
+      roster:
+        additionalProperties:
+          type: string
+        description: day -> shift_id or "off"
+        type: object
+      user_id:
+        type: integer
+    required:
+    - roster
+    - user_id
+    type: object
+  modelDto.SaveRosterRequest:
+    properties:
+      assignments:
+        items:
+          $ref: '#/definitions/modelDto.RosterAssignment'
+        type: array
+      start_date:
+        description: YYYY-MM-DD
+        type: string
+    required:
+    - assignments
+    - start_date
+    type: object
+  modelDto.SupportMessageResponse:
+    properties:
+      category:
+        $ref: '#/definitions/model.SupportCategory'
+      created_at:
+        type: string
+      id:
+        type: string
+      message:
+        type: string
+      status:
+        $ref: '#/definitions/model.SupportStatus'
+      subject:
+        type: string
+      tenant:
+        $ref: '#/definitions/model.TenantResponse'
+      tenant_id:
+        type: integer
+      user:
+        $ref: '#/definitions/model.UserResponse'
+      user_id:
         type: integer
     type: object
   modelDto.TodayAttendanceResponse:
@@ -851,6 +1132,86 @@ definitions:
         type: string
       status:
         type: string
+    type: object
+  modelDto.TrialRequestResponse:
+    properties:
+      company_name:
+        type: string
+      contact_name:
+        type: string
+      created_at:
+        type: string
+      email:
+        type: string
+      employee_count_range:
+        $ref: '#/definitions/model.EmployeeCountRange'
+      id:
+        type: string
+      industry:
+        type: string
+      phone_number:
+        type: string
+      status:
+        $ref: '#/definitions/model.TrialRequestStatus'
+    type: object
+  modelDto.UpdateHolidayRequest:
+    properties:
+      is_paid:
+        type: boolean
+      name:
+        type: string
+    type: object
+  modelDto.UpdateLifecycleTaskRequest:
+    properties:
+      is_completed:
+        type: boolean
+    type: object
+  modelDto.UpdateSupportMessageStatusRequest:
+    properties:
+      status:
+        $ref: '#/definitions/model.SupportStatus'
+    required:
+    - status
+    type: object
+  modelDto.UpdateTrialRequestStatusRequest:
+    properties:
+      status:
+        $ref: '#/definitions/model.TrialRequestStatus'
+    required:
+    - status
+    type: object
+  modelDto.WorkShiftResponse:
+    properties:
+      color:
+        type: string
+      endTime:
+        type: string
+      id:
+        type: string
+      isDefault:
+        type: boolean
+      name:
+        type: string
+      startTime:
+        type: string
+      type:
+        $ref: '#/definitions/model.ShiftType'
+    type: object
+  service.CreateRoleRequest:
+    properties:
+      base_role:
+        $ref: '#/definitions/model.BaseRole'
+      description:
+        type: string
+      name:
+        type: string
+      permissions:
+        items:
+          type: string
+        type: array
+    required:
+    - base_role
+    - name
     type: object
   service.PayrollRequest:
     properties:
@@ -908,11 +1269,24 @@ definitions:
       totalDeductions:
         type: number
     type: object
+  service.UpdateRoleRequest:
+    properties:
+      description:
+        type: string
+      name:
+        type: string
+      permissions:
+        items:
+          type: string
+        type: array
+    type: object
   utils.APIResponse:
     properties:
       data: {}
       meta:
         $ref: '#/definitions/utils.Meta'
+      success:
+        type: boolean
     type: object
   utils.Meta:
     properties:
@@ -1291,6 +1665,36 @@ paths:
       summary: Get Finance Dashboard Data
       tags:
       - Dashboard
+  /api/v1/dashboards/heatmap:
+    get:
+      description: Get dynamic heatmap data filtered by user and type
+      parameters:
+      - description: Aktivitas (clockin, clockout, leave)
+        in: query
+        name: type
+        required: true
+        type: string
+      - description: ID User (opsional)
+        in: query
+        name: user_id
+        type: integer
+      - description: 'Format: YYYY-MM-DD'
+        in: query
+        name: date_from
+        type: string
+      - description: 'Format: YYYY-MM-DD'
+        in: query
+        name: date_to
+        type: string
+      produces:
+      - application/json
+      responses: {}
+      security:
+      - BearerAuth: []
+      - CookieAuth: []
+      summary: Get Heatmap Data
+      tags:
+      - Dashboard
   /api/v1/dashboards/hr:
     get:
       produces:
@@ -1300,6 +1704,18 @@ paths:
       - BearerAuth: []
       - CookieAuth: []
       summary: Get HR Dashboard Data
+      tags:
+      - Dashboard
+  /api/v1/dashboards/hr/daily-pulse:
+    get:
+      description: Get real-time daily organization pulse for Manager Home
+      produces:
+      - application/json
+      responses: {}
+      security:
+      - BearerAuth: []
+      - CookieAuth: []
+      summary: Get Daily Pulse Dashboard Data
       tags:
       - Dashboard
   /api/v1/email/test:
@@ -1332,6 +1748,189 @@ paths:
       summary: Send Test Email
       tags:
       - Email
+  /api/v1/hr/calendar:
+    get:
+      parameters:
+      - description: Year
+        in: query
+        name: year
+        type: integer
+      produces:
+      - application/json
+      responses: {}
+      security:
+      - BearerAuth: []
+      summary: Get Calendar/Holidays
+      tags:
+      - HR Ops
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Holiday Payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/modelDto.CreateHolidayRequest'
+      produces:
+      - application/json
+      responses: {}
+      security:
+      - BearerAuth: []
+      summary: Create Holiday
+      tags:
+      - HR Ops
+  /api/v1/hr/calendar/{id}:
+    delete:
+      parameters:
+      - description: Holiday UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      responses: {}
+      security:
+      - BearerAuth: []
+      summary: Delete Holiday
+      tags:
+      - HR Ops
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: Holiday UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Holiday Payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/modelDto.UpdateHolidayRequest'
+      produces:
+      - application/json
+      responses: {}
+      security:
+      - BearerAuth: []
+      summary: Update Holiday
+      tags:
+      - HR Ops
+  /api/v1/hr/employees/{id}/lifecycle:
+    get:
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses: {}
+      security:
+      - BearerAuth: []
+      summary: Get Employee Lifecycle
+      tags:
+      - HR Ops
+  /api/v1/hr/employees/{id}/lifecycle/tasks/{task_id}:
+    patch:
+      consumes:
+      - application/json
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Task UUID
+        in: path
+        name: task_id
+        required: true
+        type: string
+      - description: Payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/modelDto.UpdateLifecycleTaskRequest'
+      responses: {}
+      security:
+      - BearerAuth: []
+      summary: Update Lifecycle Task
+      tags:
+      - HR Ops
+  /api/v1/hr/roster:
+    get:
+      parameters:
+      - description: YYYY-MM-DD
+        in: query
+        name: start_date
+        required: true
+        type: string
+      - description: YYYY-MM-DD
+        in: query
+        name: end_date
+        required: true
+        type: string
+      - description: Dept ID
+        in: query
+        name: department_id
+        type: integer
+      produces:
+      - application/json
+      responses: {}
+      security:
+      - BearerAuth: []
+      summary: Get Weekly Roster
+      tags:
+      - HR Ops
+  /api/v1/hr/roster/save:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Roster Payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/modelDto.SaveRosterRequest'
+      produces:
+      - application/json
+      responses: {}
+      security:
+      - BearerAuth: []
+      summary: Save Roster
+      tags:
+      - HR Ops
+  /api/v1/hr/shifts:
+    get:
+      produces:
+      - application/json
+      responses: {}
+      security:
+      - BearerAuth: []
+      summary: Get All Shifts
+      tags:
+      - HR Ops
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Shift Payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/modelDto.WorkShiftResponse'
+      produces:
+      - application/json
+      responses: {}
+      security:
+      - BearerAuth: []
+      summary: Create Shift
+      tags:
+      - HR Ops
   /api/v1/leaves:
     get:
       description: Get leave history for the logged-in user
@@ -1364,6 +1963,31 @@ paths:
       summary: Get Leave History
       tags:
       - Leaves
+  /api/v1/leaves/approve/{id}:
+    post:
+      consumes:
+      - application/json
+      description: Approve a pending leave request (HR/Manager only)
+      parameters:
+      - description: Leave ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Notes
+        in: body
+        name: body
+        schema:
+          $ref: '#/definitions/handler.ReviewLeaveRequest'
+      produces:
+      - application/json
+      responses: {}
+      security:
+      - BearerAuth: []
+      - CookieAuth: []
+      summary: Approve Leave
+      tags:
+      - Leaves
   /api/v1/leaves/balances:
     get:
       description: Get current year leave balances for the logged-in user
@@ -1385,6 +2009,31 @@ paths:
       - BearerAuth: []
       - CookieAuth: []
       summary: Get Leave Balances
+      tags:
+      - Leaves
+  /api/v1/leaves/reject/{id}:
+    post:
+      consumes:
+      - application/json
+      description: Reject a pending leave request (HR/Manager only)
+      parameters:
+      - description: Leave ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Notes
+        in: body
+        name: body
+        schema:
+          $ref: '#/definitions/handler.ReviewLeaveRequest'
+      produces:
+      - application/json
+      responses: {}
+      security:
+      - BearerAuth: []
+      - CookieAuth: []
+      summary: Reject Leave
       tags:
       - Leaves
   /api/v1/leaves/request:
@@ -1747,6 +2396,104 @@ paths:
       responses: {}
       tags:
       - Health
+  /api/v1/tenant-roles:
+    get:
+      produces:
+      - application/json
+      responses: {}
+      security:
+      - BearerAuth: []
+      - CookieAuth: []
+      summary: List all roles for tenant
+      tags:
+      - Tenant Roles
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Role Data
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/service.CreateRoleRequest'
+      produces:
+      - application/json
+      responses: {}
+      security:
+      - BearerAuth: []
+      - CookieAuth: []
+      summary: Create custom role
+      tags:
+      - Tenant Roles
+  /api/v1/tenant-roles/{id}:
+    delete:
+      responses: {}
+      security:
+      - BearerAuth: []
+      - CookieAuth: []
+      summary: Delete role
+      tags:
+      - Tenant Roles
+    patch:
+      consumes:
+      - application/json
+      parameters:
+      - description: Role ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Update Data
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/service.UpdateRoleRequest'
+      produces:
+      - application/json
+      responses: {}
+      security:
+      - BearerAuth: []
+      - CookieAuth: []
+      summary: Update role
+      tags:
+      - Tenant Roles
+  /api/v1/tenant-roles/{id}/hierarchy:
+    get:
+      parameters:
+      - description: Role ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses: {}
+      security:
+      - BearerAuth: []
+      - CookieAuth: []
+      summary: Get role hierarchy
+      tags:
+      - Tenant Roles
+  /api/v1/tenant-roles/hierarchy:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Hierarchy Data
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/handler.SaveHierarchyRequest'
+      produces:
+      - application/json
+      responses: {}
+      security:
+      - BearerAuth: []
+      - CookieAuth: []
+      summary: Save role hierarchy
+      tags:
+      - Tenant Roles
   /api/v1/tenant-setting:
     get:
       description: Get settings for the current tenant
@@ -2265,6 +3012,207 @@ paths:
       summary: Create User Change Request
       tags:
       - UserChangeRequests
+  /v1/admin/support/inbox:
+    get:
+      description: List all inbound support messages
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.APIResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/modelDto.SupportMessageResponse'
+                  type: array
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Get All Support Messages
+      tags:
+      - Support
+  /v1/admin/support/inbox/{id}:
+    patch:
+      consumes:
+      - application/json
+      description: Update support message status
+      parameters:
+      - description: Message ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Status Payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/modelDto.UpdateSupportMessageStatusRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/utils.APIResponse'
+      security:
+      - BearerAuth: []
+      summary: Update Support Status
+      tags:
+      - Support
+  /v1/admin/support/provisioning:
+    get:
+      description: List all activation tickets (Superadmin only)
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.APIResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/modelDto.ProvisioningTicketResponse'
+                  type: array
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Get All Provisioning Tickets
+      tags:
+      - Provisioning
+  /v1/admin/support/provisioning/{id}/execute:
+    post:
+      description: Trigger the automated tenant setup (Superadmin only)
+      parameters:
+      - description: Ticket ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/utils.APIResponse'
+      security:
+      - BearerAuth: []
+      summary: Execute Provisioning
+      tags:
+      - Provisioning
+  /v1/admin/support/trials:
+    get:
+      description: List all trial requests (Superadmin or CS Role in Tenant 1)
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.APIResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/modelDto.TrialRequestResponse'
+                  type: array
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Get All Trial Requests
+      tags:
+      - Support
+  /v1/admin/support/trials/{id}:
+    patch:
+      consumes:
+      - application/json
+      description: Update trial request status (e.g., to APPROVED)
+      parameters:
+      - description: Trial Request ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Status Payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/modelDto.UpdateTrialRequestStatusRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/utils.APIResponse'
+      security:
+      - BearerAuth: []
+      summary: Update Trial Status
+      tags:
+      - Support
+  /v1/public/trial-request:
+    post:
+      consumes:
+      - application/json
+      description: Submit a new trial request from landing page
+      parameters:
+      - description: Trial Request Payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/modelDto.CreateTrialRequestRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/modelDto.TrialRequestResponse'
+              type: object
+      summary: Create Trial Request
+      tags:
+      - Public
+  /v1/support/message:
+    post:
+      consumes:
+      - application/json
+      description: 'Send a support message (Auth required: Any tenant user)'
+      parameters:
+      - description: Support Message Payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/modelDto.CreateSupportMessageRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/modelDto.SupportMessageResponse'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Create Support Message
+      tags:
+      - Support
 securityDefinitions:
   BearerAuth:
     in: header

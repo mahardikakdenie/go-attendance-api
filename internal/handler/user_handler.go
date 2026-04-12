@@ -206,7 +206,7 @@ func (h *userHandler) GetMe(c *gin.Context) {
 	includes := parseIncludeParams(c)
 
 	// Always include required relations for GetMe as requested for efficiency
-	requiredIncludes := []string{"tenant", "tenant.tenant_settings", "attendances", "role", "recent_activities", "role.permissions"}
+	requiredIncludes := []string{"tenant", "tenant.tenant_settings", "attendances", "role", "recent_activities", "role.permissions", "tenant_setting"}
 	for _, inc := range requiredIncludes {
 		if !contains(includes, inc) {
 			includes = append(includes, inc)

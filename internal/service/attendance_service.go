@@ -43,6 +43,7 @@ type attendanceService struct {
 	settingRepo  repository.TenantSettingRepository
 	tenantRepo   repository.TenantRepository
 	activityRepo repository.RecentActivityRepository
+	hrOpsRepo    repository.HrOpsRepository
 	userService  UserService
 	redis        *redis.Client
 	// Queue for background processing
@@ -63,6 +64,7 @@ func NewAttendanceService(
 	settingRepo repository.TenantSettingRepository,
 	tenantRepo repository.TenantRepository,
 	activityRepo repository.RecentActivityRepository,
+	hrOpsRepo repository.HrOpsRepository,
 	userService UserService,
 	redis *redis.Client,
 ) AttendanceService {
@@ -72,6 +74,7 @@ func NewAttendanceService(
 		settingRepo:  settingRepo,
 		tenantRepo:   tenantRepo,
 		activityRepo: activityRepo,
+		hrOpsRepo:    hrOpsRepo,
 		userService:  userService,
 		redis:        redis,
 		recordQueue:  make(chan attendanceTask, 1000), // Buffer for 1000 requests
@@ -183,6 +186,43 @@ func (s *attendanceService) RecordAttendance(
 	now := time.Now().In(WIB)
 	nowStr := now.Format("15:04:05")
 
+	// 1. Check Holiday
+	holiday, _ := s.hrOpsRepo.FindHolidayByDate(ctx, user.TenantID, now)
+	if holiday != nil {
+		return model.AttendanceResponse{}, fmt.Errorf("hari ini adalah hari libur: %s", holiday.Name)
+	}
+
+	// 2. Check Roster/Shift
+	rosters, _ := s.hrOpsRepo.FindRoster(ctx, user.TenantID, userID, now, now)
+	var activeShift *model.WorkShift
+	if len(rosters) > 0 {
+		if rosters[0].ShiftID == nil {
+			return model.AttendanceResponse{}, errors.New("hari ini adalah jadwal libur (OFF) anda")
+		}
+		activeShift = rosters[0].Shift
+	}
+
+	// 3. Determine Time Constraints
+	clockInStart := setting.ClockInStartTime
+	clockInEnd := setting.ClockInEndTime
+	clockOutStart := setting.ClockOutStartTime
+	clockOutEnd := setting.ClockOutEndTime
+	lateMinutes := setting.LateAfterMinute
+
+	if activeShift != nil {
+		clockInStart = activeShift.StartTime
+		// For shifts, we might want to be more flexible with end times
+		// or use shift times + buffer. Let's use shift start as reference for lateness.
+		
+		// Parse shift start to minutes for lateness
+		sTime, _ := time.Parse("15:04", activeShift.StartTime)
+		lateMinutes = sTime.Hour()*60 + sTime.Minute()
+		
+		// Adjust clock in/out ranges based on shift (simple logic for now)
+		// Assuming clock out is allowed after shift ends
+		clockOutStart = activeShift.EndTime
+	}
+
 	todayAttendance, err := s.repo.FindTodayByUser(ctx, userID, now)
 	if err != nil {
 		return model.AttendanceResponse{}, err
@@ -219,19 +259,19 @@ func (s *attendanceService) RecordAttendance(
 
 		// Karena `now` sudah di UTC+7, pengecekan jam dan menit di fungsi ini akan langsung match
 		// dengan setting jam yang juga berasumsi waktu lokal (WIB).
-		ok, err := isWithinTimeRange(now, setting.ClockInStartTime, setting.ClockInEndTime)
+		ok, err := isWithinTimeRange(now, clockInStart, clockInEnd)
 		if err != nil || !ok {
 			return model.AttendanceResponse{}, fmt.Errorf(
 				"clock-in gagal, anda melakukan pada %s, batas clock-in %s - %s",
 				nowStr,
-				normalizeTime(setting.ClockInStartTime),
-				normalizeTime(setting.ClockInEndTime),
+				normalizeTime(clockInStart),
+				normalizeTime(clockInEnd),
 			)
 		}
 
 		status := model.StatusWorking
 		// now.Hour() dan now.Minute() sekarang aman dari bias UTC 0 server
-		if now.Hour()*60+now.Minute() > setting.LateAfterMinute {
+		if now.Hour()*60+now.Minute() > lateMinutes {
 			status = model.StatusLate
 		}
 
@@ -276,13 +316,13 @@ func (s *attendanceService) RecordAttendance(
 			return model.AttendanceResponse{}, errors.New("anda sudah clock-out hari ini")
 		}
 
-		ok, err := isWithinTimeRange(now, setting.ClockOutStartTime, setting.ClockOutEndTime)
+		ok, err := isWithinTimeRange(now, clockOutStart, clockOutEnd)
 		if err != nil || !ok {
 			return model.AttendanceResponse{}, fmt.Errorf(
 				"clock-out gagal, anda melakukan pada %s, batas clock-out %s - %s",
 				nowStr,
-				setting.ClockOutStartTime,
-				setting.ClockOutEndTime,
+				clockOutStart,
+				clockOutEnd,
 			)
 		}
 

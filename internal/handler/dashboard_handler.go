@@ -14,6 +14,7 @@ type DashboardHandler interface {
 	GetHrDashboard(c *gin.Context)
 	GetFinanceDashboard(c *gin.Context)
 	GetHeatmap(c *gin.Context)
+	GetDailyPulse(c *gin.Context)
 }
 
 type dashboardHandler struct {
@@ -102,6 +103,23 @@ func (h *dashboardHandler) GetFinanceDashboard(c *gin.Context) {
 	data, err := h.service.GetFinanceDashboard(c.Request.Context(), tenantID, currentUserID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, utils.BuildErrorResponse("Failed to fetch finance dashboard", 500, "error", err.Error()))
+		return
+	}
+	c.JSON(http.StatusOK, utils.BuildResponse("Success", 200, "success", data))
+}
+
+// @Summary Get Daily Pulse Dashboard Data
+// @Description Get real-time daily organization pulse for Manager Home
+// @Tags Dashboard
+// @Produce json
+// @Security BearerAuth
+// @Security CookieAuth
+// @Router /api/v1/dashboards/hr/daily-pulse [get]
+func (h *dashboardHandler) GetDailyPulse(c *gin.Context) {
+	tenantID := c.MustGet("tenant_id").(uint)
+	data, err := h.service.GetDailyPulse(c.Request.Context(), tenantID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, utils.BuildErrorResponse("Failed to fetch daily pulse", 500, "error", err.Error()))
 		return
 	}
 	c.JSON(http.StatusOK, utils.BuildResponse("Success", 200, "success", data))

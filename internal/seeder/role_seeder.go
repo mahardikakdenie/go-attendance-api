@@ -40,6 +40,8 @@ func SeedRoles(db *gorm.DB) {
 
 		{ID: "role.view", Module: "role", Action: "view"},
 		{ID: "role.manage", Module: "role", Action: "manage"},
+
+		{ID: "support.manage", Module: "support", Action: "manage"},
 	}
 
 	for _, p := range permissions {
@@ -51,7 +53,7 @@ func SeedRoles(db *gorm.DB) {
 		{
 			Name:        "superadmin",
 			Description: "Platform Owner with full access",
-			BaseRole:    model.BaseRoleAdmin,
+			BaseRole:    model.BaseRoleSuperAdmin,
 			IsSystem:    true,
 		},
 		{
@@ -86,7 +88,7 @@ func SeedRoles(db *gorm.DB) {
 		}
 
 		// Assign all permissions to superadmin and admin
-		if role.BaseRole == model.BaseRoleAdmin {
+		if role.BaseRole == model.BaseRoleSuperAdmin || role.BaseRole == model.BaseRoleAdmin {
 			for _, p := range permissions {
 				rp := model.RolePermission{RoleID: role.ID, PermissionID: p.ID}
 				db.FirstOrCreate(&rp, rp)

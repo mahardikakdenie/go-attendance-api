@@ -126,6 +126,11 @@ func (h *tenantRoleHandler) GetHierarchy(c *gin.Context) {
 	c.JSON(http.StatusOK, utils.BuildResponse("Hierarchy fetched successfully", 200, "success", hierarchy))
 }
 
+type SaveHierarchyRequest struct {
+	ParentRoleID uint   `json:"parent_role_id" binding:"required"`
+	ChildRoleIDs []uint `json:"child_role_ids" binding:"required"`
+}
+
 // @Summary Save role hierarchy
 // @Tags Tenant Roles
 // @Accept json
@@ -135,11 +140,6 @@ func (h *tenantRoleHandler) GetHierarchy(c *gin.Context) {
 // @Security CookieAuth
 // @Router /api/v1/tenant-roles/hierarchy [post]
 func (h *tenantRoleHandler) SaveHierarchy(c *gin.Context) {
-	type SaveHierarchyRequest struct {
-		ParentRoleID uint   `json:"parent_role_id" binding:"required"`
-		ChildRoleIDs []uint `json:"child_role_ids" binding:"required"`
-	}
-
 	var req SaveHierarchyRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, utils.BuildErrorResponse("Invalid request", 400, "error", err.Error()))

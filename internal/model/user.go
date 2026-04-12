@@ -14,14 +14,14 @@ const (
 
 type User struct {
 	ID       uint `gorm:"primaryKey" json:"id" example:"1"`
-	TenantID uint `gorm:"index;not null" json:"tenant_id" example:"1"`
+	TenantID uint `gorm:"not null;uniqueIndex:idx_employee_tenant" json:"tenant_id" example:"1"`
 
 	Tenant *Tenant `gorm:"foreignKey:TenantID" json:"tenant,omitempty"`
 
 	Name        string `gorm:"type:varchar(100);not null" json:"name" example:"Budi Santoso" binding:"required,min=3,max=100"`
 	Email       string `gorm:"type:varchar(100);unique;not null" json:"email" example:"budi@company.com" binding:"required,email"`
 	Password    string `gorm:"type:varchar(255);not null" json:"-"` // tetap hidden
-	EmployeeID  string `gorm:"type:varchar(50);uniqueIndex" json:"employee_id" example:"FT-001"`
+	EmployeeID  string `gorm:"type:varchar(50);uniqueIndex:idx_employee_tenant" json:"employee_id" example:"FT-001"`
 	Department  string `gorm:"type:varchar(100)" json:"department" example:"IT"`
 	Address     string `gorm:"type:text" json:"address" example:"Jl. Sudirman No. 1"`
 	PhoneNumber string `gorm:"type:varchar(20)" json:"phone_number" example:"08123456789"`
@@ -88,7 +88,7 @@ type UserResponse struct {
 	EmployeeID  string        `json:"employee_id" example:"FT-001"`
 	Department  string        `json:"department" example:"IT"`
 	Address     string        `json:"address" example:"Jl. Sudirman No. 1"`
-	MediaUrl    string        `gorm:"type:varchar(255)" json:"media_url" example:"https://cdn.example.com/profile/budi.jpg" binding:"omitempty,url"`
+	MediaUrl    string        `json:"media_url" example:"https://cdn.example.com/profile/budi.jpg"`
 	PhoneNumber string        `json:"phone_number" example:"08123456789"`
 	ManagerID   *uint         `json:"manager_id"`
 	DelegateID  *uint         `json:"delegate_id"`
@@ -98,6 +98,7 @@ type UserResponse struct {
 	IsOwner     bool     `json:"is_owner"`
 
 	Tenant           *TenantResponse          `json:"tenant,omitempty"`
+	TenantSetting    *TenantSetting           `json:"tenant_setting,omitempty"`
 	Attendances      []AttendanceResponse     `json:"attendances,omitempty"`
 	RecentActivities []RecentActivityResponse `json:"recent_activities,omitempty"`
 }

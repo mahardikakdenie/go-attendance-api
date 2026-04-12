@@ -22,6 +22,7 @@ type DashboardService interface {
 	GetHrDashboard(ctx context.Context, tenantID uint, currentUserID uint) (modelDto.HrDashboardResponse, error)
 	GetFinanceDashboard(ctx context.Context, tenantID uint, currentUserID uint) (modelDto.FinanceDashboardResponse, error)
 	GetHeatmapData(ctx context.Context, tenantID uint, query modelDto.HeatmapQuery) ([]modelDto.HeatmapItem, error)
+	GetDailyPulse(ctx context.Context, tenantID uint) (modelDto.DailyPulseResponse, error)
 }
 
 type dashboardService struct {
@@ -707,5 +708,117 @@ func (s *dashboardService) GetFinanceDashboard(ctx context.Context, tenantID uin
 		},
 		PayrollTrends: trends,
 		CostBreakdown: breakdown,
+	}, nil
+}
+
+func (s *dashboardService) GetDailyPulse(ctx context.Context, tenantID uint) (modelDto.DailyPulseResponse, error) {
+	now := time.Now().In(WIB)
+	todayStart := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, WIB)
+	todayEnd := todayStart.Add(24 * time.Hour)
+
+	var (
+		users           []model.User
+		todayAttendance []model.Attendance
+		pendingLeaves   []model.Leave
+		pendingOTsActual []model.Overtime
+		wg              sync.WaitGroup
+		mu              sync.Mutex
+	)
+
+	wg.Add(4)
+	go func() {
+		defer wg.Done()
+		u, _, _ := s.userRepo.FindAll(ctx, model.UserFilter{TenantID: tenantID}, []string{"role", "position"})
+		mu.Lock(); users = u; mu.Unlock()
+	}()
+	go func() {
+		defer wg.Done()
+		a, _, _ := s.attendanceRepo.FindAll(ctx, model.AttendanceFilter{TenantID: tenantID, DateFrom: &todayStart, DateTo: &todayEnd}, nil, 0, 0)
+		mu.Lock(); todayAttendance = a; mu.Unlock()
+	}()
+	go func() {
+		defer wg.Done()
+		l, _, _ := s.leaveRepo.FindAll(ctx, model.LeaveFilter{TenantID: tenantID, Status: model.LeaveStatusPending})
+		mu.Lock(); pendingLeaves = l; mu.Unlock()
+	}()
+	go func() {
+		defer wg.Done()
+		o, _, _ := s.overtimeRepo.FindAll(ctx, model.OvertimeFilter{TenantID: tenantID, Status: model.OvertimeStatusPending})
+		mu.Lock(); pendingOTsActual = o; mu.Unlock()
+	}()
+	wg.Wait()
+
+	totalUsers := int64(len(users))
+	presentCount := int64(len(todayAttendance))
+	presentPercentage := 0.0
+	if totalUsers > 0 {
+		presentPercentage = (float64(presentCount) / float64(totalUsers)) * 100
+	}
+
+	totalOTHours := 0.0
+	for _, a := range todayAttendance {
+		if a.ClockOutTime != nil {
+			// Simplified OT calculation: any work > 8 hours
+			duration := a.ClockOutTime.Sub(a.ClockInTime).Hours()
+			if duration > 8 {
+				totalOTHours += (duration - 8)
+			}
+		}
+	}
+	avgOT := 0.0
+	if presentCount > 0 {
+		avgOT = totalOTHours / float64(presentCount)
+	}
+
+	// Hotline Requests (Leaves and OTs)
+	hotline := make([]modelDto.HotlineRequest, 0)
+	for _, l := range pendingLeaves {
+		priority := "Medium"
+		if l.EndDate.Sub(l.StartDate).Hours() > 48 {
+			priority = "High"
+		}
+		hotline = append(hotline, modelDto.HotlineRequest{
+			ID:          fmt.Sprintf("LV-%d", l.ID),
+			UserName:    l.User.Name,
+			Avatar:      s.getAvatar(l.User.Name, l.User.MediaUrl),
+			Department:  l.User.Department,
+			RequestType: "Leave",
+			Priority:    priority,
+		})
+	}
+	for _, o := range pendingOTsActual {
+		hotline = append(hotline, modelDto.HotlineRequest{
+			ID:          fmt.Sprintf("OT-%d", o.ID),
+			UserName:    o.User.Name,
+			Avatar:      s.getAvatar(o.User.Name, o.User.MediaUrl),
+			Department:  o.User.Department,
+			RequestType: "Overtime",
+			Priority:    "Normal",
+		})
+	}
+
+	// Performance Logic (Simulated for pulse)
+	performanceMatrix := make([]modelDto.EmployeePerformanceItem, 0)
+	for _, u := range users {
+		score := 90 + (int(u.ID) % 10) // Simulate score
+		performanceMatrix = append(performanceMatrix, modelDto.EmployeePerformanceItem{
+			Name: u.Name, Avatar: s.getAvatar(u.Name, u.MediaUrl), Department: u.Department, Score: score,
+		})
+	}
+	sort.Slice(performanceMatrix, func(i, j int) bool { return performanceMatrix[i].Score > performanceMatrix[j].Score })
+	topPerformers := performanceMatrix
+	if len(topPerformers) > 5 {
+		topPerformers = topPerformers[:5]
+	}
+
+	return modelDto.DailyPulseResponse{
+		Stats: modelDto.DailyPulseStats{
+			PresentPercentage:     math.Round(presentPercentage*10) / 10,
+			AvgOvertimeHours:      math.Round(avgOT*10) / 10,
+			PendingApprovalsCount: int64(len(pendingLeaves) + len(pendingOTsActual)),
+			AtRiskCount:           int64(totalUsers - presentCount), // Crude "at risk" for pulse: not present
+		},
+		HotlineRequests: hotline,
+		TopPerformers:   topPerformers,
 	}, nil
 }

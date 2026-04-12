@@ -607,6 +607,54 @@
                 "responses": {}
             }
         },
+        "/api/v1/dashboards/heatmap": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    },
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "description": "Get dynamic heatmap data filtered by user and type",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Dashboard"
+                ],
+                "summary": "Get Heatmap Data",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Aktivitas (clockin, clockout, leave)",
+                        "name": "type",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "ID User (opsional)",
+                        "name": "user_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Format: YYYY-MM-DD",
+                        "name": "date_from",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Format: YYYY-MM-DD",
+                        "name": "date_to",
+                        "in": "query"
+                    }
+                ],
+                "responses": {}
+            }
+        },
         "/api/v1/dashboards/hr": {
             "get": {
                 "security": [
@@ -624,6 +672,27 @@
                     "Dashboard"
                 ],
                 "summary": "Get HR Dashboard Data",
+                "responses": {}
+            }
+        },
+        "/api/v1/dashboards/hr/daily-pulse": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    },
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "description": "Get real-time daily organization pulse for Manager Home",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Dashboard"
+                ],
+                "summary": "Get Daily Pulse Dashboard Data",
                 "responses": {}
             }
         },
@@ -671,6 +740,300 @@
                         }
                     }
                 }
+            }
+        },
+        "/api/v1/hr/calendar": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "HR Ops"
+                ],
+                "summary": "Get Calendar/Holidays",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Year",
+                        "name": "year",
+                        "in": "query"
+                    }
+                ],
+                "responses": {}
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "HR Ops"
+                ],
+                "summary": "Create Holiday",
+                "parameters": [
+                    {
+                        "description": "Holiday Payload",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/modelDto.CreateHolidayRequest"
+                        }
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/api/v1/hr/calendar/{id}": {
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "HR Ops"
+                ],
+                "summary": "Update Holiday",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Holiday UUID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Holiday Payload",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/modelDto.UpdateHolidayRequest"
+                        }
+                    }
+                ],
+                "responses": {}
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "HR Ops"
+                ],
+                "summary": "Delete Holiday",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Holiday UUID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/api/v1/hr/employees/{id}/lifecycle": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "HR Ops"
+                ],
+                "summary": "Get Employee Lifecycle",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "User ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/api/v1/hr/employees/{id}/lifecycle/tasks/{task_id}": {
+            "patch": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "tags": [
+                    "HR Ops"
+                ],
+                "summary": "Update Lifecycle Task",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "User ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Task UUID",
+                        "name": "task_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Payload",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/modelDto.UpdateLifecycleTaskRequest"
+                        }
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/api/v1/hr/roster": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "HR Ops"
+                ],
+                "summary": "Get Weekly Roster",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "YYYY-MM-DD",
+                        "name": "start_date",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "YYYY-MM-DD",
+                        "name": "end_date",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Dept ID",
+                        "name": "department_id",
+                        "in": "query"
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/api/v1/hr/roster/save": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "HR Ops"
+                ],
+                "summary": "Save Roster",
+                "parameters": [
+                    {
+                        "description": "Roster Payload",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/modelDto.SaveRosterRequest"
+                        }
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/api/v1/hr/shifts": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "HR Ops"
+                ],
+                "summary": "Get All Shifts",
+                "responses": {}
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "HR Ops"
+                ],
+                "summary": "Create Shift",
+                "parameters": [
+                    {
+                        "description": "Shift Payload",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/modelDto.WorkShiftResponse"
+                        }
+                    }
+                ],
+                "responses": {}
             }
         },
         "/api/v1/leaves": {
@@ -730,6 +1093,47 @@
                 }
             }
         },
+        "/api/v1/leaves/approve/{id}": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    },
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "description": "Approve a pending leave request (HR/Manager only)",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Leaves"
+                ],
+                "summary": "Approve Leave",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Leave ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Notes",
+                        "name": "body",
+                        "in": "body",
+                        "schema": {
+                            "$ref": "#/definitions/handler.ReviewLeaveRequest"
+                        }
+                    }
+                ],
+                "responses": {}
+            }
+        },
         "/api/v1/leaves/balances": {
             "get": {
                 "security": [
@@ -771,6 +1175,47 @@
                         }
                     }
                 }
+            }
+        },
+        "/api/v1/leaves/reject/{id}": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    },
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "description": "Reject a pending leave request (HR/Manager only)",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Leaves"
+                ],
+                "summary": "Reject Leave",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Leave ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Notes",
+                        "name": "body",
+                        "in": "body",
+                        "schema": {
+                            "$ref": "#/definitions/handler.ReviewLeaveRequest"
+                        }
+                    }
+                ],
+                "responses": {}
             }
         },
         "/api/v1/leaves/request": {
@@ -1390,6 +1835,174 @@
                 ],
                 "tags": [
                     "Health"
+                ],
+                "responses": {}
+            }
+        },
+        "/api/v1/tenant-roles": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    },
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Tenant Roles"
+                ],
+                "summary": "List all roles for tenant",
+                "responses": {}
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    },
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Tenant Roles"
+                ],
+                "summary": "Create custom role",
+                "parameters": [
+                    {
+                        "description": "Role Data",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/service.CreateRoleRequest"
+                        }
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/api/v1/tenant-roles/hierarchy": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    },
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Tenant Roles"
+                ],
+                "summary": "Save role hierarchy",
+                "parameters": [
+                    {
+                        "description": "Hierarchy Data",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handler.SaveHierarchyRequest"
+                        }
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/api/v1/tenant-roles/{id}": {
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    },
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "tags": [
+                    "Tenant Roles"
+                ],
+                "summary": "Delete role",
+                "responses": {}
+            },
+            "patch": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    },
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Tenant Roles"
+                ],
+                "summary": "Update role",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Role ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Update Data",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/service.UpdateRoleRequest"
+                        }
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/api/v1/tenant-roles/{id}/hierarchy": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    },
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "tags": [
+                    "Tenant Roles"
+                ],
+                "summary": "Get role hierarchy",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Role ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
                 ],
                 "responses": {}
             }
@@ -2283,6 +2896,349 @@
                     }
                 }
             }
+        },
+        "/v1/admin/support/inbox": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "List all inbound support messages",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Support"
+                ],
+                "summary": "Get All Support Messages",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/utils.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/modelDto.SupportMessageResponse"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/admin/support/inbox/{id}": {
+            "patch": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Update support message status",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Support"
+                ],
+                "summary": "Update Support Status",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Message ID (UUID)",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Status Payload",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/modelDto.UpdateSupportMessageStatusRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/utils.APIResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/admin/support/provisioning": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "List all activation tickets (Superadmin only)",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Provisioning"
+                ],
+                "summary": "Get All Provisioning Tickets",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/utils.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/modelDto.ProvisioningTicketResponse"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/admin/support/provisioning/{id}/execute": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Trigger the automated tenant setup (Superadmin only)",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Provisioning"
+                ],
+                "summary": "Execute Provisioning",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Ticket ID (UUID)",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/utils.APIResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/admin/support/trials": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "List all trial requests (Superadmin or CS Role in Tenant 1)",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Support"
+                ],
+                "summary": "Get All Trial Requests",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/utils.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/modelDto.TrialRequestResponse"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/admin/support/trials/{id}": {
+            "patch": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Update trial request status (e.g., to APPROVED)",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Support"
+                ],
+                "summary": "Update Trial Status",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Trial Request ID (UUID)",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Status Payload",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/modelDto.UpdateTrialRequestStatusRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/utils.APIResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/public/trial-request": {
+            "post": {
+                "description": "Submit a new trial request from landing page",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Public"
+                ],
+                "summary": "Create Trial Request",
+                "parameters": [
+                    {
+                        "description": "Trial Request Payload",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/modelDto.CreateTrialRequestRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/utils.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/modelDto.TrialRequestResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/support/message": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Send a support message (Auth required: Any tenant user)",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Support"
+                ],
+                "summary": "Create Support Message",
+                "parameters": [
+                    {
+                        "description": "Support Message Payload",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/modelDto.CreateSupportMessageRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/utils.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/modelDto.SupportMessageResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
         }
     },
     "definitions": {
@@ -2305,6 +3261,32 @@
                     "items": {
                         "type": "string"
                     }
+                }
+            }
+        },
+        "handler.ReviewLeaveRequest": {
+            "type": "object",
+            "properties": {
+                "notes": {
+                    "type": "string"
+                }
+            }
+        },
+        "handler.SaveHierarchyRequest": {
+            "type": "object",
+            "required": [
+                "child_role_ids",
+                "parent_role_id"
+            ],
+            "properties": {
+                "child_role_ids": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "parent_role_id": {
+                    "type": "integer"
                 }
             }
         },
@@ -2506,6 +3488,23 @@
                 }
             }
         },
+        "model.BaseRole": {
+            "type": "string",
+            "enum": [
+                "SUPERADMIN",
+                "ADMIN",
+                "HR",
+                "FINANCE",
+                "EMPLOYEE"
+            ],
+            "x-enum-varnames": [
+                "BaseRoleSuperAdmin",
+                "BaseRoleAdmin",
+                "BaseRoleHR",
+                "BaseRoleFinance",
+                "BaseRoleEmployee"
+            ]
+        },
         "model.CreateOvertimeRequest": {
             "type": "object",
             "required": [
@@ -2604,6 +3603,36 @@
                     "example": 1
                 }
             }
+        },
+        "model.EmployeeCountRange": {
+            "type": "string",
+            "enum": [
+                "1-10",
+                "11-50",
+                "51-200",
+                "201+"
+            ],
+            "x-enum-varnames": [
+                "EmployeeCountRange1To10",
+                "EmployeeCountRange11To50",
+                "EmployeeCountRange51To200",
+                "EmployeeCountRange201Plus"
+            ]
+        },
+        "model.HolidayType": {
+            "type": "string",
+            "enum": [
+                "National Holiday",
+                "Company Event",
+                "Mandatory Leave",
+                "Other"
+            ],
+            "x-enum-varnames": [
+                "HolidayTypeNational",
+                "HolidayTypeCompanyEvent",
+                "HolidayTypeMandatoryLeave",
+                "HolidayTypeOther"
+            ]
         },
         "model.ImageMeta": {
             "type": "object",
@@ -2926,6 +3955,29 @@
                 "OvertimeStatusRejected"
             ]
         },
+        "model.Permission": {
+            "type": "object",
+            "properties": {
+                "action": {
+                    "type": "string",
+                    "example": "view"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string",
+                    "example": "attendance.view"
+                },
+                "module": {
+                    "type": "string",
+                    "example": "attendance"
+                },
+                "updated_at": {
+                    "type": "string"
+                }
+            }
+        },
         "model.Position": {
             "type": "object",
             "properties": {
@@ -2950,6 +4002,21 @@
                     "type": "string"
                 }
             }
+        },
+        "model.ProvisioningTicketStatus": {
+            "type": "string",
+            "enum": [
+                "WAITING",
+                "EXECUTING",
+                "COMPLETED",
+                "FAILED"
+            ],
+            "x-enum-varnames": [
+                "ProvisioningTicketStatusWaiting",
+                "ProvisioningTicketStatusExecuting",
+                "ProvisioningTicketStatusCompleted",
+                "ProvisioningTicketStatusFailed"
+            ]
         },
         "model.RecentActivity": {
             "type": "object",
@@ -3041,15 +4108,33 @@
         "model.Role": {
             "type": "object",
             "properties": {
+                "base_role": {
+                    "$ref": "#/definitions/model.BaseRole"
+                },
                 "created_at": {
+                    "type": "string"
+                },
+                "description": {
                     "type": "string"
                 },
                 "id": {
                     "type": "integer"
                 },
+                "is_system": {
+                    "type": "boolean"
+                },
                 "name": {
                     "type": "string",
                     "example": "admin"
+                },
+                "permissions": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.Permission"
+                    }
+                },
+                "tenant_id": {
+                    "type": "integer"
                 },
                 "updated_at": {
                     "type": "string"
@@ -3059,11 +4144,26 @@
         "model.RoleResponse": {
             "type": "object",
             "properties": {
+                "base_role": {
+                    "$ref": "#/definitions/model.BaseRole"
+                },
+                "description": {
+                    "type": "string"
+                },
                 "id": {
                     "type": "integer"
                 },
+                "is_system": {
+                    "type": "boolean"
+                },
                 "name": {
                     "type": "string"
+                },
+                "permissions": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.Permission"
+                    }
                 }
             }
         },
@@ -3093,6 +4193,47 @@
                 }
             }
         },
+        "model.ShiftType": {
+            "type": "string",
+            "enum": [
+                "Morning",
+                "Afternoon",
+                "Night"
+            ],
+            "x-enum-varnames": [
+                "ShiftTypeMorning",
+                "ShiftTypeAfternoon",
+                "ShiftTypeNight"
+            ]
+        },
+        "model.SupportCategory": {
+            "type": "string",
+            "enum": [
+                "TECHNICAL",
+                "BILLING",
+                "FEATURE",
+                "OTHER"
+            ],
+            "x-enum-varnames": [
+                "SupportCategoryTechnical",
+                "SupportCategoryBilling",
+                "SupportCategoryFeature",
+                "SupportCategoryOther"
+            ]
+        },
+        "model.SupportStatus": {
+            "type": "string",
+            "enum": [
+                "PENDING",
+                "IN_PROGRESS",
+                "RESOLVED"
+            ],
+            "x-enum-varnames": [
+                "SupportStatusPending",
+                "SupportStatusInProgress",
+                "SupportStatusResolved"
+            ]
+        },
         "model.Tenant": {
             "type": "object",
             "properties": {
@@ -3106,6 +4247,10 @@
                     "type": "integer"
                 },
                 "name": {
+                    "type": "string"
+                },
+                "plan": {
+                    "description": "Basic, Pro, Enterprise",
                     "type": "string"
                 },
                 "tenant_settings": {
@@ -3196,11 +4341,29 @@
                     "type": "integer",
                     "example": 1
                 },
+                "tenant_logo": {
+                    "type": "string"
+                },
                 "updated_at": {
                     "type": "string",
                     "example": "2026-04-07T13:21:24Z"
                 }
             }
+        },
+        "model.TrialRequestStatus": {
+            "type": "string",
+            "enum": [
+                "NEW",
+                "QUALIFIED",
+                "APPROVED",
+                "REJECTED"
+            ],
+            "x-enum-varnames": [
+                "TrialRequestStatusNew",
+                "TrialRequestStatusQualified",
+                "TrialRequestStatusApproved",
+                "TrialRequestStatusRejected"
+            ]
         },
         "model.User": {
             "type": "object",
@@ -3218,6 +4381,9 @@
                     "items": {
                         "$ref": "#/definitions/model.Attendance"
                     }
+                },
+                "base_salary": {
+                    "type": "number"
                 },
                 "created_at": {
                     "type": "string",
@@ -3392,6 +4558,9 @@
                     "type": "integer",
                     "example": 1
                 },
+                "is_owner": {
+                    "type": "boolean"
+                },
                 "manager_id": {
                     "type": "integer"
                 },
@@ -3402,6 +4571,12 @@
                 "name": {
                     "type": "string",
                     "example": "Budi Santoso"
+                },
+                "permissions": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
                 },
                 "phone_number": {
                     "type": "string",
@@ -3428,6 +4603,9 @@
                 "tenant_id": {
                     "type": "integer",
                     "example": 1
+                },
+                "tenant_setting": {
+                    "$ref": "#/definitions/model.TenantSetting"
                 }
             }
         },
@@ -3480,6 +4658,77 @@
                 }
             }
         },
+        "modelDto.CreateHolidayRequest": {
+            "type": "object",
+            "required": [
+                "date",
+                "name",
+                "type"
+            ],
+            "properties": {
+                "date": {
+                    "description": "YYYY-MM-DD",
+                    "type": "string"
+                },
+                "is_paid": {
+                    "type": "boolean"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "type": {
+                    "$ref": "#/definitions/model.HolidayType"
+                }
+            }
+        },
+        "modelDto.CreateSupportMessageRequest": {
+            "type": "object",
+            "required": [
+                "category",
+                "message",
+                "subject"
+            ],
+            "properties": {
+                "category": {
+                    "$ref": "#/definitions/model.SupportCategory"
+                },
+                "message": {
+                    "type": "string"
+                },
+                "subject": {
+                    "type": "string"
+                }
+            }
+        },
+        "modelDto.CreateTrialRequestRequest": {
+            "type": "object",
+            "required": [
+                "company_name",
+                "contact_name",
+                "email",
+                "employee_count_range"
+            ],
+            "properties": {
+                "company_name": {
+                    "type": "string"
+                },
+                "contact_name": {
+                    "type": "string"
+                },
+                "email": {
+                    "type": "string"
+                },
+                "employee_count_range": {
+                    "$ref": "#/definitions/model.EmployeeCountRange"
+                },
+                "industry": {
+                    "type": "string"
+                },
+                "phone_number": {
+                    "type": "string"
+                }
+            }
+        },
         "modelDto.Meta": {
             "type": "object",
             "properties": {
@@ -3494,6 +4743,35 @@
                 }
             }
         },
+        "modelDto.ProvisioningTicketResponse": {
+            "type": "object",
+            "properties": {
+                "completed_at": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "error_log": {
+                    "type": "string"
+                },
+                "executed_by": {
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "status": {
+                    "$ref": "#/definitions/model.ProvisioningTicketStatus"
+                },
+                "trial_request": {
+                    "$ref": "#/definitions/modelDto.TrialRequestResponse"
+                },
+                "trial_request_id": {
+                    "type": "string"
+                }
+            }
+        },
         "modelDto.QuickInfoResponse": {
             "type": "object",
             "properties": {
@@ -3504,6 +4782,79 @@
                     "type": "integer"
                 },
                 "pending_overtimes": {
+                    "type": "integer"
+                }
+            }
+        },
+        "modelDto.RosterAssignment": {
+            "type": "object",
+            "required": [
+                "roster",
+                "user_id"
+            ],
+            "properties": {
+                "roster": {
+                    "description": "day -\u003e shift_id or \"off\"",
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
+                "user_id": {
+                    "type": "integer"
+                }
+            }
+        },
+        "modelDto.SaveRosterRequest": {
+            "type": "object",
+            "required": [
+                "assignments",
+                "start_date"
+            ],
+            "properties": {
+                "assignments": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/modelDto.RosterAssignment"
+                    }
+                },
+                "start_date": {
+                    "description": "YYYY-MM-DD",
+                    "type": "string"
+                }
+            }
+        },
+        "modelDto.SupportMessageResponse": {
+            "type": "object",
+            "properties": {
+                "category": {
+                    "$ref": "#/definitions/model.SupportCategory"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "message": {
+                    "type": "string"
+                },
+                "status": {
+                    "$ref": "#/definitions/model.SupportStatus"
+                },
+                "subject": {
+                    "type": "string"
+                },
+                "tenant": {
+                    "$ref": "#/definitions/model.TenantResponse"
+                },
+                "tenant_id": {
+                    "type": "integer"
+                },
+                "user": {
+                    "$ref": "#/definitions/model.UserResponse"
+                },
+                "user_id": {
                     "type": "integer"
                 }
             }
@@ -3525,6 +4876,129 @@
                 },
                 "status": {
                     "type": "string"
+                }
+            }
+        },
+        "modelDto.TrialRequestResponse": {
+            "type": "object",
+            "properties": {
+                "company_name": {
+                    "type": "string"
+                },
+                "contact_name": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "email": {
+                    "type": "string"
+                },
+                "employee_count_range": {
+                    "$ref": "#/definitions/model.EmployeeCountRange"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "industry": {
+                    "type": "string"
+                },
+                "phone_number": {
+                    "type": "string"
+                },
+                "status": {
+                    "$ref": "#/definitions/model.TrialRequestStatus"
+                }
+            }
+        },
+        "modelDto.UpdateHolidayRequest": {
+            "type": "object",
+            "properties": {
+                "is_paid": {
+                    "type": "boolean"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "modelDto.UpdateLifecycleTaskRequest": {
+            "type": "object",
+            "properties": {
+                "is_completed": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "modelDto.UpdateSupportMessageStatusRequest": {
+            "type": "object",
+            "required": [
+                "status"
+            ],
+            "properties": {
+                "status": {
+                    "$ref": "#/definitions/model.SupportStatus"
+                }
+            }
+        },
+        "modelDto.UpdateTrialRequestStatusRequest": {
+            "type": "object",
+            "required": [
+                "status"
+            ],
+            "properties": {
+                "status": {
+                    "$ref": "#/definitions/model.TrialRequestStatus"
+                }
+            }
+        },
+        "modelDto.WorkShiftResponse": {
+            "type": "object",
+            "properties": {
+                "color": {
+                    "type": "string"
+                },
+                "endTime": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "isDefault": {
+                    "type": "boolean"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "startTime": {
+                    "type": "string"
+                },
+                "type": {
+                    "$ref": "#/definitions/model.ShiftType"
+                }
+            }
+        },
+        "service.CreateRoleRequest": {
+            "type": "object",
+            "required": [
+                "base_role",
+                "name"
+            ],
+            "properties": {
+                "base_role": {
+                    "$ref": "#/definitions/model.BaseRole"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "permissions": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
                 }
             }
         },
@@ -3615,12 +5089,32 @@
                 }
             }
         },
+        "service.UpdateRoleRequest": {
+            "type": "object",
+            "properties": {
+                "description": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "permissions": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
         "utils.APIResponse": {
             "type": "object",
             "properties": {
                 "data": {},
                 "meta": {
                     "$ref": "#/definitions/utils.Meta"
+                },
+                "success": {
+                    "type": "boolean"
                 }
             }
         },

@@ -3,6 +3,7 @@ package routes
 import (
 	"go-attendance-api/internal/handler"
 	"go-attendance-api/internal/middleware"
+	"go-attendance-api/internal/model"
 	"go-attendance-api/internal/repository"
 	"go-attendance-api/internal/service"
 
@@ -29,6 +30,7 @@ func SetupRoutes(r *gin.Engine, db *gorm.DB, rdb *redis.Client) {
 	positionRepo := repository.NewPositionRepository(db)
 	permissionRepo := repository.NewPermissionRepository(db)
 	hierarchyRepo := repository.NewRoleHierarchyRepository(db)
+	hrOpsRepo := repository.NewHrOpsRepository(db)
 
 	// Services
 	authService := service.NewAuthService(authRepo, activityRepo)
@@ -36,7 +38,7 @@ func SetupRoutes(r *gin.Engine, db *gorm.DB, rdb *redis.Client) {
 	tenantService := service.NewTenantService(tenantRepo)
 	tenantSettingService := service.NewTenantSettingService(tenantSettingRepo)
 	mediaService := service.NewMediaService(mediaRepo)
-	attendanceService := service.NewAttendanceService(attendanceRepo, userRepo, tenantSettingRepo, tenantRepo, activityRepo, userService, rdb)
+	attendanceService := service.NewAttendanceService(attendanceRepo, userRepo, tenantSettingRepo, tenantRepo, activityRepo, hrOpsRepo, userService, rdb)
 	orgService := service.NewOrganizationService(userRepo, leaveRepo, positionRepo)
 	leaveService := service.NewLeaveService(leaveRepo, activityRepo, userRepo, orgService, userService, rdb)
 	overtimeService := service.NewOvertimeService(overtimeRepo, userService)
@@ -44,6 +46,8 @@ func SetupRoutes(r *gin.Engine, db *gorm.DB, rdb *redis.Client) {
 	payrollService := service.NewPayrollService()
 	dashboardService := service.NewDashboardService(tenantRepo, userRepo, attendanceRepo, leaveRepo, overtimeRepo, rdb)
 	tenantRoleService := service.NewTenantRoleService(roleRepo, permissionRepo, hierarchyRepo)
+	supportRepo := repository.NewSupportRepository(db)
+	supportService := service.NewSupportService(supportRepo, tenantRepo, userRepo, roleRepo)
 
 	// Handlers
 	authHandler := handler.NewAuthHandler(authService)
@@ -60,6 +64,9 @@ func SetupRoutes(r *gin.Engine, db *gorm.DB, rdb *redis.Client) {
 	dashboardHandler := handler.NewDashboardHandler(dashboardService)
 	activityHandler := handler.NewActivityHandler(userService, leaveService, overtimeService)
 	tenantRoleHandler := handler.NewTenantRoleHandler(tenantRoleService)
+	supportHandler := handler.NewSupportHandler(supportService)
+	hrOpsService := service.NewHrOpsService(hrOpsRepo, userRepo)
+	hrOpsHandler := handler.NewHrOpsHandler(hrOpsService)
 
 	if gin.Mode() != gin.ReleaseMode {
 		r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
@@ -73,6 +80,8 @@ func SetupRoutes(r *gin.Engine, db *gorm.DB, rdb *redis.Client) {
 		authGroup.POST("/register", authHandler.Register)
 		authGroup.POST("/login", authHandler.Login)
 	}
+
+	api.POST("/public/trial-request", supportHandler.CreateTrialRequest)
 
 	api.GET("/ping", attendanceHandler.HelloTest)
 	api.POST("/email/test", handler.SendEmailTest)
@@ -143,11 +152,13 @@ func SetupRoutes(r *gin.Engine, db *gorm.DB, rdb *redis.Client) {
 
 		dashboards := protected.Group("/dashboards")
 		{
-			dashboards.GET("/admin", middleware.RequireRole("superadmin"), dashboardHandler.GetAdminDashboard)
-			dashboards.GET("/hr", middleware.RequireRole("superadmin", "admin", "hr"), dashboardHandler.GetHrDashboard)
-			dashboards.GET("/finance", middleware.RequireRole("superadmin", "admin", "finance"), dashboardHandler.GetFinanceDashboard)
-			dashboards.GET("/heatmap", middleware.RequireRole("superadmin", "admin", "hr"), dashboardHandler.GetHeatmap)
+			dashboards.GET("/admin", middleware.RequireBaseRole(model.BaseRoleSuperAdmin), dashboardHandler.GetAdminDashboard)
+			dashboards.GET("/hr", middleware.RequireBaseRole(model.BaseRoleSuperAdmin, model.BaseRoleAdmin, model.BaseRoleHR), dashboardHandler.GetHrDashboard)
+			dashboards.GET("/hr/daily-pulse", middleware.RequireBaseRole(model.BaseRoleSuperAdmin, model.BaseRoleAdmin, model.BaseRoleHR), dashboardHandler.GetDailyPulse)
+			dashboards.GET("/finance", middleware.RequireBaseRole(model.BaseRoleSuperAdmin, model.BaseRoleAdmin, model.BaseRoleFinance), dashboardHandler.GetFinanceDashboard)
+			dashboards.GET("/heatmap", middleware.RequireBaseRole(model.BaseRoleSuperAdmin, model.BaseRoleAdmin, model.BaseRoleHR), dashboardHandler.GetHeatmap)
 		}
+
 
 		protected.POST("/media/upload", mediaHandler.Upload)
 
@@ -183,5 +194,38 @@ func SetupRoutes(r *gin.Engine, db *gorm.DB, rdb *redis.Client) {
 			tenantRoles.GET("/:id/hierarchy", middleware.RequireRole("superadmin", "admin"), tenantRoleHandler.GetHierarchy)
 			tenantRoles.POST("/hierarchy", middleware.RequireRole("superadmin", "admin"), tenantRoleHandler.SaveHierarchy)
 		}
+
+		// HR Advanced Operations
+		hrOps := protected.Group("/hr")
+		{
+			hrOps.GET("/shifts", middleware.RequireBaseRole(model.BaseRoleSuperAdmin, model.BaseRoleAdmin, model.BaseRoleHR), hrOpsHandler.GetAllShifts)
+			hrOps.POST("/shifts", middleware.RequireBaseRole(model.BaseRoleSuperAdmin, model.BaseRoleAdmin, model.BaseRoleHR), hrOpsHandler.CreateShift)
+			hrOps.GET("/roster", middleware.RequireBaseRole(model.BaseRoleSuperAdmin, model.BaseRoleAdmin, model.BaseRoleHR), hrOpsHandler.GetWeeklyRoster)
+			hrOps.POST("/roster/save", middleware.RequireBaseRole(model.BaseRoleSuperAdmin, model.BaseRoleAdmin, model.BaseRoleHR), hrOpsHandler.SaveRoster)
+			hrOps.GET("/calendar", hrOpsHandler.GetHolidays)
+			hrOps.POST("/calendar", middleware.RequireBaseRole(model.BaseRoleSuperAdmin, model.BaseRoleAdmin, model.BaseRoleHR), hrOpsHandler.CreateHoliday)
+			hrOps.PUT("/calendar/:id", middleware.RequireBaseRole(model.BaseRoleSuperAdmin, model.BaseRoleAdmin, model.BaseRoleHR), hrOpsHandler.UpdateHoliday)
+			hrOps.DELETE("/calendar/:id", middleware.RequireBaseRole(model.BaseRoleSuperAdmin, model.BaseRoleAdmin, model.BaseRoleHR), hrOpsHandler.DeleteHoliday)
+			hrOps.GET("/employees/:id/lifecycle", middleware.RequireBaseRole(model.BaseRoleSuperAdmin, model.BaseRoleAdmin, model.BaseRoleHR), hrOpsHandler.GetEmployeeLifecycle)
+			hrOps.PATCH("/employees/:id/lifecycle/tasks/:task_id", middleware.RequireBaseRole(model.BaseRoleSuperAdmin, model.BaseRoleAdmin, model.BaseRoleHR), hrOpsHandler.UpdateLifecycleTask)
+		}
+
+		// Support & Provisioning
+		support := protected.Group("/admin/support")
+		support.Use(middleware.RequireTenant(1)) // HQ only
+		{
+			// Superadmin or any role with support.manage permission in Tenant 1
+			support.GET("/inbox", middleware.HasPermission("support.manage"), supportHandler.GetAllSupportMessages)
+			support.PATCH("/inbox/:id", middleware.HasPermission("support.manage"), supportHandler.UpdateSupportStatus)
+			support.GET("/trials", middleware.HasPermission("support.manage"), supportHandler.GetAllTrialRequests)
+			support.PATCH("/trials/:id", middleware.HasPermission("support.manage"), supportHandler.UpdateTrialStatus)
+
+			// Provisioning (Superadmin only)
+			support.GET("/provisioning", middleware.RequireBaseRole(model.BaseRoleSuperAdmin), supportHandler.GetAllProvisioningTickets)
+			support.POST("/provisioning/:id/execute", middleware.RequireBaseRole(model.BaseRoleSuperAdmin), supportHandler.ExecuteProvisioning)
+		}
+
+		// User side support
+		protected.POST("/support/message", supportHandler.CreateSupportMessage)
 	}
 }

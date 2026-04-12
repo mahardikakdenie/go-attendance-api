@@ -140,11 +140,16 @@ func SecureAuth(authService service.AuthService) gin.HandlerFunc {
 		////////////////////////////////////////////////////////
 
 		// Inject into standard context for GORM plugin
-		ctx := context.WithValue(c.Request.Context(), "tenant_id", user.TenantID)
+		tenantID := user.TenantID
+		if user.Role != nil && user.Role.BaseRole == model.BaseRoleSuperAdmin {
+			tenantID = 0 // Bypass for Superadmin
+		}
+
+		ctx := context.WithValue(c.Request.Context(), "tenant_id", tenantID)
 		c.Request = c.Request.WithContext(ctx)
 
 		c.Set("user_id", user.ID)
-		c.Set("tenant_id", user.TenantID)
+		c.Set("tenant_id", user.TenantID) // Keep original tenant_id in Gin context if needed
 		c.Set("permissions", user.Permissions)
 
 		// Set role name string for RequireRole middleware
@@ -212,6 +217,50 @@ func RequireRole(roles ...string) gin.HandlerFunc {
 
 		if !allowed {
 			c.AbortWithStatusJSON(403, gin.H{"message": "Forbidden: Insufficient permissions"})
+			return
+		}
+
+		c.Next()
+	}
+}
+
+func RequireBaseRole(baseRoles ...model.BaseRole) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		baseRoleVal, exists := c.Get("base_role")
+		if !exists {
+			c.AbortWithStatusJSON(401, gin.H{"message": "Unauthorized"})
+			return
+		}
+
+		userBaseRole := model.BaseRole(fmt.Sprintf("%v", baseRoleVal))
+		allowed := false
+		for _, role := range baseRoles {
+			if userBaseRole == role {
+				allowed = true
+				break
+			}
+		}
+
+		if !allowed {
+			c.AbortWithStatusJSON(403, gin.H{"message": "Forbidden: Insufficient base role permissions"})
+			return
+		}
+
+		c.Next()
+	}
+}
+
+func RequireTenant(tenantID uint) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		tIDVal, exists := c.Get("tenant_id")
+		if !exists {
+			c.AbortWithStatusJSON(401, gin.H{"message": "Unauthorized"})
+			return
+		}
+
+		tID := tIDVal.(uint)
+		if tID != tenantID {
+			c.AbortWithStatusJSON(403, gin.H{"message": "Forbidden: Access restricted to specific tenant"})
 			return
 		}
 

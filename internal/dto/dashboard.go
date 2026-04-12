@@ -108,3 +108,26 @@ type FinanceDashboardResponse struct {
 	PayrollTrends []PayrollTrendItem     `json:"payroll_trends"`
 	CostBreakdown []PlanDistributionItem `json:"cost_breakdown"`
 }
+
+// Manager Home / Daily Pulse
+type HotlineRequest struct {
+	ID          string `json:"id"`
+	UserName    string `json:"user_name"`
+	Avatar      string `json:"avatar"`
+	Department  string `json:"department"`
+	RequestType string `json:"request_type"`
+	Priority    string `json:"priority"`
+}
+
+type DailyPulseStats struct {
+	PresentPercentage     float64 `json:"present_percentage"`
+	AvgOvertimeHours      float64 `json:"avg_overtime_hours"`
+	PendingApprovalsCount int64   `json:"pending_approvals_count"`
+	AtRiskCount           int64   `json:"at_risk_count"`
+}
+
+type DailyPulseResponse struct {
+	Stats           DailyPulseStats           `json:"stats"`
+	HotlineRequests []HotlineRequest          `json:"hotline_requests"`
+	TopPerformers   []EmployeePerformanceItem `json:"top_performers"`
+}

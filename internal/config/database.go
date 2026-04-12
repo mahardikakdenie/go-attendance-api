@@ -31,10 +31,13 @@ func InitDB() *gorm.DB {
 
 	log.Println("✅ Database connected")
 
+	// Enable UUID extension for PostgreSQL
+	db.Exec("CREATE EXTENSION IF NOT EXISTS \"uuid-ossp\"")
+
 	if os.Getenv("RESET_DB") == "true" {
 		log.Println("⚠️ Resetting database tables...")
 		// Disable FK checks for clean drop if possible or drop in strict reverse order
-		db.Exec("DROP TABLE IF EXISTS leaves, leave_balances, leave_types, attendances, overtimes, user_change_requests, recent_activities, tokens, media, users, role_hierarchies, role_permissions, permissions, roles, tenant_settings, tenants CASCADE")
+		db.Exec("DROP TABLE IF EXISTS employee_lifecycle_tasks, lifecycle_tasks, employee_rosters, holidays, work_shifts, support_messages, provisioning_tickets, trial_requests, leaves, leave_balances, leave_types, attendances, overtimes, user_change_requests, recent_activities, tokens, media, users, role_hierarchies, role_permissions, permissions, roles, tenant_settings, tenants CASCADE")
 		log.Println("⚠️ Semua tabel berhasil di-reset (CASCADE)")
 	}
 
@@ -47,6 +50,9 @@ func InitDB() *gorm.DB {
 			&model.Permission{},
 			&model.Role{},
 			&model.Position{},
+			&model.WorkShift{},
+			&model.Holiday{},
+			&model.LifecycleTask{},
 		)
 		if err != nil {
 			log.Fatalf("❌ Gagal migrasi Stage 1: %v", err)
@@ -74,6 +80,11 @@ func InitDB() *gorm.DB {
 			&model.LeaveType{},
 			&model.LeaveBalance{},
 			&model.Leave{},
+			&model.TrialRequest{},
+			&model.ProvisioningTicket{},
+			&model.SupportMessage{},
+			&model.EmployeeRoster{},
+			&model.EmployeeLifecycleTask{},
 		)
 		if err != nil {
 			log.Fatalf("❌ Gagal migrasi Stage 3: %v", err)
@@ -101,6 +112,7 @@ func InitDB() *gorm.DB {
 		seeder.SeedLeaves(db)
 		seeder.SeedAttendanceHistory(db)
 		seeder.SeedOvertimes(db)
+		seeder.SeedSupport(db)
 
 		log.Println("✅ Seeder selesai")
 	}

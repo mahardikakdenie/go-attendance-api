@@ -323,3 +323,90 @@ func GetLeaveDelegationTemplate(delegateName, requesterName, startDate, endDate 
 </html>
 `, delegateName, requesterName, startDate, endDate, requesterName)
 }
+
+func GetTrialConfirmationEmailTemplate(name, company string) string {
+	return fmt.Sprintf(`
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f7f9;
+        }
+        .container {
+            max-width: 600px;
+            margin: 20px auto;
+            background: #ffffff;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+        .header {
+            background: linear-gradient(135deg, #3B82F6 0%%, #1D4ED8 100%%);
+            color: #ffffff;
+            padding: 40px 20px;
+            text-align: center;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 26px;
+        }
+        .content {
+            padding: 30px;
+        }
+        .greeting {
+            font-size: 18px;
+            color: #1E3A8A;
+            font-weight: bold;
+        }
+        .info-box {
+            background-color: #EFF6FF;
+            border-left: 4px solid #3B82F6;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+        .footer {
+            background-color: #f4f7f9;
+            color: #777;
+            padding: 20px;
+            text-align: center;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Trial Request Received</h1>
+        </div>
+        <div class="content">
+            <p class="greeting">Hello %s,</p>
+            <p>Thank you for your interest in our Attendance System for <strong>%s</strong>.</p>
+            
+            <p>Your trial request has been successfully received and is now being reviewed by our team. We will verify your information and get back to you with your account activation details shortly.</p>
+
+            <div class="info-box">
+                <p style="margin:0;"><strong>What's next?</strong></p>
+                <p style="margin:5px 0 0 0;">You don't need to do anything. Simply wait for an email from us once your trial account is ready for use.</p>
+            </div>
+
+            <p>If you have any questions in the meantime, feel free to reply to this email.</p>
+            
+            <p>Best regards,<br><strong>Customer Success Team</strong></p>
+        </div>
+        <div class="footer">
+            <p>&copy; 2026 Attendance API. All rights reserved.</p>
+        </div>
+    </div>
+</body>
+</html>
+`, name, company)
+}

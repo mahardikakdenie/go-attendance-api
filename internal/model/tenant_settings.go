@@ -18,6 +18,7 @@ type TenantSetting struct {
 	ClockOutEndTime    string    `json:"clock_out_end_time" example:"23:00"`
 	RequireSelfie      bool      `json:"require_selfie" example:"true"`
 	AllowMultipleCheck bool      `json:"allow_multiple_check" example:"false"`
+	TenantLogo         string    `gorm:"type:varchar(255)" json:"tenant_logo"`
 	CreatedAt          time.Time `json:"created_at" example:"2026-04-07T13:21:24Z"`
 	UpdatedAt          time.Time `json:"updated_at" example:"2026-04-07T13:21:24Z"`
 }

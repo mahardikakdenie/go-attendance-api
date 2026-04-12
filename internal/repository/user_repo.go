@@ -41,6 +41,7 @@ func (r *userRepository) Transaction(ctx context.Context, fn func(repo UserRepos
 var userPreloadMap = map[string]string{
 	"tenant":                  "Tenant",
 	"tenant.tenant_settings": "Tenant.TenantSettings",
+	"tenant_setting":          "Tenant.TenantSettings",
 	"attendances":             "Attendances",
 	"attendances.user":        "Attendances.User",
 	"role":                    "Role",
