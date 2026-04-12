@@ -232,6 +232,7 @@ func mapToUserResponse(user *model.User, includes []string) model.UserResponse {
 				ClockInMediaUrl:   att.ClockInMediaUrl,
 				ClockOutMediaUrl:  att.ClockOutMediaUrl,
 				Status:            att.Status,
+				CreatedAt:         att.ClockInTime, // Using ClockInTime as CreatedAt for consistency if needed, or actual CreatedAt if available
 			})
 		}
 	}

@@ -64,7 +64,8 @@ type AttendanceResponse struct {
 	ClockInMediaUrl  string  `json:"clock_in_media_url"`
 	ClockOutMediaUrl *string `json:"clock_out_media_url,omitempty"`
 
-	Status AttendanceStatus `json:"status"`
+	Status    AttendanceStatus `json:"status"`
+	CreatedAt time.Time        `json:"created_at"`
 }
 
 type AttendanceSummaryResponse struct {

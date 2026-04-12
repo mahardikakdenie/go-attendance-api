@@ -557,6 +557,7 @@ func applyPreloads(a *model.Attendance, includes []string) model.AttendanceRespo
 		ClockInMediaUrl:   a.ClockInMediaUrl,
 		ClockOutMediaUrl:  a.ClockOutMediaUrl,
 		Status:            a.Status,
+		CreatedAt:         a.ClockInTime, // Using ClockInTime as CreatedAt
 	}
 
 	if hasAttendanceInclude(includes, "user") {
