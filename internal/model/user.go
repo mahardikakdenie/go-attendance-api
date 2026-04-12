@@ -94,6 +94,7 @@ type UserResponse struct {
 	DelegateID  *uint         `json:"delegate_id"`
 	CreatedAt   time.Time     `json:"created_at"`
 
+	BaseRole    BaseRole `json:"base_role"`
 	Permissions []string `json:"permissions,omitempty"`
 	IsOwner     bool     `json:"is_owner"`
 

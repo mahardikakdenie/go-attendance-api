@@ -46,6 +46,7 @@ func NewUserService(
 var allowedIncludes = map[string]bool{
 	"tenant":                 true,
 	"tenant.tenant_settings": true,
+	"tenant_setting":          true,
 	"attendances":            true,
 	"attendances.user":       true,
 	"role":                   true,
@@ -204,15 +205,17 @@ func mapToUserResponse(user *model.User, includes []string) model.UserResponse {
 			permissions[i] = p.ID
 		}
 		res.Permissions = permissions
+		res.BaseRole = user.Role.BaseRole
 		res.IsOwner = user.Role.BaseRole == model.BaseRoleAdmin
 	}
 
-	if hasInclude(includes, "tenant") && user.Tenant != nil {
+	if (hasInclude(includes, "tenant") || hasInclude(includes, "tenant_setting")) && user.Tenant != nil {
 		res.Tenant = &model.TenantResponse{
 			ID:             user.Tenant.ID,
 			Name:           user.Tenant.Name,
 			TenantSettings: user.Tenant.TenantSettings,
 		}
+		res.TenantSetting = user.Tenant.TenantSettings
 	}
 
 	if hasInclude(includes, "attendances") {
