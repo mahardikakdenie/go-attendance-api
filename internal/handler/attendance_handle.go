@@ -200,8 +200,8 @@ func (h *attendanceHandler) RecordAttendance(c *gin.Context) {
 // @Param status query string false "Status"
 // @Param date_from query string false "Start date (YYYY-MM-DD)"
 // @Param date_to query string false "End date (YYYY-MM-DD)"
-// @Param limit query int false "Limit"
-// @Param offset query int false "Offset"
+// @Param page query int false "Page number (default: 1)"
+// @Param limit query int false "Items per page (default: 10)"
 // @Param include query string false "Relations: user,tenant,setting"
 // @Security BearerAuth
 // @Security CookieAuth
@@ -239,20 +239,16 @@ func (h *attendanceHandler) GetAllAttendance(c *gin.Context) {
 		}
 	}
 
-	limit := 10
-	offset := 0
+	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "10"))
 
-	if l := c.Query("limit"); l != "" {
-		if val, err := strconv.Atoi(l); err == nil {
-			limit = val
-		}
+	if page < 1 {
+		page = 1
 	}
-
-	if o := c.Query("offset"); o != "" {
-		if val, err := strconv.Atoi(o); err == nil {
-			offset = val
-		}
+	if limit < 1 {
+		limit = 10
 	}
+	offset := (page - 1) * limit
 
 	var includes []string
 	if inc := c.Query("include"); inc != "" {
