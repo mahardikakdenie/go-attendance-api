@@ -69,6 +69,8 @@ type LeaveRequest struct {
 type LeaveResponse struct {
 	ID          uint        `json:"id"`
 	UserID      uint        `json:"user_id"`
+	UserName    string      `json:"user_name"`
+	UserAvatar  string      `json:"user_avatar"`
 	LeaveTypeID uint        `json:"leave_type_id"`
 	LeaveType   string      `json:"leave_type_name"`
 	StartDate   time.Time   `json:"start_date"`
