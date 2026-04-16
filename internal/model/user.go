@@ -56,6 +56,7 @@ type UserFilter struct {
 	AllowedRoleIDs []uint
 	TenantID       uint
 	EmployeeID     string
+	PositionID     *uint
 
 	OrderBy string
 	Sort    string
@@ -100,6 +101,7 @@ type UserResponse struct {
 
 	Tenant           *TenantResponse          `json:"tenant,omitempty"`
 	TenantSetting    *TenantSetting           `json:"tenant_setting,omitempty"`
+	Shift            *WorkShiftResponse       `json:"shift,omitempty"`
 	Attendances      []AttendanceResponse     `json:"attendances,omitempty"`
 	RecentActivities []RecentActivityResponse `json:"recent_activities,omitempty"`
 }
