@@ -22,7 +22,7 @@ type LeaveRepository interface {
 	GetPendingCount(ctx context.Context, tenantID uint) (int64, error)
 	GetBalancesByUser(ctx context.Context, userID uint, year int) ([]model.LeaveBalance, error)
 	CheckOnLeave(ctx context.Context, userID uint, date time.Time) (bool, error)
-	FindAll(ctx context.Context, filter model.LeaveFilter) ([]model.Leave, int64, error)
+	FindAll(ctx context.Context, filter model.LeaveFilter, limit, offset int) ([]model.Leave, int64, error)
 	FindByID(ctx context.Context, id uint) (*model.Leave, error)
 	Update(ctx context.Context, l *model.Leave) error
 }
@@ -107,7 +107,7 @@ func (r *leaveRepository) CheckOnLeave(ctx context.Context, userID uint, date ti
 	return count > 0, err
 }
 
-func (r *leaveRepository) FindAll(ctx context.Context, filter model.LeaveFilter) ([]model.Leave, int64, error) {
+func (r *leaveRepository) FindAll(ctx context.Context, filter model.LeaveFilter, limit, offset int) ([]model.Leave, int64, error) {
 	var leaves []model.Leave
 	var total int64
 
@@ -125,7 +125,6 @@ func (r *leaveRepository) FindAll(ctx context.Context, filter model.LeaveFilter)
 		query = query.Where("leaves.status = ?", filter.Status)
 	}
 
-
 	if filter.DateFrom != nil {
 		query = query.Where("start_date >= ?", *filter.DateFrom)
 	}
@@ -142,7 +141,11 @@ func (r *leaveRepository) FindAll(ctx context.Context, filter model.LeaveFilter)
 		return nil, 0, err
 	}
 
-	err := query.Order("created_at DESC").Preload("LeaveType").Find(&leaves).Error
+	if limit > 0 {
+		query = query.Limit(limit).Offset(offset)
+	}
+
+	err := query.Order("created_at DESC").Preload("LeaveType").Preload("User").Find(&leaves).Error
 	if err != nil {
 		return nil, 0, err
 	}
