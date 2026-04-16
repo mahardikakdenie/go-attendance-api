@@ -28,6 +28,16 @@ type WorkShift struct {
 	UpdatedAt time.Time `json:"updated_at"`
 }
 
+type WorkShiftResponse struct {
+	ID        uuid.UUID `json:"id"`
+	Name      string    `json:"name"`
+	StartTime string    `json:"startTime"`
+	EndTime   string    `json:"endTime"`
+	Type      ShiftType `json:"type"`
+	Color     string    `json:"color"`
+	IsDefault bool      `json:"isDefault"`
+}
+
 func (s *WorkShift) BeforeCreate(tx *gorm.DB) (err error) {
 	if s.ID == uuid.Nil {
 		s.ID = uuid.New()
@@ -35,29 +45,47 @@ func (s *WorkShift) BeforeCreate(tx *gorm.DB) (err error) {
 	return
 }
 
-type HolidayType string
+type EventType string
 
 const (
-	HolidayTypeNational       HolidayType = "National Holiday"
-	HolidayTypeCompanyEvent   HolidayType = "Company Event"
-	HolidayTypeMandatoryLeave HolidayType = "Mandatory Leave"
-	HolidayTypeOther          HolidayType = "Other"
+	EventTypeNationalHoliday  EventType = "National Holiday"
+	EventTypeCompanyEvent     EventType = "Company Event"
+	EventTypeMandatoryLeave   EventType = "Mandatory Leave"
+	EventTypeMeeting          EventType = "Meeting"
+	EventTypeOther            EventType = "Other"
 )
 
-type Holiday struct {
-	ID        uuid.UUID   `gorm:"type:uuid;primaryKey;default:uuid_generate_v4()" json:"id"`
-	TenantID  uint        `gorm:"not null;uniqueIndex:idx_tenant_holiday_date" json:"tenant_id"`
-	Date      time.Time   `gorm:"type:date;not null;uniqueIndex:idx_tenant_holiday_date" json:"date"`
-	Name      string      `gorm:"type:varchar(255);not null" json:"name"`
-	Type      HolidayType `gorm:"type:varchar(50);not null" json:"type"`
-	IsPaid    bool        `gorm:"default:true" json:"is_paid"`
-	CreatedAt time.Time   `json:"created_at"`
-	UpdatedAt time.Time   `json:"updated_at"`
+type EventCategory string
+
+const (
+	EventCategoryOfficeClosed EventCategory = "OFFICE_CLOSED"
+	EventCategoryInformation  EventCategory = "INFORMATION"
+)
+
+type CalendarEvent struct {
+	ID          uuid.UUID     `gorm:"type:uuid;primaryKey;default:uuid_generate_v4()" json:"id"`
+	TenantID    uint          `gorm:"not null;index:idx_tenant_event_date" json:"tenant_id"`
+	Date        time.Time     `gorm:"type:date;not null;index:idx_tenant_event_date" json:"date"`
+	Name        string        `gorm:"type:varchar(255);not null" json:"name"`
+	Type        EventType     `gorm:"type:varchar(50);not null" json:"type"`
+	Category    EventCategory `gorm:"type:varchar(50);not null;default:'OFFICE_CLOSED'" json:"category"`
+	IsPaid      bool          `gorm:"default:true" json:"is_paid"`
+	Description string        `gorm:"type:text" json:"description"`
+	IsAllUsers  bool          `gorm:"default:true" json:"is_all_users"`
+	CreatedAt   time.Time     `json:"created_at"`
+	UpdatedAt   time.Time     `json:"updated_at"`
+
+	Users []User `gorm:"many2many:calendar_event_users;" json:"users,omitempty"`
 }
 
-func (h *Holiday) BeforeCreate(tx *gorm.DB) (err error) {
-	if h.ID == uuid.Nil {
-		h.ID = uuid.New()
+// Keeping old names as aliases for GORM compatibility if needed, 
+// but preferred way is to migrate the table.
+type Holiday = CalendarEvent
+type HolidayType = EventType
+
+func (e *CalendarEvent) BeforeCreate(tx *gorm.DB) (err error) {
+	if e.ID == uuid.Nil {
+		e.ID = uuid.New()
 	}
 	return
 }
@@ -67,7 +95,7 @@ type EmployeeRoster struct {
 	TenantID  uint      `gorm:"not null" json:"tenant_id"`
 	UserID    uint      `gorm:"not null" json:"user_id"`
 	Date      time.Time `gorm:"type:date;not null" json:"date"`
-	ShiftID   *uuid.UUID `gorm:"type:uuid" json:"shift_id"` // null means "off"
+	ShiftID   *uuid.UUID `gorm:"type:uuid" json:"shift_id"` // null means fallback to default/global company shift
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 
