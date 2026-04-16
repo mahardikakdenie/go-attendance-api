@@ -4,7 +4,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"gorm.io/gorm"
 )
 
 type ProvisioningTicketStatus string
@@ -27,11 +26,4 @@ type ProvisioningTicket struct {
 
 	TrialRequest TrialRequest `gorm:"foreignKey:TrialRequestID" json:"trial_request,omitempty"`
 	Executor     *User        `gorm:"foreignKey:ExecutedBy" json:"executor,omitempty"`
-}
-
-func (t *ProvisioningTicket) BeforeCreate(tx *gorm.DB) (err error) {
-	if t.ID == uuid.Nil {
-		t.ID = uuid.New()
-	}
-	return
 }
