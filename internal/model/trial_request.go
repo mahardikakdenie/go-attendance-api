@@ -4,7 +4,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"gorm.io/gorm"
 )
 
 type TrialRequestStatus string
@@ -35,11 +34,4 @@ type TrialRequest struct {
 	Industry           string             `gorm:"type:varchar(100)" json:"industry"`
 	Status             TrialRequestStatus `gorm:"type:varchar(20);default:'NEW'" json:"status"`
 	CreatedAt          time.Time          `json:"created_at"`
-}
-
-func (t *TrialRequest) BeforeCreate(tx *gorm.DB) (err error) {
-	if t.ID == uuid.Nil {
-		t.ID = uuid.New()
-	}
-	return
 }
