@@ -8,17 +8,6 @@ import (
 	"github.com/google/uuid"
 )
 
-// Shift DTOs
-type WorkShiftResponse struct {
-	ID        uuid.UUID       `json:"id"`
-	Name      string          `json:"name"`
-	StartTime string          `json:"startTime"`
-	EndTime   string          `json:"endTime"`
-	Type      model.ShiftType `json:"type"`
-	Color     string          `json:"color"`
-	IsDefault bool            `json:"isDefault"`
-}
-
 // Roster DTOs
 type EmployeeScheduleResponse struct {
 	ID           uint              `json:"id"`
@@ -38,26 +27,45 @@ type SaveRosterRequest struct {
 	Assignments []RosterAssignment `json:"assignments" binding:"required"`
 }
 
-// Holiday DTOs
-type HolidayResponse struct {
-	ID     uuid.UUID         `json:"id"`
-	Date   string            `json:"date"` // YYYY-MM-DD
-	Name   string            `json:"name"`
-	Type   model.HolidayType `json:"type"`
-	IsPaid bool              `json:"is_paid"`
+// Calendar Event DTOs
+type CalendarEventResponse struct {
+	ID          uuid.UUID           `json:"id"`
+	Date        string              `json:"date"` // YYYY-MM-DD
+	Name        string              `json:"name"`
+	Type        model.EventType     `json:"type"`
+	Category    model.EventCategory `json:"category"`
+	IsPaid      bool                `json:"is_paid"`
+	Description string              `json:"description"`
+	IsAllUsers  bool                `json:"is_all_users"`
+	UserIDs     []uint              `json:"user_ids,omitempty"`
 }
 
-type CreateHolidayRequest struct {
-	Date   string            `json:"date" binding:"required"` // YYYY-MM-DD
-	Name   string            `json:"name" binding:"required"`
-	Type   model.HolidayType `json:"type" binding:"required"`
-	IsPaid bool              `json:"is_paid"`
+// Legacy alias for FE compatibility
+type HolidayResponse = CalendarEventResponse
+
+type CreateCalendarEventRequest struct {
+	Date        string              `json:"date" binding:"required"` // YYYY-MM-DD
+	Name        string              `json:"name" binding:"required"`
+	Type        model.EventType     `json:"type" binding:"required"`
+	Category    model.EventCategory `json:"category"`
+	IsPaid      bool                `json:"is_paid"`
+	Description string              `json:"description"`
+	IsAllUsers  bool                `json:"is_all_users"`
+	UserIDs     []uint              `json:"user_ids"`
 }
 
-type UpdateHolidayRequest struct {
-	Name   string `json:"name"`
-	IsPaid *bool  `json:"is_paid"`
+type CreateHolidayRequest = CreateCalendarEventRequest
+
+type UpdateCalendarEventRequest struct {
+	Name        string               `json:"name"`
+	Category    *model.EventCategory `json:"category"`
+	IsPaid      *bool                `json:"is_paid"`
+	Description string               `json:"description"`
+	IsAllUsers  *bool                `json:"is_all_users"`
+	UserIDs     []uint               `json:"user_ids"`
 }
+
+type UpdateHolidayRequest = UpdateCalendarEventRequest
 
 // Lifecycle DTOs
 type LifecycleTaskResponse struct {
@@ -76,4 +84,9 @@ type EmployeeLifecycleResponse struct {
 
 type UpdateLifecycleTaskRequest struct {
 	IsCompleted bool `json:"is_completed"`
+}
+
+type CreateLifecycleTemplateRequest struct {
+	TaskName string                `json:"task_name" binding:"required"`
+	Category model.LifecycleStatus `json:"category" binding:"required"`
 }
