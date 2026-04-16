@@ -5,7 +5,9 @@ import (
 	"strconv"
 
 	modelDto "go-attendance-api/internal/dto"
+	"go-attendance-api/internal/model"
 	"go-attendance-api/internal/service"
+
 	"go-attendance-api/internal/utils"
 
 	"github.com/gin-gonic/gin"
@@ -21,13 +23,16 @@ type HrOpsHandler interface {
 	GetWeeklyRoster(c *gin.Context)
 	SaveRoster(c *gin.Context)
 
-	// Calendar
+	// Calendar Events
 	GetHolidays(c *gin.Context)
 	CreateHoliday(c *gin.Context)
 	UpdateHoliday(c *gin.Context)
 	DeleteHoliday(c *gin.Context)
 
 	// Lifecycle
+	GetLifecycleTemplates(c *gin.Context)
+	CreateLifecycleTemplate(c *gin.Context)
+	DeleteLifecycleTemplate(c *gin.Context)
 	GetEmployeeLifecycle(c *gin.Context)
 	UpdateLifecycleTask(c *gin.Context)
 }
@@ -59,11 +64,11 @@ func (h *hrOpsHandler) GetAllShifts(c *gin.Context) {
 // @Tags HR Ops
 // @Accept json
 // @Produce json
-// @Param body body modelDto.WorkShiftResponse true "Shift Payload"
+// @Param body body model.WorkShiftResponse true "Shift Payload"
 // @Security BearerAuth
 // @Router /api/v1/hr/shifts [post]
 func (h *hrOpsHandler) CreateShift(c *gin.Context) {
-	var req modelDto.WorkShiftResponse
+	var req model.WorkShiftResponse
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, utils.BuildErrorResponse("Invalid request", 400, "error", err.Error()))
 		return
@@ -121,7 +126,7 @@ func (h *hrOpsHandler) SaveRoster(c *gin.Context) {
 	c.JSON(http.StatusOK, utils.BuildResponse("Roster saved successfully", 200, "success", nil))
 }
 
-// @Summary Get Calendar/Holidays
+// @Summary Get Calendar Events (Holidays, Meetings, etc)
 // @Tags HR Ops
 // @Produce json
 // @Param year query int false "Year"
@@ -137,18 +142,18 @@ func (h *hrOpsHandler) GetHolidays(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, utils.BuildErrorResponse("Failed to fetch calendar", 500, "error", err.Error()))
 		return
 	}
-	c.JSON(http.StatusOK, utils.BuildResponse("Calendar fetched successfully", 200, "success", res))
+	c.JSON(http.StatusOK, utils.BuildResponse("Calendar events fetched successfully", 200, "success", res))
 }
 
-// @Summary Create Holiday
+// @Summary Create Calendar Event
 // @Tags HR Ops
 // @Accept json
 // @Produce json
-// @Param body body modelDto.CreateHolidayRequest true "Holiday Payload"
+// @Param body body modelDto.CreateCalendarEventRequest true "Event Payload"
 // @Security BearerAuth
 // @Router /api/v1/hr/calendar [post]
 func (h *hrOpsHandler) CreateHoliday(c *gin.Context) {
-	var req modelDto.CreateHolidayRequest
+	var req modelDto.CreateCalendarEventRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, utils.BuildErrorResponse("Invalid request", 400, "error", err.Error()))
 		return
@@ -157,18 +162,18 @@ func (h *hrOpsHandler) CreateHoliday(c *gin.Context) {
 	tenantID := c.MustGet("tenant_id").(uint)
 	res, err := h.service.CreateHoliday(c.Request.Context(), tenantID, req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, utils.BuildErrorResponse("Failed to create holiday", 500, "error", err.Error()))
+		c.JSON(http.StatusInternalServerError, utils.BuildErrorResponse("Failed to create event", 500, "error", err.Error()))
 		return
 	}
-	c.JSON(http.StatusCreated, utils.BuildResponse("Holiday created successfully", 201, "success", res))
+	c.JSON(http.StatusCreated, utils.BuildResponse("Event created successfully", 201, "success", res))
 }
 
-// @Summary Update Holiday
+// @Summary Update Calendar Event
 // @Tags HR Ops
 // @Accept json
 // @Produce json
-// @Param id path string true "Holiday UUID"
-// @Param body body modelDto.UpdateHolidayRequest true "Holiday Payload"
+// @Param id path string true "Event UUID"
+// @Param body body modelDto.UpdateCalendarEventRequest true "Event Payload"
 // @Security BearerAuth
 // @Router /api/v1/hr/calendar/{id} [put]
 func (h *hrOpsHandler) UpdateHoliday(c *gin.Context) {
@@ -179,7 +184,7 @@ func (h *hrOpsHandler) UpdateHoliday(c *gin.Context) {
 		return
 	}
 
-	var req modelDto.UpdateHolidayRequest
+	var req modelDto.UpdateCalendarEventRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, utils.BuildErrorResponse("Invalid request", 400, "error", err.Error()))
 		return
@@ -187,15 +192,15 @@ func (h *hrOpsHandler) UpdateHoliday(c *gin.Context) {
 
 	tenantID := c.MustGet("tenant_id").(uint)
 	if err := h.service.UpdateHoliday(c.Request.Context(), tenantID, id, req); err != nil {
-		c.JSON(http.StatusInternalServerError, utils.BuildErrorResponse("Failed to update holiday", 500, "error", err.Error()))
+		c.JSON(http.StatusInternalServerError, utils.BuildErrorResponse("Failed to update event", 500, "error", err.Error()))
 		return
 	}
-	c.JSON(http.StatusOK, utils.BuildResponse("Holiday updated successfully", 200, "success", nil))
+	c.JSON(http.StatusOK, utils.BuildResponse("Event updated successfully", 200, "success", nil))
 }
 
-// @Summary Delete Holiday
+// @Summary Delete Calendar Event
 // @Tags HR Ops
-// @Param id path string true "Holiday UUID"
+// @Param id path string true "Event UUID"
 // @Security BearerAuth
 // @Router /api/v1/hr/calendar/{id} [delete]
 func (h *hrOpsHandler) DeleteHoliday(c *gin.Context) {
@@ -208,10 +213,77 @@ func (h *hrOpsHandler) DeleteHoliday(c *gin.Context) {
 
 	tenantID := c.MustGet("tenant_id").(uint)
 	if err := h.service.DeleteHoliday(c.Request.Context(), tenantID, id); err != nil {
-		c.JSON(http.StatusInternalServerError, utils.BuildErrorResponse("Failed to delete holiday", 500, "error", err.Error()))
+		c.JSON(http.StatusInternalServerError, utils.BuildErrorResponse("Failed to delete event", 500, "error", err.Error()))
 		return
 	}
-	c.JSON(http.StatusOK, utils.BuildResponse("Holiday deleted successfully", 200, "success", nil))
+	c.JSON(http.StatusOK, utils.BuildResponse("Event deleted successfully", 200, "success", nil))
+}
+
+// @Summary Get Lifecycle Templates
+// @Tags HR Ops
+// @Produce json
+// @Param category query string false "Category"
+// @Security BearerAuth
+// @Router /api/v1/hr/lifecycle-templates [get]
+func (h *hrOpsHandler) GetLifecycleTemplates(c *gin.Context) {
+	tenantID := c.MustGet("tenant_id").(uint)
+	categoryStr := c.Query("category")
+	var category *model.LifecycleStatus
+	if categoryStr != "" {
+		c := model.LifecycleStatus(categoryStr)
+		category = &c
+	}
+
+	res, err := h.service.GetLifecycleTemplates(c.Request.Context(), tenantID, category)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, utils.BuildErrorResponse("Failed to fetch templates", 500, "error", err.Error()))
+		return
+	}
+	c.JSON(http.StatusOK, utils.BuildResponse("Templates fetched successfully", 200, "success", res))
+}
+
+// @Summary Create Lifecycle Template
+// @Tags HR Ops
+// @Accept json
+// @Produce json
+// @Param body body modelDto.CreateLifecycleTemplateRequest true "Template Payload"
+// @Security BearerAuth
+// @Router /api/v1/hr/lifecycle-templates [post]
+func (h *hrOpsHandler) CreateLifecycleTemplate(c *gin.Context) {
+	var req modelDto.CreateLifecycleTemplateRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, utils.BuildErrorResponse("Invalid request", 400, "error", err.Error()))
+		return
+	}
+
+	tenantID := c.MustGet("tenant_id").(uint)
+	res, err := h.service.CreateLifecycleTemplate(c.Request.Context(), tenantID, req)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, utils.BuildErrorResponse("Failed to create template", 500, "error", err.Error()))
+		return
+	}
+	c.JSON(http.StatusCreated, utils.BuildResponse("Template created successfully", 201, "success", res))
+}
+
+// @Summary Delete Lifecycle Template
+// @Tags HR Ops
+// @Param id path string true "Template UUID"
+// @Security BearerAuth
+// @Router /api/v1/hr/lifecycle-templates/{id} [delete]
+func (h *hrOpsHandler) DeleteLifecycleTemplate(c *gin.Context) {
+	idStr := c.Param("id")
+	id, err := uuid.Parse(idStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, utils.BuildErrorResponse("Invalid UUID", 400, "error", err.Error()))
+		return
+	}
+
+	tenantID := c.MustGet("tenant_id").(uint)
+	if err := h.service.DeleteLifecycleTemplate(c.Request.Context(), tenantID, id); err != nil {
+		c.JSON(http.StatusInternalServerError, utils.BuildErrorResponse("Failed to delete template", 500, "error", err.Error()))
+		return
+	}
+	c.JSON(http.StatusOK, utils.BuildResponse("Template deleted successfully", 200, "success", nil))
 }
 
 // @Summary Get Employee Lifecycle
