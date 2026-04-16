@@ -69,7 +69,7 @@ func (s *dashboardService) GetAdminDashboard(ctx context.Context, currentUserID 
 	var userRes interface{}
 	if currentUser != nil {
 		currentUser.MediaUrl = s.getAvatar(currentUser.Name, currentUser.MediaUrl)
-		userRes = mapToUserResponse(currentUser, []string{"role"})
+		userRes = mapToUserResponse(currentUser, []string{"role"}, nil)
 	}
 
 	// Calculate Monthly Growth & Tenant Growth Data
@@ -195,7 +195,7 @@ func (s *dashboardService) GetHrDashboard(ctx context.Context, tenantID uint, cu
 	go func() {
 		defer wg.Done()
 		// Broaden: Include upcoming approved leaves too
-		l, _, _ := s.leaveRepo.FindAll(ctx, model.LeaveFilter{TenantID: tenantID, DateFrom: &last30Days, Status: model.LeaveStatusApproved})
+		l, _, _ := s.leaveRepo.FindAll(ctx, model.LeaveFilter{TenantID: tenantID, DateFrom: &last30Days, Status: model.LeaveStatusApproved}, 0, 0)
 		mu.Lock(); leaves = l; mu.Unlock()
 	}()
 	go func() {
@@ -206,7 +206,7 @@ func (s *dashboardService) GetHrDashboard(ctx context.Context, tenantID uint, cu
 	go func() {
 		defer wg.Done()
 		// For trends, we need 6 months. Include future approved for the current month.
-		l, _, _ := s.leaveRepo.FindAll(ctx, model.LeaveFilter{TenantID: tenantID, DateFrom: &last6Months, Status: model.LeaveStatusApproved})
+		l, _, _ := s.leaveRepo.FindAll(ctx, model.LeaveFilter{TenantID: tenantID, DateFrom: &last6Months, Status: model.LeaveStatusApproved}, 0, 0)
 		mu.Lock(); trendLeaves = l; mu.Unlock()
 	}()
 	wg.Wait()
@@ -220,7 +220,7 @@ func (s *dashboardService) GetHrDashboard(ctx context.Context, tenantID uint, cu
 	var userRes interface{}
 	if currentUser != nil {
 		currentUser.MediaUrl = s.getAvatar(currentUser.Name, currentUser.MediaUrl)
-		userRes = mapToUserResponse(currentUser, []string{"role", "tenant"})
+		userRes = mapToUserResponse(currentUser, []string{"role", "tenant"}, nil)
 	}
 
 	userMap := make(map[uint]model.User)
@@ -502,7 +502,7 @@ func (s *dashboardService) GetHeatmapData(ctx context.Context, tenantID uint, qu
 	}
 
 	if query.Type == "leave" {
-		leaves, _, _ := s.leaveRepo.FindAll(ctx, model.LeaveFilter{TenantID: tenantID, UserID: query.UserID, DateFrom: dateFrom, DateTo: dateTo, Status: model.LeaveStatusApproved})
+		leaves, _, _ := s.leaveRepo.FindAll(ctx, model.LeaveFilter{TenantID: tenantID, UserID: query.UserID, DateFrom: dateFrom, DateTo: dateTo, Status: model.LeaveStatusApproved}, 0, 0)
 		for _, l := range leaves {
 			curr := l.StartDate
 			note := ""
@@ -616,7 +616,7 @@ func (s *dashboardService) GetFinanceDashboard(ctx context.Context, tenantID uin
 	var userRes interface{}
 	if currentUser != nil {
 		currentUser.MediaUrl = s.getAvatar(currentUser.Name, currentUser.MediaUrl)
-		userRes = mapToUserResponse(currentUser, []string{"role"})
+		userRes = mapToUserResponse(currentUser, []string{"role"}, nil)
 	}
 
 	users, _, _ := s.userRepo.FindAll(ctx, model.UserFilter{TenantID: tenantID}, []string{})
@@ -738,7 +738,7 @@ func (s *dashboardService) GetDailyPulse(ctx context.Context, tenantID uint) (mo
 	}()
 	go func() {
 		defer wg.Done()
-		l, _, _ := s.leaveRepo.FindAll(ctx, model.LeaveFilter{TenantID: tenantID, Status: model.LeaveStatusPending})
+		l, _, _ := s.leaveRepo.FindAll(ctx, model.LeaveFilter{TenantID: tenantID, Status: model.LeaveStatusPending}, 0, 0)
 		mu.Lock(); pendingLeaves = l; mu.Unlock()
 	}()
 	go func() {
