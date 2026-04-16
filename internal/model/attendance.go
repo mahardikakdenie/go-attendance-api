@@ -93,3 +93,58 @@ type AttendanceFilter struct {
 }
 
 var ErrNotFound = errors.New("data not found")
+
+type CorrectionStatus string
+
+const (
+	CorrectionPending  CorrectionStatus = "PENDING"
+	CorrectionApproved CorrectionStatus = "APPROVED"
+	CorrectionRejected CorrectionStatus = "REJECTED"
+)
+
+type AttendanceCorrection struct {
+	ID           uint             `gorm:"primaryKey" json:"id"`
+	TenantID     uint             `gorm:"not null;index" json:"tenant_id"`
+	UserID       uint             `gorm:"not null;index" json:"user_id"`
+	AttendanceID *uuid.UUID       `gorm:"type:uuid" json:"attendance_id"` // Null if user completely forgot to clock in and out
+	Date         time.Time        `gorm:"type:date;not null" json:"date"`
+	ClockInTime  *time.Time       `json:"clock_in_time"`
+	ClockOutTime *time.Time       `json:"clock_out_time"`
+	Reason       string           `gorm:"type:text;not null" json:"reason"`
+	Status       CorrectionStatus `gorm:"type:varchar(20);default:'PENDING'" json:"status"`
+	ApprovedBy   *uint            `json:"approved_by"`
+	ApprovedAt   *time.Time       `json:"approved_at"`
+	AdminNotes   string           `gorm:"type:text" json:"admin_notes"`
+	CreatedAt    time.Time        `json:"created_at"`
+	UpdatedAt    time.Time        `json:"updated_at"`
+
+	User       *User       `gorm:"foreignKey:UserID" json:"user,omitempty"`
+	Attendance *Attendance `gorm:"foreignKey:AttendanceID" json:"attendance,omitempty"`
+	Approver   *User       `gorm:"foreignKey:ApprovedBy" json:"approver,omitempty"`
+}
+
+// Request DTOs
+type CreateCorrectionRequest struct {
+	AttendanceID *uuid.UUID `json:"attendance_id"`
+	Date         string     `json:"date" binding:"required"` // YYYY-MM-DD
+	ClockInTime  *string    `json:"clock_in_time"`           // HH:mm:ss
+	ClockOutTime *string    `json:"clock_out_time"`          // HH:mm:ss
+	Reason       string     `json:"reason" binding:"required"`
+}
+
+type ReviewCorrectionRequest struct {
+	AdminNotes string `json:"admin_notes"`
+}
+
+type AttendanceCorrectionResponse struct {
+	ID           uint             `json:"id"`
+	UserID       uint             `json:"user_id"`
+	UserName     string           `json:"user_name"`
+	Date         string           `json:"date"`
+	ClockInTime  *string          `json:"clock_in_time"`
+	ClockOutTime *string          `json:"clock_out_time"`
+	Reason       string           `json:"reason"`
+	Status       CorrectionStatus `json:"status"`
+	AdminNotes   string           `json:"admin_notes"`
+	CreatedAt    time.Time        `json:"created_at"`
+}
