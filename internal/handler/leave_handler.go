@@ -115,18 +115,32 @@ func (h *leaveHandler) RequestLeave(c *gin.Context) {
 // @Description Get leave history for the logged-in user
 // @Tags Leaves
 // @Produce json
-// @Param limit query int false "Limit"
-// @Param offset query int false "Offset"
+// @Param page query int false "Page number (default: 1)"
+// @Param limit query int false "Items per page (default: 10)"
+// @Param status query string false "Filter by status"
 // @Security BearerAuth
 // @Security CookieAuth
 // @Success 200 {object} utils.APIResponse{data=[]model.LeaveResponse}
 // @Router /api/v1/leaves [get]
 func (h *leaveHandler) GetLeaveHistory(c *gin.Context) {
 	userID := c.MustGet("user_id").(uint)
+	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "10"))
-	offset, _ := strconv.Atoi(c.DefaultQuery("offset", "0"))
+
+	if page < 1 {
+		page = 1
+	}
+	if limit < 1 {
+		limit = 10
+	}
+	offset := (page - 1) * limit
 
 	var filter model.LeaveFilter
+	statusQuery := c.Query("status")
+	if statusQuery != "" {
+		filter.Status = model.LeaveStatus(statusQuery)
+	}
+
 	// Logic: If not admin/hr, only show own records (scoping will handle the rest)
 	role := c.MustGet("role").(string)
 	isAdmin := role == "superadmin" || role == "admin" || role == "hr"
