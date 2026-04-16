@@ -44,6 +44,7 @@ type attendanceService struct {
 	tenantRepo   repository.TenantRepository
 	activityRepo repository.RecentActivityRepository
 	hrOpsRepo    repository.HrOpsRepository
+	leaveRepo    repository.LeaveRepository
 	userService  UserService
 	redis        *redis.Client
 	// Queue for background processing
@@ -65,6 +66,7 @@ func NewAttendanceService(
 	tenantRepo repository.TenantRepository,
 	activityRepo repository.RecentActivityRepository,
 	hrOpsRepo repository.HrOpsRepository,
+	leaveRepo repository.LeaveRepository,
 	userService UserService,
 	redis *redis.Client,
 ) AttendanceService {
@@ -75,6 +77,7 @@ func NewAttendanceService(
 		tenantRepo:   tenantRepo,
 		activityRepo: activityRepo,
 		hrOpsRepo:    hrOpsRepo,
+		leaveRepo:    leaveRepo,
 		userService:  userService,
 		redis:        redis,
 		recordQueue:  make(chan attendanceTask, 1000), // Buffer for 1000 requests
@@ -192,13 +195,16 @@ func (s *attendanceService) RecordAttendance(
 		return model.AttendanceResponse{}, fmt.Errorf("hari ini adalah hari libur: %s", holiday.Name)
 	}
 
-	// 2. Check Roster/Shift
+	// 2. Check Approved Leave
+	isOnLeave, _ := s.leaveRepo.CheckOnLeave(ctx, userID, now)
+	if isOnLeave {
+		return model.AttendanceResponse{}, errors.New("anda sedang cuti tidak bisa absen")
+	}
+
+	// 3. Check Roster/Shift
 	rosters, _ := s.hrOpsRepo.FindRoster(ctx, user.TenantID, userID, now, now)
 	var activeShift *model.WorkShift
-	if len(rosters) > 0 {
-		if rosters[0].ShiftID == nil {
-			return model.AttendanceResponse{}, errors.New("hari ini adalah jadwal libur (OFF) anda")
-		}
+	if len(rosters) > 0 && rosters[0].ShiftID != nil {
 		activeShift = rosters[0].Shift
 	}
 
