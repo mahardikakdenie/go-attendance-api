@@ -8,12 +8,14 @@ import (
 	"go-attendance-api/internal/model"
 	"go-attendance-api/internal/utils"
 
+	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
 
 type AttendanceRepository interface {
 	Save(ctx context.Context, attendance *model.Attendance) error
 	Update(ctx context.Context, attendance *model.Attendance) error
+	FindByID(ctx context.Context, id uuid.UUID, includes []string) (*model.Attendance, error)
 	FindTodayByUser(ctx context.Context, userID uint, today time.Time) (*model.Attendance, error)
 	FindAll(ctx context.Context, filter model.AttendanceFilter, includes []string, limit, offset int) ([]model.Attendance, int64, error)
 	GetSummaryCounts(ctx context.Context, filter model.AttendanceFilter) (map[model.AttendanceStatus]int64, error)
@@ -36,6 +38,18 @@ func (r *attendanceRepository) Save(ctx context.Context, attendance *model.Atten
 
 func (r *attendanceRepository) Update(ctx context.Context, attendance *model.Attendance) error {
 	return r.db.WithContext(ctx).Save(attendance).Error
+}
+
+func (r *attendanceRepository) FindByID(ctx context.Context, id uuid.UUID, includes []string) (*model.Attendance, error) {
+	var attendance model.Attendance
+	query := r.db.WithContext(ctx).Model(&model.Attendance{})
+	query = utils.ApplyPreloads(query, includes, attendancePreloadMap)
+
+	err := query.First(&attendance, "id = ?", id).Error
+	if err != nil {
+		return nil, err
+	}
+	return &attendance, nil
 }
 
 func (r *attendanceRepository) GetSummaryCounts(ctx context.Context, filter model.AttendanceFilter) (map[model.AttendanceStatus]int64, error) {
