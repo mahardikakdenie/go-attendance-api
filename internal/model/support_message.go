@@ -4,7 +4,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"gorm.io/gorm"
 )
 
 type SupportCategory string
@@ -36,11 +35,4 @@ type SupportMessage struct {
 
 	Tenant Tenant `gorm:"foreignKey:TenantID" json:"tenant,omitempty"`
 	User   User   `gorm:"foreignKey:UserID" json:"user,omitempty"`
-}
-
-func (s *SupportMessage) BeforeCreate(tx *gorm.DB) (err error) {
-	if s.ID == uuid.Nil {
-		s.ID = uuid.New()
-	}
-	return
 }
