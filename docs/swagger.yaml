@@ -131,6 +131,8 @@ definitions:
         type: string
       clock_out_time:
         type: string
+      created_at:
+        type: string
       id:
         type: string
       status:
@@ -179,6 +181,25 @@ definitions:
     - BaseRoleHR
     - BaseRoleFinance
     - BaseRoleEmployee
+  model.CreateCorrectionRequest:
+    properties:
+      attendance_id:
+        type: string
+      clock_in_time:
+        description: HH:mm:ss
+        type: string
+      clock_out_time:
+        description: HH:mm:ss
+        type: string
+      date:
+        description: YYYY-MM-DD
+        type: string
+      reason:
+        type: string
+    required:
+    - date
+    - reason
+    type: object
   model.CreateOvertimeRequest:
     properties:
       date:
@@ -349,8 +370,12 @@ definitions:
         $ref: '#/definitions/model.LeaveStatus'
       total_days:
         type: integer
+      user_avatar:
+        type: string
       user_id:
         type: integer
+      user_name:
+        type: string
     type: object
   model.LeaveStatus:
     enum:
@@ -596,6 +621,11 @@ definitions:
     - name
     - password
     - tenant_id
+    type: object
+  model.ReviewCorrectionRequest:
+    properties:
+      admin_notes:
+        type: string
     type: object
   model.Role:
     properties:
@@ -902,6 +932,8 @@ definitions:
         items:
           $ref: '#/definitions/model.AttendanceResponse'
         type: array
+      base_role:
+        $ref: '#/definitions/model.BaseRole'
       created_at:
         type: string
       delegate_id:
@@ -945,6 +977,8 @@ definitions:
         type: array
       role:
         $ref: '#/definitions/model.RoleResponse'
+      shift:
+        $ref: '#/definitions/model.WorkShiftResponse'
       tenant:
         $ref: '#/definitions/model.TenantResponse'
       tenant_id:
@@ -952,6 +986,23 @@ definitions:
         type: integer
       tenant_setting:
         $ref: '#/definitions/model.TenantSetting'
+    type: object
+  model.WorkShiftResponse:
+    properties:
+      color:
+        type: string
+      endTime:
+        type: string
+      id:
+        type: string
+      isDefault:
+        type: boolean
+      name:
+        type: string
+      startTime:
+        type: string
+      type:
+        $ref: '#/definitions/model.ShiftType'
     type: object
   modelDto.AttendanceHistoryItem:
     properties:
@@ -1180,23 +1231,6 @@ definitions:
     required:
     - status
     type: object
-  modelDto.WorkShiftResponse:
-    properties:
-      color:
-        type: string
-      endTime:
-        type: string
-      id:
-        type: string
-      isDefault:
-        type: boolean
-      name:
-        type: string
-      startTime:
-        type: string
-      type:
-        $ref: '#/definitions/model.ShiftType'
-    type: object
   service.CreateRoleRequest:
     properties:
       base_role:
@@ -1212,62 +1246,6 @@ definitions:
     required:
     - base_role
     - name
-    type: object
-  service.PayrollRequest:
-    properties:
-      allowances:
-        type: number
-      attendanceDays:
-        type: integer
-      basicSalary:
-        type: number
-      overtimeHours:
-        type: number
-      ptkpStatus:
-        type: string
-      unpaidLeaveDays:
-        type: integer
-      workingDaysInMonth:
-        type: integer
-    type: object
-  service.PayrollResponse:
-    properties:
-      breakdown:
-        properties:
-          bpjs:
-            properties:
-              health:
-                properties:
-                  company:
-                    type: number
-                  employee:
-                    type: number
-                type: object
-              jht:
-                properties:
-                  company:
-                    type: number
-                  employee:
-                    type: number
-                type: object
-              jkk:
-                type: number
-              jkm:
-                type: number
-            type: object
-          grossIncome:
-            type: number
-          pph21Amount:
-            type: number
-          proratedBasic:
-            type: number
-          unpaidLeaveDeduction:
-            type: number
-        type: object
-      netSalary:
-        type: number
-      totalDeductions:
-        type: number
     type: object
   service.UpdateRoleRequest:
     properties:
@@ -1386,13 +1364,13 @@ paths:
         in: query
         name: date_to
         type: string
-      - description: Limit
+      - description: 'Page number (default: 1)'
+        in: query
+        name: page
+        type: integer
+      - description: 'Items per page (default: 10)'
         in: query
         name: limit
-        type: integer
-      - description: Offset
-        in: query
-        name: offset
         type: integer
       - description: 'Relations: user,tenant,setting'
         in: query
@@ -1457,6 +1435,99 @@ paths:
       summary: Record Attendance
       tags:
       - Attendance
+  /api/v1/attendance/corrections:
+    get:
+      description: Get list of attendance correction requests
+      parameters:
+      - description: Filter by status (PENDING, APPROVED, REJECTED)
+        in: query
+        name: status
+        type: string
+      - description: 'Page number (default: 1)'
+        in: query
+        name: page
+        type: integer
+      - description: 'Items per page (default: 10)'
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses: {}
+      security:
+      - BearerAuth: []
+      summary: Get Attendance Corrections
+      tags:
+      - AttendanceCorrections
+    post:
+      consumes:
+      - application/json
+      description: Submit a request to correct missed attendance
+      parameters:
+      - description: Request Body
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/model.CreateCorrectionRequest'
+      produces:
+      - application/json
+      responses: {}
+      security:
+      - BearerAuth: []
+      summary: Request Attendance Correction
+      tags:
+      - AttendanceCorrections
+  /api/v1/attendance/corrections/{id}/approve:
+    post:
+      consumes:
+      - application/json
+      description: Approve a pending attendance correction request
+      parameters:
+      - description: Request ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Admin Notes
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/model.ReviewCorrectionRequest'
+      produces:
+      - application/json
+      responses: {}
+      security:
+      - BearerAuth: []
+      summary: Approve Attendance Correction
+      tags:
+      - AttendanceCorrections
+  /api/v1/attendance/corrections/{id}/reject:
+    post:
+      consumes:
+      - application/json
+      description: Reject a pending attendance correction request
+      parameters:
+      - description: Request ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Admin Notes
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/model.ReviewCorrectionRequest'
+      produces:
+      - application/json
+      responses: {}
+      security:
+      - BearerAuth: []
+      summary: Reject Attendance Correction
+      tags:
+      - AttendanceCorrections
   /api/v1/attendance/history:
     get:
       description: Get attendance history with specific format for dashboard
@@ -1922,7 +1993,7 @@ paths:
         name: body
         required: true
         schema:
-          $ref: '#/definitions/modelDto.WorkShiftResponse'
+          $ref: '#/definitions/model.WorkShiftResponse'
       produces:
       - application/json
       responses: {}
@@ -1935,14 +2006,18 @@ paths:
     get:
       description: Get leave history for the logged-in user
       parameters:
-      - description: Limit
+      - description: 'Page number (default: 1)'
+        in: query
+        name: page
+        type: integer
+      - description: 'Items per page (default: 10)'
         in: query
         name: limit
         type: integer
-      - description: Offset
+      - description: Filter by status
         in: query
-        name: offset
-        type: integer
+        name: status
+        type: string
       produces:
       - application/json
       responses:
@@ -2359,35 +2434,6 @@ paths:
       summary: Reject Overtime Request
       tags:
       - Overtime
-  /api/v1/payroll/calculate:
-    post:
-      consumes:
-      - application/json
-      description: Dynamically calculate payroll based on TER PPh 21 & BPJS
-      parameters:
-      - description: Payroll Data
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/service.PayrollRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/service.PayrollResponse'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/utils.APIResponse'
-      security:
-      - BearerAuth: []
-      - CookieAuth: []
-      summary: Calculate Payroll
-      tags:
-      - Payroll
   /api/v1/ping:
     get:
       description: Check API status

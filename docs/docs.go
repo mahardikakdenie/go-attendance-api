@@ -140,14 +140,14 @@ const docTemplate = `{
                     },
                     {
                         "type": "integer",
-                        "description": "Limit",
-                        "name": "limit",
+                        "description": "Page number (default: 1)",
+                        "name": "page",
                         "in": "query"
                     },
                     {
                         "type": "integer",
-                        "description": "Offset",
-                        "name": "offset",
+                        "description": "Items per page (default: 10)",
+                        "name": "limit",
                         "in": "query"
                     },
                     {
@@ -247,6 +247,152 @@ const docTemplate = `{
                         }
                     }
                 }
+            }
+        },
+        "/api/v1/attendance/corrections": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Get list of attendance correction requests",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "AttendanceCorrections"
+                ],
+                "summary": "Get Attendance Corrections",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Filter by status (PENDING, APPROVED, REJECTED)",
+                        "name": "status",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Page number (default: 1)",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Items per page (default: 10)",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {}
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Submit a request to correct missed attendance",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "AttendanceCorrections"
+                ],
+                "summary": "Request Attendance Correction",
+                "parameters": [
+                    {
+                        "description": "Request Body",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.CreateCorrectionRequest"
+                        }
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/api/v1/attendance/corrections/{id}/approve": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Approve a pending attendance correction request",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "AttendanceCorrections"
+                ],
+                "summary": "Approve Attendance Correction",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Request ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Admin Notes",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.ReviewCorrectionRequest"
+                        }
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/api/v1/attendance/corrections/{id}/reject": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Reject a pending attendance correction request",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "AttendanceCorrections"
+                ],
+                "summary": "Reject Attendance Correction",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Request ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Admin Notes",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.ReviewCorrectionRequest"
+                        }
+                    }
+                ],
+                "responses": {}
             }
         },
         "/api/v1/attendance/history": {
@@ -1035,7 +1181,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/modelDto.WorkShiftResponse"
+                            "$ref": "#/definitions/model.WorkShiftResponse"
                         }
                     }
                 ],
@@ -1063,14 +1209,20 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "integer",
-                        "description": "Limit",
-                        "name": "limit",
+                        "description": "Page number (default: 1)",
+                        "name": "page",
                         "in": "query"
                     },
                     {
                         "type": "integer",
-                        "description": "Offset",
-                        "name": "offset",
+                        "description": "Items per page (default: 10)",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by status",
+                        "name": "status",
                         "in": "query"
                     }
                 ],
@@ -1778,54 +1930,6 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/utils.APIResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/api/v1/payroll/calculate": {
-            "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    },
-                    {
-                        "CookieAuth": []
-                    }
-                ],
-                "description": "Dynamically calculate payroll based on TER PPh 21 \u0026 BPJS",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Payroll"
-                ],
-                "summary": "Calculate Payroll",
-                "parameters": [
-                    {
-                        "description": "Payroll Data",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/service.PayrollRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/service.PayrollResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
                         "schema": {
                             "$ref": "#/definitions/utils.APIResponse"
                         }
@@ -3444,6 +3548,9 @@ const docTemplate = `{
                 "clock_out_time": {
                     "type": "string"
                 },
+                "created_at": {
+                    "type": "string"
+                },
                 "id": {
                     "type": "string"
                 },
@@ -3510,6 +3617,33 @@ const docTemplate = `{
                 "BaseRoleFinance",
                 "BaseRoleEmployee"
             ]
+        },
+        "model.CreateCorrectionRequest": {
+            "type": "object",
+            "required": [
+                "date",
+                "reason"
+            ],
+            "properties": {
+                "attendance_id": {
+                    "type": "string"
+                },
+                "clock_in_time": {
+                    "description": "HH:mm:ss",
+                    "type": "string"
+                },
+                "clock_out_time": {
+                    "description": "HH:mm:ss",
+                    "type": "string"
+                },
+                "date": {
+                    "description": "YYYY-MM-DD",
+                    "type": "string"
+                },
+                "reason": {
+                    "type": "string"
+                }
+            }
         },
         "model.CreateOvertimeRequest": {
             "type": "object",
@@ -3751,8 +3885,14 @@ const docTemplate = `{
                 "total_days": {
                     "type": "integer"
                 },
+                "user_avatar": {
+                    "type": "string"
+                },
                 "user_id": {
                     "type": "integer"
+                },
+                "user_name": {
+                    "type": "string"
                 }
             }
         },
@@ -4108,6 +4248,14 @@ const docTemplate = `{
                 "tenant_id": {
                     "type": "integer",
                     "example": 1
+                }
+            }
+        },
+        "model.ReviewCorrectionRequest": {
+            "type": "object",
+            "properties": {
+                "admin_notes": {
+                    "type": "string"
                 }
             }
         },
@@ -4542,6 +4690,9 @@ const docTemplate = `{
                         "$ref": "#/definitions/model.AttendanceResponse"
                     }
                 },
+                "base_role": {
+                    "$ref": "#/definitions/model.BaseRole"
+                },
                 "created_at": {
                     "type": "string"
                 },
@@ -4603,6 +4754,9 @@ const docTemplate = `{
                 "role": {
                     "$ref": "#/definitions/model.RoleResponse"
                 },
+                "shift": {
+                    "$ref": "#/definitions/model.WorkShiftResponse"
+                },
                 "tenant": {
                     "$ref": "#/definitions/model.TenantResponse"
                 },
@@ -4612,6 +4766,32 @@ const docTemplate = `{
                 },
                 "tenant_setting": {
                     "$ref": "#/definitions/model.TenantSetting"
+                }
+            }
+        },
+        "model.WorkShiftResponse": {
+            "type": "object",
+            "properties": {
+                "color": {
+                    "type": "string"
+                },
+                "endTime": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "isDefault": {
+                    "type": "boolean"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "startTime": {
+                    "type": "string"
+                },
+                "type": {
+                    "$ref": "#/definitions/model.ShiftType"
                 }
             }
         },
@@ -4958,32 +5138,6 @@ const docTemplate = `{
                 }
             }
         },
-        "modelDto.WorkShiftResponse": {
-            "type": "object",
-            "properties": {
-                "color": {
-                    "type": "string"
-                },
-                "endTime": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "isDefault": {
-                    "type": "boolean"
-                },
-                "name": {
-                    "type": "string"
-                },
-                "startTime": {
-                    "type": "string"
-                },
-                "type": {
-                    "$ref": "#/definitions/model.ShiftType"
-                }
-            }
-        },
         "service.CreateRoleRequest": {
             "type": "object",
             "required": [
@@ -5005,93 +5159,6 @@ const docTemplate = `{
                     "items": {
                         "type": "string"
                     }
-                }
-            }
-        },
-        "service.PayrollRequest": {
-            "type": "object",
-            "properties": {
-                "allowances": {
-                    "type": "number"
-                },
-                "attendanceDays": {
-                    "type": "integer"
-                },
-                "basicSalary": {
-                    "type": "number"
-                },
-                "overtimeHours": {
-                    "type": "number"
-                },
-                "ptkpStatus": {
-                    "type": "string"
-                },
-                "unpaidLeaveDays": {
-                    "type": "integer"
-                },
-                "workingDaysInMonth": {
-                    "type": "integer"
-                }
-            }
-        },
-        "service.PayrollResponse": {
-            "type": "object",
-            "properties": {
-                "breakdown": {
-                    "type": "object",
-                    "properties": {
-                        "bpjs": {
-                            "type": "object",
-                            "properties": {
-                                "health": {
-                                    "type": "object",
-                                    "properties": {
-                                        "company": {
-                                            "type": "number"
-                                        },
-                                        "employee": {
-                                            "type": "number"
-                                        }
-                                    }
-                                },
-                                "jht": {
-                                    "type": "object",
-                                    "properties": {
-                                        "company": {
-                                            "type": "number"
-                                        },
-                                        "employee": {
-                                            "type": "number"
-                                        }
-                                    }
-                                },
-                                "jkk": {
-                                    "type": "number"
-                                },
-                                "jkm": {
-                                    "type": "number"
-                                }
-                            }
-                        },
-                        "grossIncome": {
-                            "type": "number"
-                        },
-                        "pph21Amount": {
-                            "type": "number"
-                        },
-                        "proratedBasic": {
-                            "type": "number"
-                        },
-                        "unpaidLeaveDeduction": {
-                            "type": "number"
-                        }
-                    }
-                },
-                "netSalary": {
-                    "type": "number"
-                },
-                "totalDeductions": {
-                    "type": "number"
                 }
             }
         },

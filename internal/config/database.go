@@ -87,6 +87,10 @@ func InitDB() *gorm.DB {
 			&model.EmployeeLifecycleTask{},
 			&model.AttendanceCorrection{},
 			&model.Payroll{},
+			&model.Expense{},
+			&model.PerformanceGoal{},
+			&model.PerformanceCycle{},
+			&model.Appraisal{},
 		)
 		if err != nil {
 			log.Fatalf("❌ Gagal migrasi Stage 3: %v", err)

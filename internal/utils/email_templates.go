@@ -410,3 +410,99 @@ func GetTrialConfirmationEmailTemplate(name, company string) string {
 </html>
 `, name, company)
 }
+
+func GetCalendarEventReminderTemplate(userName, eventName, eventDate, eventType, description string) string {
+	return fmt.Sprintf(`
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f7f9;
+        }
+        .container {
+            max-width: 600px;
+            margin: 20px auto;
+            background: #ffffff;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+        .header {
+            background: linear-gradient(135deg, #10B981 0%%, #059669 100%%);
+            color: #ffffff;
+            padding: 30px 20px;
+            text-align: center;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 24px;
+        }
+        .content {
+            padding: 30px;
+        }
+        .greeting {
+            font-size: 18px;
+            color: #064E3B;
+            font-weight: bold;
+        }
+        .event-box {
+            background-color: #ECFDF5;
+            border-left: 4px solid #10B981;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 0 4px 4px 0;
+        }
+        .event-box p {
+            margin: 8px 0;
+            font-size: 15px;
+        }
+        .label {
+            font-weight: bold;
+            color: #065F46;
+            display: inline-block;
+            width: 100px;
+        }
+        .footer {
+            background-color: #f4f7f9;
+            color: #777;
+            padding: 20px;
+            text-align: center;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Upcoming Event Reminder</h1>
+        </div>
+        <div class="content">
+            <p class="greeting">Hello %s,</p>
+            <p>This is a reminder for an upcoming event scheduled for tomorrow.</p>
+            
+            <div class="event-box">
+                <p><span class="label">Event:</span> %s</p>
+                <p><span class="label">Date:</span> %s</p>
+                <p><span class="label">Type:</span> %s</p>
+                <p><span class="label">Description:</span> %s</p>
+            </div>
+
+            <p>Please make sure to check your schedule and prepare accordingly.</p>
+        </div>
+        <div class="footer">
+            <p>&copy; 2026 Attendance API. All rights reserved.</p>
+            <p>This is an automated message, please do not reply.</p>
+        </div>
+    </div>
+</body>
+</html>
+`, userName, eventName, eventDate, eventType, description)
+}

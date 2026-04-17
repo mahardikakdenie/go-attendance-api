@@ -162,6 +162,8 @@ func (s *leaveService) RequestLeave(ctx context.Context, userID uint, tenantID u
 	return model.LeaveResponse{
 		ID:          leave.ID,
 		UserID:      leave.UserID,
+		UserName:    user.Name,
+		UserAvatar:  user.MediaUrl,
 		LeaveTypeID: leave.LeaveTypeID,
 		LeaveType:   lt.Name,
 		StartDate:   leave.StartDate,
@@ -189,7 +191,7 @@ func (s *leaveService) GetLeaveHistory(ctx context.Context, requesterID uint, fi
 		filter.AllowedRoleIDs = allowedRoleIDs
 	}
 
-	leaves, total, err := s.repo.FindAll(ctx, filter)
+	leaves, total, err := s.repo.FindAll(ctx, filter, limit, offset)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -197,9 +199,18 @@ func (s *leaveService) GetLeaveHistory(ctx context.Context, requesterID uint, fi
 	var responses []model.LeaveResponse
 	for _, l := range leaves {
 		totalDays := int(l.EndDate.Sub(l.StartDate).Hours()/24) + 1
+		userName := ""
+		userAvatar := ""
+		if l.User != nil {
+			userName = l.User.Name
+			userAvatar = l.User.MediaUrl
+		}
+
 		responses = append(responses, model.LeaveResponse{
 			ID:          l.ID,
 			UserID:      l.UserID,
+			UserName:    userName,
+			UserAvatar:  userAvatar,
 			LeaveTypeID: l.LeaveTypeID,
 			LeaveType:   l.LeaveType.Name,
 			StartDate:   l.StartDate,

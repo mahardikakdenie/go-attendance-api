@@ -38,6 +38,7 @@ type User struct {
 	Delegate   *User `gorm:"foreignKey:DelegateID" json:"delegate,omitempty"`
 
 	BaseSalary float64 `gorm:"type:decimal(15,2);default:0" json:"base_salary"`
+	ExpenseQuota float64 `gorm:"type:decimal(15,2);default:0" json:"expense_quota"`
 
 	Attendances      []Attendance     `gorm:"foreignKey:UserID" json:"attendances,omitempty"`
 	RecentActivities []RecentActivity `gorm:"foreignKey:UserID" json:"recent_activities,omitempty"`
@@ -94,6 +95,8 @@ type UserResponse struct {
 	ManagerID   *uint         `json:"manager_id"`
 	DelegateID  *uint         `json:"delegate_id"`
 	CreatedAt   time.Time     `json:"created_at"`
+
+	ExpenseQuota float64 `json:"expense_quota"`
 
 	BaseRole    BaseRole `json:"base_role"`
 	Permissions []string `json:"permissions,omitempty"`

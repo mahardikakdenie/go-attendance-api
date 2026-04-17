@@ -234,6 +234,10 @@ func (s *attendanceService) RecordAttendance(
 		return model.AttendanceResponse{}, err
 	}
 
+	// Double Check with Redis to prevent race condition from Background Worker
+	submittedKey := fmt.Sprintf("attendance:submitted:%d:%s", userID, now.Format("2006-01-02"))
+	isSubmitted, _ := s.redis.Get(ctx, submittedKey).Result()
+
 	if setting.RequireLocation && !setting.AllowRemote {
 		distance := calculateDistance(
 			setting.OfficeLatitude,
@@ -259,7 +263,7 @@ func (s *attendanceService) RecordAttendance(
 
 	case model.ClockIn:
 
-		if todayAttendance != nil && !setting.AllowMultipleCheck {
+		if (todayAttendance != nil || isSubmitted != "") && !setting.AllowMultipleCheck {
 			return model.AttendanceResponse{}, errors.New("anda sudah clock-in hari ini")
 		}
 
@@ -270,8 +274,8 @@ func (s *attendanceService) RecordAttendance(
 			return model.AttendanceResponse{}, fmt.Errorf(
 				"clock-in gagal, anda melakukan pada %s, batas clock-in %s - %s",
 				nowStr,
-				normalizeTime(clockInStart),
-				normalizeTime(clockInEnd),
+				clockInStart,
+				clockInEnd,
 			)
 		}
 
@@ -300,6 +304,9 @@ func (s *attendanceService) RecordAttendance(
 			isUpdate: false,
 		}
 
+		// Set Redis flag to prevent duplicate submission during background processing
+		s.redis.Set(ctx, submittedKey, "true", 24*time.Hour)
+
 		// Invalidate Cache immediately
 		cacheKey := fmt.Sprintf("cache:attendance:today:%d:%s", userID, now.Format("2006-01-02"))
 		s.redis.Del(ctx, cacheKey)
@@ -314,11 +321,11 @@ func (s *attendanceService) RecordAttendance(
 
 	case model.ClockOut:
 
-		if todayAttendance == nil {
+		if todayAttendance == nil && isSubmitted == "" {
 			return model.AttendanceResponse{}, errors.New("anda belum melakukan clock-in hari ini")
 		}
 
-		if todayAttendance.ClockOutTime != nil && !setting.AllowMultipleCheck {
+		if todayAttendance != nil && todayAttendance.ClockOutTime != nil && !setting.AllowMultipleCheck {
 			return model.AttendanceResponse{}, errors.New("anda sudah clock-out hari ini")
 		}
 
@@ -330,6 +337,12 @@ func (s *attendanceService) RecordAttendance(
 				clockOutStart,
 				clockOutEnd,
 			)
+		}
+
+		// If DB record doesn't exist yet but Redis says it was submitted, we have to wait or handle it.
+		// For simplicity, we error out and ask to wait 1-2 seconds.
+		if todayAttendance == nil && isSubmitted != "" {
+			return model.AttendanceResponse{}, errors.New("data clock-in anda sedang diproses, harap tunggu sebentar sebelum clock-out")
 		}
 
 		todayAttendance.ClockOutTime = &now

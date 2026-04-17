@@ -8,6 +8,7 @@ import (
 	"go-attendance-api/internal/model"
 	"go-attendance-api/internal/repository"
 	"go-attendance-api/internal/utils"
+	"time"
 
 	"golang.org/x/crypto/bcrypt"
 )
@@ -27,6 +28,8 @@ type userService struct {
 	roleRepo      repository.RoleRepository
 	activityRepo  repository.RecentActivityRepository
 	hierarchyRepo repository.RoleHierarchyRepository
+	hrOpsRepo     repository.HrOpsRepository
+	leaveRepo     repository.LeaveRepository
 }
 
 func NewUserService(
@@ -34,12 +37,16 @@ func NewUserService(
 	roleRepo repository.RoleRepository,
 	activityRepo repository.RecentActivityRepository,
 	hierarchyRepo repository.RoleHierarchyRepository,
+	hrOpsRepo repository.HrOpsRepository,
+	leaveRepo repository.LeaveRepository,
 ) UserService {
 	return &userService{
 		repo:          repo,
 		roleRepo:      roleRepo,
 		activityRepo:  activityRepo,
 		hierarchyRepo: hierarchyRepo,
+		hrOpsRepo:     hrOpsRepo,
+		leaveRepo:     leaveRepo,
 	}
 }
 
@@ -106,7 +113,7 @@ func (s *userService) GetAllUsers(
 
 	var responses []model.UserResponse
 	for _, user := range users {
-		responses = append(responses, mapToUserResponse(&user, includes))
+		responses = append(responses, mapToUserResponse(&user, includes, nil))
 	}
 
 	return responses, total, nil
@@ -129,7 +136,7 @@ func (s *userService) GetByID(
 		return model.UserResponse{}, errors.New("user not found")
 	}
 
-	return mapToUserResponse(user, includes), nil
+	return mapToUserResponse(user, includes, nil), nil
 }
 
 func (s *userService) GetMe(
@@ -149,7 +156,48 @@ func (s *userService) GetMe(
 		return model.UserResponse{}, err
 	}
 
-	return mapToUserResponse(user, includes), nil
+	// Resolve active shift for today
+	var activeShift *model.WorkShift
+	now := time.Now().In(time.FixedZone("WIB", 7*3600))
+
+	// 0. Check Approved Leave
+	isOnLeave, _ := s.leaveRepo.CheckOnLeave(ctx, userID, now)
+	if isOnLeave {
+		activeShift = &model.WorkShift{
+			Name:      "Sedang Cuti",
+			StartTime: "00:00",
+			EndTime:   "23:59",
+			Type:      "Morning",
+			Color:     "bg-orange-500",
+		}
+	}
+
+	if activeShift == nil {
+		// 1. Check explicit roster for today
+		rosters, _ := s.hrOpsRepo.FindRoster(ctx, user.TenantID, userID, now, now)
+		if len(rosters) > 0 && rosters[0].ShiftID != nil {
+			activeShift = rosters[0].Shift
+		}
+	}
+
+	// 2. If no roster entry, check for default shift
+	if activeShift == nil {
+		activeShift, _ = s.hrOpsRepo.FindDefaultShift(ctx, user.TenantID)
+	}
+
+	// 3. If still no shift, mock one using Tenant Settings
+	if activeShift == nil && user.Tenant != nil && user.Tenant.TenantSettings != nil {
+		setting := user.Tenant.TenantSettings
+		activeShift = &model.WorkShift{
+			Name:      "Standard Shift",
+			StartTime: setting.ClockInStartTime,
+			EndTime:   setting.ClockOutEndTime,
+			Type:      "Morning",
+			Color:     "bg-blue-500",
+		}
+	}
+
+	return mapToUserResponse(user, includes, activeShift), nil
 }
 
 func (s *userService) GetRecentActivities(ctx context.Context, userID uint) ([]model.RecentActivityResponse, error) {
@@ -172,7 +220,7 @@ func (s *userService) GetRecentActivities(ctx context.Context, userID uint) ([]m
 	return responses, nil
 }
 
-func mapToUserResponse(user *model.User, includes []string) model.UserResponse {
+func mapToUserResponse(user *model.User, includes []string, shift *model.WorkShift) model.UserResponse {
 	res := model.UserResponse{
 		ID:          user.ID,
 		Name:        user.Name,
@@ -185,10 +233,23 @@ func mapToUserResponse(user *model.User, includes []string) model.UserResponse {
 		Address:     user.Address,
 		PhoneNumber: user.PhoneNumber,
 		CreatedAt:   user.CreatedAt,
+		ExpenseQuota: user.ExpenseQuota,
 	}
 
 	if user.Position != nil {
 		res.Position = user.Position.Name
+	}
+
+	if shift != nil {
+		res.Shift = &model.WorkShiftResponse{
+			ID:        shift.ID,
+			Name:      shift.Name,
+			StartTime: shift.StartTime,
+			EndTime:   shift.EndTime,
+			Type:      shift.Type,
+			Color:     shift.Color,
+			IsDefault: shift.IsDefault,
+		}
 	}
 
 	if user.Role != nil {
@@ -366,7 +427,7 @@ func (s *userService) CreateUser(ctx context.Context, adminID uint, req model.Cr
 	}
 
 	createdUser, _ := s.repo.FindByID(ctx, user.ID, []string{"role"})
-	return mapToUserResponse(createdUser, []string{"role"}), nil
+	return mapToUserResponse(createdUser, []string{"role"}, nil), nil
 }
 
 func (s *userService) GetAllowedRoleIDs(ctx context.Context, userID uint) ([]uint, error) {

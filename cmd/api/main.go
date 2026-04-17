@@ -65,7 +65,10 @@ func main() {
 	r := gin.Default()
 	r.Use(middleware.RateLimiter())
 
-	routes.SetupRoutes(r, db, rdb)
+	calendarCron := routes.SetupRoutes(r, db, rdb)
+	
+	// Start Cron Job
+	calendarCron.Run()
 
 	if err := r.Run(":" + appPort); err != nil {
 		log.Fatalf("Gagal menjalankan server: %v", err)

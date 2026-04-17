@@ -1,6 +1,7 @@
 package routes
 
 import (
+	"context"
 	"go-attendance-api/internal/handler"
 	"go-attendance-api/internal/middleware"
 	"go-attendance-api/internal/model"
@@ -8,13 +9,13 @@ import (
 	"go-attendance-api/internal/service"
 
 	"github.com/gin-gonic/gin"
+	"github.com/redis/go-redis/v9"
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
-	"github.com/redis/go-redis/v9"
 	"gorm.io/gorm"
 )
 
-func SetupRoutes(r *gin.Engine, db *gorm.DB, rdb *redis.Client) {
+func SetupRoutes(r *gin.Engine, db *gorm.DB, rdb *redis.Client) service.CalendarCronService {
 	// Repositories
 	authRepo := repository.NewAuthRepository(db)
 	roleRepo := repository.NewRoleRepository(db)
@@ -28,26 +29,37 @@ func SetupRoutes(r *gin.Engine, db *gorm.DB, rdb *redis.Client) {
 	overtimeRepo := repository.NewOvertimeRepository(db)
 	ucrRepo := repository.NewUserChangeRequestRepository(db)
 	positionRepo := repository.NewPositionRepository(db)
+	positionRepo.FindAll(context.TODO(), 0) // dummy to avoid unused
 	permissionRepo := repository.NewPermissionRepository(db)
 	hierarchyRepo := repository.NewRoleHierarchyRepository(db)
 	hrOpsRepo := repository.NewHrOpsRepository(db)
 
 	// Services
 	authService := service.NewAuthService(authRepo, activityRepo)
-	userService := service.NewUserService(userRepo, roleRepo, activityRepo, hierarchyRepo)
+	userService := service.NewUserService(userRepo, roleRepo, activityRepo, hierarchyRepo, hrOpsRepo, leaveRepo)
 	tenantService := service.NewTenantService(tenantRepo)
 	tenantSettingService := service.NewTenantSettingService(tenantSettingRepo)
 	mediaService := service.NewMediaService(mediaRepo)
-	attendanceService := service.NewAttendanceService(attendanceRepo, userRepo, tenantSettingRepo, tenantRepo, activityRepo, hrOpsRepo, userService, rdb)
+	attendanceService := service.NewAttendanceService(attendanceRepo, userRepo, tenantSettingRepo, tenantRepo, activityRepo, hrOpsRepo, leaveRepo, userService, rdb)
 	orgService := service.NewOrganizationService(userRepo, leaveRepo, positionRepo)
 	leaveService := service.NewLeaveService(leaveRepo, activityRepo, userRepo, orgService, userService, rdb)
 	overtimeService := service.NewOvertimeService(overtimeRepo, userService)
 	ucrService := service.NewUserChangeRequestService(ucrRepo, userRepo)
-	payrollService := service.NewPayrollService()
+	payrollRepo := repository.NewPayrollRepository(db)
+	payrollService := service.NewPayrollService(payrollRepo, userRepo, tenantRepo, tenantSettingRepo, attendanceRepo, leaveRepo)
 	dashboardService := service.NewDashboardService(tenantRepo, userRepo, attendanceRepo, leaveRepo, overtimeRepo, rdb)
 	tenantRoleService := service.NewTenantRoleService(roleRepo, permissionRepo, hierarchyRepo)
 	supportRepo := repository.NewSupportRepository(db)
 	supportService := service.NewSupportService(supportRepo, tenantRepo, userRepo, roleRepo)
+	correctionRepo := repository.NewAttendanceCorrectionRepository(db)
+	correctionService := service.NewAttendanceCorrectionService(correctionRepo, attendanceRepo, userRepo, activityRepo)
+	performanceRepo := repository.NewPerformanceRepository(db)
+	performanceService := service.NewPerformanceService(performanceRepo, userRepo)
+
+	expenseRepo := repository.NewExpenseRepository(db)
+	expenseService := service.NewExpenseService(expenseRepo, userRepo, activityRepo)
+
+	calendarCronService := service.NewCalendarCronService(hrOpsRepo, userRepo)
 
 	// Handlers
 	authHandler := handler.NewAuthHandler(authService)
@@ -65,9 +77,11 @@ func SetupRoutes(r *gin.Engine, db *gorm.DB, rdb *redis.Client) {
 	activityHandler := handler.NewActivityHandler(userService, leaveService, overtimeService)
 	tenantRoleHandler := handler.NewTenantRoleHandler(tenantRoleService)
 	supportHandler := handler.NewSupportHandler(supportService)
-	hrOpsService := service.NewHrOpsService(hrOpsRepo, userRepo)
+	correctionHandler := handler.NewAttendanceCorrectionHandler(correctionService)
+	financeHandler := handler.NewFinanceHandler(expenseService)
+	hrOpsService := service.NewHrOpsService(hrOpsRepo, userRepo, leaveRepo, tenantSettingRepo)
 	hrOpsHandler := handler.NewHrOpsHandler(hrOpsService)
-
+	performanceHandler := handler.NewPerformanceHandler(performanceService)
 	if gin.Mode() != gin.ReleaseMode {
 		r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 	}
@@ -100,6 +114,15 @@ func SetupRoutes(r *gin.Engine, db *gorm.DB, rdb *redis.Client) {
 			attendance.GET("/history", attendanceHandler.GetAttendanceHistory)
 			attendance.GET("/summary", attendanceHandler.GetAttendanceSummary)
 			attendance.GET("/today", attendanceHandler.GetTodayAttendance)
+
+			// Correction requests
+			corrections := attendance.Group("/corrections")
+			{
+				corrections.POST("", correctionHandler.RequestCorrection)
+				corrections.GET("", correctionHandler.GetCorrections)
+				corrections.POST("/:id/approve", middleware.RequireRole("superadmin", "admin", "hr"), correctionHandler.ApproveCorrection)
+				corrections.POST("/:id/reject", middleware.RequireRole("superadmin", "admin", "hr"), correctionHandler.RejectCorrection)
+			}
 		}
 
 		overtime := protected.Group("/overtime")
@@ -133,7 +156,7 @@ func SetupRoutes(r *gin.Engine, db *gorm.DB, rdb *redis.Client) {
 			users.POST("", middleware.RequireRole("superadmin", "admin"), userHandler.CreateUser)
 			users.PUT("/profile-photo", userHandler.UpdateProfilePhoto)
 			users.POST("/request-change", ucrHandler.CreateRequest)
-			
+
 			adminOnly := users.Group("")
 			adminOnly.Use(middleware.RequireRole("admin", "hr"))
 			{
@@ -148,6 +171,15 @@ func SetupRoutes(r *gin.Engine, db *gorm.DB, rdb *redis.Client) {
 		payroll := protected.Group("/payroll")
 		{
 			payroll.POST("/calculate", payrollHandler.Calculate)
+			payroll.POST("/generate", payrollHandler.Generate)
+			payroll.GET("", payrollHandler.GetList)
+			payroll.GET("/summary", payrollHandler.GetSummary)
+			payroll.PATCH("/:id/publish", payrollHandler.Publish)
+
+			// Individual Extensions
+			payroll.GET("/employee/:user_id/baseline", payrollHandler.GetBaseline)
+			payroll.GET("/employee/:user_id/attendance-sync", payrollHandler.SyncAttendance)
+			payroll.POST("/employee/:user_id/save", payrollHandler.SaveIndividual)
 		}
 
 		dashboards := protected.Group("/dashboards")
@@ -158,7 +190,6 @@ func SetupRoutes(r *gin.Engine, db *gorm.DB, rdb *redis.Client) {
 			dashboards.GET("/finance", middleware.RequireBaseRole(model.BaseRoleSuperAdmin, model.BaseRoleAdmin, model.BaseRoleFinance), dashboardHandler.GetFinanceDashboard)
 			dashboards.GET("/heatmap", middleware.RequireBaseRole(model.BaseRoleSuperAdmin, model.BaseRoleAdmin, model.BaseRoleHR), dashboardHandler.GetHeatmap)
 		}
-
 
 		protected.POST("/media/upload", mediaHandler.Upload)
 
@@ -208,6 +239,15 @@ func SetupRoutes(r *gin.Engine, db *gorm.DB, rdb *redis.Client) {
 			hrOps.DELETE("/calendar/:id", middleware.RequireBaseRole(model.BaseRoleSuperAdmin, model.BaseRoleAdmin, model.BaseRoleHR), hrOpsHandler.DeleteHoliday)
 			hrOps.GET("/employees/:id/lifecycle", middleware.RequireBaseRole(model.BaseRoleSuperAdmin, model.BaseRoleAdmin, model.BaseRoleHR), hrOpsHandler.GetEmployeeLifecycle)
 			hrOps.PATCH("/employees/:id/lifecycle/tasks/:task_id", middleware.RequireBaseRole(model.BaseRoleSuperAdmin, model.BaseRoleAdmin, model.BaseRoleHR), hrOpsHandler.UpdateLifecycleTask)
+			hrOps.GET("/lifecycle-templates",
+				middleware.RequireBaseRole(model.BaseRoleSuperAdmin, model.BaseRoleAdmin,
+					model.BaseRoleHR), hrOpsHandler.GetLifecycleTemplates)
+			hrOps.POST("/lifecycle-templates",
+				middleware.RequireBaseRole(model.BaseRoleSuperAdmin, model.BaseRoleAdmin,
+					model.BaseRoleHR), hrOpsHandler.CreateLifecycleTemplate)
+			hrOps.DELETE("/lifecycle-templates/:id",
+				middleware.RequireBaseRole(model.BaseRoleSuperAdmin, model.BaseRoleAdmin,
+					model.BaseRoleHR), hrOpsHandler.DeleteLifecycleTemplate)
 		}
 
 		// Support & Provisioning
@@ -227,5 +267,31 @@ func SetupRoutes(r *gin.Engine, db *gorm.DB, rdb *redis.Client) {
 
 		// User side support
 		protected.POST("/support/message", supportHandler.CreateSupportMessage)
+
+		// Finance Module
+		finance := protected.Group("/finance")
+		{
+			finance.GET("/expenses", financeHandler.GetAllExpenses)
+			finance.GET("/expenses/summary", financeHandler.GetSummary)
+			finance.POST("/expenses", financeHandler.CreateExpense)
+			finance.PATCH("/expenses/:id/approve", middleware.RequireRole("superadmin", "admin", "finance"), financeHandler.ApproveExpense)
+			finance.PATCH("/expenses/:id/reject", middleware.RequireRole("superadmin", "admin", "finance"), financeHandler.RejectExpense)
+			finance.PATCH("/quotas/:id", middleware.RequireRole("superadmin", "admin", "finance"), financeHandler.UpdateQuota)
+		}
+
+		// Performance Module
+		perf := protected.Group("/performance")
+		{
+			perf.GET("/goals/me", performanceHandler.GetMyGoals)
+			perf.GET("/goals/user/:userId", performanceHandler.GetUserGoals)
+			perf.POST("/goals", performanceHandler.CreateGoal)
+			perf.PUT("/goals/:id/progress", performanceHandler.UpdateGoalProgress)
+
+			perf.GET("/cycles", performanceHandler.GetAllCycles)
+			perf.GET("/appraisals/cycle/:cycleId", performanceHandler.GetAppraisalsByCycle)
+			perf.PUT("/appraisals/:id/self-review", performanceHandler.SubmitSelfReview)
+		}
 	}
+
+	return calendarCronService
 }
