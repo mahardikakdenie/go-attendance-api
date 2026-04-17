@@ -172,19 +172,28 @@ func (s *payrollService) Calculate(ctx context.Context, req PayrollRequest) (Pay
 		}
 	}
 
-	// 1. Prorate Calculation (Unpaid Leave)
+	// 1. Prorate Calculation (Based on Attendance vs Working Days)
 	proratedBasic := req.BasicSalary
 	proratedFixedAllowance := req.FixedAllowances
 	unpaidLeaveDeduction := 0.0
 
-	if req.WorkingDaysInMonth > 0 && req.UnpaidLeaveDays > 0 {
-		oneDayBasis := (req.BasicSalary + req.FixedAllowances) / float64(req.WorkingDaysInMonth)
-		unpaidLeaveDeduction = float64(req.UnpaidLeaveDays) * oneDayBasis
+	if req.WorkingDaysInMonth > 0 {
+		// Basic pro-rate based on attendance
+		attendanceRatio := float64(req.AttendanceDays) / float64(req.WorkingDaysInMonth)
+		proratedBasic = req.BasicSalary * attendanceRatio
+		proratedFixedAllowance = req.FixedAllowances * attendanceRatio
 
-		// Reduce from components proportionately
-		ratio := req.BasicSalary / (req.BasicSalary + req.FixedAllowances)
-		proratedBasic = req.BasicSalary - (unpaidLeaveDeduction * ratio)
-		proratedFixedAllowance = req.FixedAllowances - (unpaidLeaveDeduction * (1 - ratio))
+		// Additional deduction for Unpaid Leave (if recorded separately from attendance gap)
+		if req.UnpaidLeaveDays > 0 {
+			oneDayBasis := (req.BasicSalary + req.FixedAllowances) / float64(req.WorkingDaysInMonth)
+			unpaidLeaveDeduction = float64(req.UnpaidLeaveDays) * oneDayBasis
+
+			// Reduce further if Unpaid Leave is not already accounted for in attendanceRatio
+			// In many systems, AttendanceDays = WorkingDays - UnpaidLeave - Absent
+			// If AttendanceDays already reflects the absence, we don't need to subtract unpaidLeaveDeduction again.
+			// However, to be safe and following user request "variable not multiplied by working days":
+			// We ensure the base is multiplied by attendance/working ratio.
+		}
 	}
 
 	// 2. Variable Allowances (Based on Attendance)

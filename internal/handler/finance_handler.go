@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"math"
 	"net/http"
 	"strconv"
 
@@ -81,23 +82,24 @@ func (h *financeHandler) GetAllExpenses(c *gin.Context) {
 	}
 
 	// Hierarchical Scoping if needed could be added here
-	
+
 	expenses, total, err := h.service.GetAllExpenses(c.Request.Context(), filter)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, utils.BuildErrorResponse("Failed to fetch expenses", 500, "error", err.Error()))
 		return
 	}
 
-	res := modelDto.ExpenseListResponse{
-		Data: expenses,
-		Meta: modelDto.PaginationMeta{
-			Total:       total,
-			CurrentPage: page,
-			LastPage:    (int(total) + limit - 1) / limit,
-		},
+	pagination := utils.Pagination{
+		Total:       total,
+		PerPage:     limit,
+		CurrentPage: (offset / limit) + 1,
+		LastPage:    int(math.Ceil(float64(total) / float64(limit))),
+	}
+	if pagination.LastPage == 0 {
+		pagination.LastPage = 1
 	}
 
-	c.JSON(http.StatusOK, utils.BuildResponse("Expenses fetched successfully", 200, "success", res))
+	c.JSON(http.StatusOK, utils.BuildResponseWithPagination("Expenses fetched successfully", 200, "success", expenses, pagination))
 }
 
 // @Summary Get Expense Summary

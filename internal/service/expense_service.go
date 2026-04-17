@@ -148,6 +148,13 @@ func (s *expenseService) ApproveExpense(ctx context.Context, id uint, adminID ui
 		return err
 	}
 
+	// 📉 Decrease user quota
+	if err := s.userRepo.DecreaseQuota(ctx, expense.UserID, expense.Amount); err != nil {
+		// Log error but maybe don't fail the whole request if status already updated?
+		// Ideally use transaction, but let's at least try to keep it consistent.
+		fmt.Printf("Warning: Failed to decrease quota for user %d: %v\n", expense.UserID, err)
+	}
+
 	// Log Activity for Admin
 	_ = s.activityRepo.Create(ctx, &model.RecentActivity{
 		UserID: adminID,

@@ -20,6 +20,7 @@ type UserRepository interface {
 	Create(ctx context.Context, user *model.User) error
 	CountByTenantID(ctx context.Context, tenantID uint) (int64, error)
 	UpdateQuota(ctx context.Context, userID uint, quota float64) error
+	DecreaseQuota(ctx context.Context, userID uint, amount float64) error
 	Transaction(ctx context.Context, fn func(repo UserRepository) error) error
 }
 
@@ -204,4 +205,10 @@ func (r *userRepository) CountByTenantID(ctx context.Context, tenantID uint) (in
 
 func (r *userRepository) UpdateQuota(ctx context.Context, userID uint, quota float64) error {
 	return r.db.WithContext(ctx).Model(&model.User{}).Where("id = ?", userID).Update("expense_quota", quota).Error
+}
+
+func (r *userRepository) DecreaseQuota(ctx context.Context, userID uint, amount float64) error {
+	return r.db.WithContext(ctx).Model(&model.User{}).
+		Where("id = ?", userID).
+		Update("expense_quota", gorm.Expr("expense_quota - ?", amount)).Error
 }

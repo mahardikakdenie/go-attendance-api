@@ -56,6 +56,9 @@ func SetupRoutes(r *gin.Engine, db *gorm.DB, rdb *redis.Client) service.Calendar
 	performanceRepo := repository.NewPerformanceRepository(db)
 	performanceService := service.NewPerformanceService(performanceRepo, userRepo)
 
+	superadminRepo := repository.NewSuperadminRepository(db)
+	superadminService := service.NewSuperadminService(superadminRepo)
+
 	expenseRepo := repository.NewExpenseRepository(db)
 	expenseService := service.NewExpenseService(expenseRepo, userRepo, activityRepo)
 
@@ -79,6 +82,7 @@ func SetupRoutes(r *gin.Engine, db *gorm.DB, rdb *redis.Client) service.Calendar
 	supportHandler := handler.NewSupportHandler(supportService)
 	correctionHandler := handler.NewAttendanceCorrectionHandler(correctionService)
 	financeHandler := handler.NewFinanceHandler(expenseService)
+	superadminHandler := handler.NewSuperadminHandler(superadminService)
 	hrOpsService := service.NewHrOpsService(hrOpsRepo, userRepo, leaveRepo, tenantSettingRepo)
 	hrOpsHandler := handler.NewHrOpsHandler(hrOpsService)
 	performanceHandler := handler.NewPerformanceHandler(performanceService)
@@ -290,6 +294,13 @@ func SetupRoutes(r *gin.Engine, db *gorm.DB, rdb *redis.Client) service.Calendar
 			perf.GET("/cycles", performanceHandler.GetAllCycles)
 			perf.GET("/appraisals/cycle/:cycleId", performanceHandler.GetAppraisalsByCycle)
 			perf.PUT("/appraisals/:id/self-review", performanceHandler.SubmitSelfReview)
+		}
+
+		// Superadmin specialized routes
+		superadmin := protected.Group("/superadmin")
+		superadmin.Use(middleware.RequireBaseRole(model.BaseRoleSuperAdmin))
+		{
+			superadmin.GET("/owners-stats", superadminHandler.GetOwnersWithStats)
 		}
 	}
 
