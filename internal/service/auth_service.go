@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -9,8 +10,10 @@ import (
 	"go-attendance-api/internal/config"
 	"go-attendance-api/internal/model"
 	"go-attendance-api/internal/repository"
+	"go-attendance-api/internal/utils"
 
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -20,6 +23,9 @@ type AuthService interface {
 	Logout(token string) error
 	GetMe(token string) (model.UserResponse, error)
 	GetSessions(userID uint, currentToken string) ([]model.SessionResponse, error)
+	ChangePassword(ctx context.Context, userID uint, req model.ChangePasswordRequest) error
+	ForgotPassword(ctx context.Context, req model.ForgotPasswordRequest) error
+	ResetPassword(ctx context.Context, req model.ResetPasswordRequest) error
 }
 
 type authService struct {
@@ -88,6 +94,15 @@ func (s *authService) Login(req model.LoginRequest, ip, ua, device string) (stri
 		return "", model.UserResponse{}, errors.New("invalid email or password")
 	}
 
+	// Check if tenant is suspended
+	if user.Tenant != nil && user.Tenant.IsSuspended {
+		reason := "Tenant account is suspended"
+		if user.Tenant.SuspendedReason != "" {
+			reason = fmt.Sprintf("Tenant account is suspended: %s", user.Tenant.SuspendedReason)
+		}
+		return "", model.UserResponse{}, errors.New(reason)
+	}
+
 	secret := os.Getenv("JWT_SECRET")
 	if secret == "" {
 		return "", model.UserResponse{}, errors.New("JWT secret not configured")
@@ -136,16 +151,18 @@ func (s *authService) Login(req model.LoginRequest, ip, ua, device string) (stri
 	})
 
 	userResponse := model.UserResponse{
-		ID:          user.ID,
-		Name:        user.Name,
-		Email:       user.Email,
-		TenantID:    user.TenantID,
-		EmployeeID:  user.EmployeeID,
-		Department:  user.Department,
-		MediaUrl:    user.MediaUrl,
-		Address:     user.Address,
-		PhoneNumber: user.PhoneNumber,
-		CreatedAt:   user.CreatedAt,
+		ID:                 user.ID,
+		Name:               user.Name,
+		Email:              user.Email,
+		TenantID:           user.TenantID,
+		EmployeeID:         user.EmployeeID,
+		Department:         user.Department,
+		MediaUrl:           user.MediaUrl,
+		Address:            user.Address,
+		PhoneNumber:        user.PhoneNumber,
+		CreatedAt:          user.CreatedAt,
+		IsSystemCreated:    user.IsSystemCreated,
+		MustChangePassword: user.MustChangePassword,
 	}
 
 	if user.Role != nil {
@@ -168,28 +185,6 @@ func (s *authService) Login(req model.LoginRequest, ip, ua, device string) (stri
 	return tokenString, userResponse, nil
 }
 
-func (s *authService) GetSessions(userID uint, currentToken string) ([]model.SessionResponse, error) {
-	tokens, err := s.repo.FindTokensByUserID(userID)
-	if err != nil {
-		return nil, err
-	}
-
-	var sessions []model.SessionResponse
-	for _, t := range tokens {
-		sessions = append(sessions, model.SessionResponse{
-			ID:         t.ID,
-			IPAddress:  t.IPAddress,
-			UserAgent:  t.UserAgent,
-			DeviceInfo: t.DeviceInfo,
-			IsActive:   !t.IsRevoked,
-			IsCurrent:  t.Token == currentToken,
-			LastActive: t.CreatedAt,
-		})
-	}
-
-	return sessions, nil
-}
-
 func (s *authService) Logout(token string) error {
 	if token == "" {
 		return nil
@@ -202,7 +197,6 @@ func (s *authService) Logout(token string) error {
 	_ = s.repo.RevokeToken(token)
 
 	// 2. Redis Blacklisting for faster checks in middleware
-	// We set expiration to 24h to match token max age
 	blacklistKey := fmt.Sprintf("blacklist:%s", token)
 	_ = config.NewRedis().Set(config.Ctx, blacklistKey, "1", 24*time.Hour).Err()
 
@@ -260,23 +254,28 @@ func (s *authService) GetMe(token string) (model.UserResponse, error) {
 	var tenantResponse *model.TenantResponse
 	if user.Tenant != nil {
 		tenantResponse = &model.TenantResponse{
-			ID:   user.Tenant.ID,
-			Name: user.Tenant.Name,
+			ID:              user.Tenant.ID,
+			Name:            user.Tenant.Name,
+			Plan:            user.Tenant.Plan,
+			IsSuspended:     user.Tenant.IsSuspended,
+			SuspendedReason: user.Tenant.SuspendedReason,
 		}
 	}
 
 	userResponse := model.UserResponse{
-		ID:          user.ID,
-		Name:        user.Name,
-		Email:       user.Email,
-		TenantID:    user.TenantID,
-		Tenant:      tenantResponse,
-		EmployeeID:  user.EmployeeID,
-		Department:  user.Department,
-		MediaUrl:    user.MediaUrl,
-		Address:     user.Address,
-		PhoneNumber: user.PhoneNumber,
-		CreatedAt:   user.CreatedAt,
+		ID:                 user.ID,
+		Name:               user.Name,
+		Email:              user.Email,
+		TenantID:           user.TenantID,
+		Tenant:             tenantResponse,
+		EmployeeID:         user.EmployeeID,
+		Department:         user.Department,
+		MediaUrl:           user.MediaUrl,
+		Address:            user.Address,
+		PhoneNumber:        user.PhoneNumber,
+		CreatedAt:          user.CreatedAt,
+		IsSystemCreated:    user.IsSystemCreated,
+		MustChangePassword: user.MustChangePassword,
 	}
 
 	if user.Role != nil {
@@ -297,4 +296,99 @@ func (s *authService) GetMe(token string) (model.UserResponse, error) {
 	}
 
 	return userResponse, nil
+}
+
+func (s *authService) GetSessions(userID uint, currentToken string) ([]model.SessionResponse, error) {
+	tokens, err := s.repo.FindTokensByUserID(userID)
+	if err != nil {
+		return nil, err
+	}
+
+	var sessions []model.SessionResponse
+	for _, t := range tokens {
+		sessions = append(sessions, model.SessionResponse{
+			ID:         t.ID,
+			IPAddress:  t.IPAddress,
+			UserAgent:  t.UserAgent,
+			DeviceInfo: t.DeviceInfo,
+			IsActive:   !t.IsRevoked,
+			IsCurrent:  t.Token == currentToken,
+			LastActive: t.CreatedAt,
+		})
+	}
+
+	return sessions, nil
+}
+
+func (s *authService) ChangePassword(ctx context.Context, userID uint, req model.ChangePasswordRequest) error {
+	user, err := s.repo.FindByID(userID)
+	if err != nil {
+		return errors.New("user not found")
+	}
+
+	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(req.OldPassword)); err != nil {
+		return errors.New("current password incorrect")
+	}
+
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.NewPassword), bcrypt.DefaultCost)
+	if err != nil {
+		return err
+	}
+
+	return s.repo.UpdatePassword(userID, string(hashedPassword))
+}
+
+func (s *authService) ForgotPassword(ctx context.Context, req model.ForgotPasswordRequest) error {
+	_, err := s.repo.FindByEmail(req.Email)
+	if err != nil {
+		return nil // Avoid enumeration
+	}
+
+	token := uuid.New().String()
+	expiresAt := time.Now().Add(4 * time.Hour)
+
+	reset := &model.PasswordReset{
+		Email:     req.Email,
+		Token:     token,
+		ExpiresAt: expiresAt,
+	}
+
+	if err := s.repo.SavePasswordReset(reset); err != nil {
+		return err
+	}
+
+	subject := "Reset Your Password"
+	html := fmt.Sprintf(`
+		<h3>Password Reset Request</h3>
+		<p>You requested a password reset. Click the link below to set a new password:</p>
+		<p><a href="%s/reset-password?token=%s">Reset Password</a></p>
+		<p>This link will expire in 4 hours.</p>
+	`, os.Getenv("FRONTEND_URL"), token)
+
+	_ = utils.SendEmail([]string{req.Email}, subject, html)
+
+	return nil
+}
+
+func (s *authService) ResetPassword(ctx context.Context, req model.ResetPasswordRequest) error {
+	reset, err := s.repo.FindPasswordResetByToken(req.Token)
+	if err != nil {
+		return errors.New("invalid or expired token")
+	}
+
+	user, err := s.repo.FindByEmail(reset.Email)
+	if err != nil {
+		return errors.New("user not found")
+	}
+
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.NewPassword), bcrypt.DefaultCost)
+	if err != nil {
+		return err
+	}
+
+	if err := s.repo.UpdatePassword(user.ID, string(hashedPassword)); err != nil {
+		return err
+	}
+
+	return s.repo.MarkPasswordResetUsed(req.Token)
 }

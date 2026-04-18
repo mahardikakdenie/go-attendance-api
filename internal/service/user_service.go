@@ -30,6 +30,7 @@ type userService struct {
 	hierarchyRepo repository.RoleHierarchyRepository
 	hrOpsRepo     repository.HrOpsRepository
 	leaveRepo     repository.LeaveRepository
+	profileRepo   repository.UserPayrollProfileRepository
 }
 
 func NewUserService(
@@ -39,6 +40,7 @@ func NewUserService(
 	hierarchyRepo repository.RoleHierarchyRepository,
 	hrOpsRepo repository.HrOpsRepository,
 	leaveRepo repository.LeaveRepository,
+	profileRepo repository.UserPayrollProfileRepository,
 ) UserService {
 	return &userService{
 		repo:          repo,
@@ -47,6 +49,7 @@ func NewUserService(
 		hierarchyRepo: hierarchyRepo,
 		hrOpsRepo:     hrOpsRepo,
 		leaveRepo:     leaveRepo,
+		profileRepo:   profileRepo,
 	}
 }
 
@@ -330,7 +333,7 @@ func (s *userService) UpdateProfilePhoto(userID uint, mediaURL string) error {
 
 func (s *userService) CreateUser(ctx context.Context, adminID uint, req model.CreateUserRequest) (model.UserResponse, error) {
 	// 1. Get Admin/Creator Info
-	admin, err := s.repo.FindByID(ctx, adminID, []string{"role"})
+	admin, err := s.repo.FindByID(ctx, adminID, []string{"role", "tenant.tenant_settings"})
 	if err != nil {
 		return model.UserResponse{}, errors.New("creator not found")
 	}
@@ -345,6 +348,15 @@ func (s *userService) CreateUser(ctx context.Context, adminID uint, req model.Cr
 	targetRoleName := targetRole.Name
 
 	var tenantID uint
+	var companyName string
+	var logoURL string
+
+	if admin.Tenant != nil {
+		companyName = admin.Tenant.Name
+		if admin.Tenant.TenantSettings != nil {
+			logoURL = admin.Tenant.TenantSettings.TenantLogo
+		}
+	}
 
 	switch adminRole {
 	case "superadmin":
@@ -353,8 +365,17 @@ func (s *userService) CreateUser(ctx context.Context, adminID uint, req model.Cr
 		if tenantID == 0 {
 			tenantID = admin.TenantID
 		}
+		// If Superadmin creates for different tenant, we might need to fetch that tenant name for email
+		if tenantID != admin.TenantID {
+			t, _ := s.repo.FindTenantByID(ctx, tenantID)
+			if t != nil {
+				companyName = t.Name
+				if t.TenantSettings != nil {
+					logoURL = t.TenantSettings.TenantLogo
+				}
+			}
+		}
 	case "admin":
-		// Admin (Owner) can only create HR, Finance, and Employee in their own tenant
 		if targetRoleName != "hr" && targetRoleName != "employee" && targetRoleName != "finance" {
 			return model.UserResponse{}, errors.New("admin can only create HR, Finance, or Employee accounts")
 		}
@@ -363,8 +384,15 @@ func (s *userService) CreateUser(ctx context.Context, adminID uint, req model.Cr
 		return model.UserResponse{}, errors.New("you do not have permission to create users")
 	}
 
-	// 3. Prepare User Data
-	hashedPassword, _ := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
+	// 3. Prepare User Data & Password Generation
+	password := req.Password
+	isSystemGenerated := false
+	if password == "" {
+		password = utils.GenerateRandomString(8)
+		isSystemGenerated = true
+	}
+
+	hashedPassword, _ := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 
 	count, _ := s.repo.CountByTenantID(ctx, tenantID)
 	prefix := "EMP"
@@ -381,25 +409,35 @@ func (s *userService) CreateUser(ctx context.Context, adminID uint, req model.Cr
 	employeeID := fmt.Sprintf("%s-%03d", prefix, count+1)
 
 	user := &model.User{
-		Name:        req.Name,
-		Email:       req.Email,
-		Password:    string(hashedPassword),
-		RoleID:      req.RoleID,
-		TenantID:    tenantID,
-		EmployeeID:  employeeID,
-		Department:  req.Department,
-		Address:     req.Address,
-		PhoneNumber: req.PhoneNumber,
+		Name:               req.Name,
+		Email:              req.Email,
+		Password:           string(hashedPassword),
+		RoleID:             req.RoleID,
+		TenantID:           tenantID,
+		EmployeeID:         employeeID,
+		Department:         req.Department,
+		Address:            req.Address,
+		PhoneNumber:        req.PhoneNumber,
+		IsSystemCreated:    isSystemGenerated,
+		MustChangePassword: isSystemGenerated,
 	}
 
 	// 4. Use Transaction for ACID compliance
 	err = s.repo.Transaction(ctx, func(txRepo repository.UserRepository) error {
-		// Create User
 		if err := txRepo.Create(ctx, user); err != nil {
 			return err
 		}
 
-		// Log Activity
+		// 🆕 Automatic creation of Payroll Profile baseline
+		profile := &model.UserPayrollProfile{
+			UserID: user.ID,
+		}
+		// We use s.profileRepo.Upsert or similar if we have it, 
+		// but since it's a new user, a simple Create or Upsert is fine.
+		if err := s.profileRepo.Upsert(ctx, profile); err != nil {
+			return fmt.Errorf("failed to create user payroll profile: %v", err)
+		}
+
 		activity := model.RecentActivity{
 			UserID: adminID,
 			Title:  "User Management",
@@ -408,13 +446,10 @@ func (s *userService) CreateUser(ctx context.Context, adminID uint, req model.Cr
 		}
 		_ = s.activityRepo.Create(ctx, &activity)
 
-		// 5. Send Welcome Email
-		emailHtml := utils.GetWelcomeEmailTemplate(user.Name, user.Email, req.Password)
-		subject := "Welcome to Attendance System - Your Account Details"
+		// 5. Send Branded Welcome Email
+		emailHtml := utils.GetWelcomeEmailTemplate(user.Name, user.Email, password, companyName, logoURL)
+		subject := fmt.Sprintf("Welcome to %s - Your Account Details", companyName)
 
-		// We use a goroutine for email to not block user creation,
-		// but since it's a critical info, we could also do it sync.
-		// For UX, async is better.
 		go func() {
 			_ = utils.SendEmail([]string{user.Email}, subject, emailHtml)
 		}()

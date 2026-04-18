@@ -17,6 +17,10 @@ type AuthRepository interface {
 	IsTokenRevoked(token string) (bool, error)
 	CountByTenantID(tenantID uint) (int64, error)
 	FindTokensByUserID(userID uint) ([]model.Token, error)
+	UpdatePassword(userID uint, newPassword string) error
+	SavePasswordReset(reset *model.PasswordReset) error
+	FindPasswordResetByToken(token string) (model.PasswordReset, error)
+	MarkPasswordResetUsed(token string) error
 }
 
 type authRepository struct {
@@ -77,4 +81,25 @@ func (r *authRepository) IsTokenRevoked(token string) (bool, error) {
 		return false, err
 	}
 	return t.IsRevoked, nil
+}
+
+func (r *authRepository) UpdatePassword(userID uint, newPassword string) error {
+	return r.db.Model(&model.User{}).Where("id = ?", userID).Updates(map[string]interface{}{
+		"password":             newPassword,
+		"must_change_password": false,
+	}).Error
+}
+
+func (r *authRepository) SavePasswordReset(reset *model.PasswordReset) error {
+	return r.db.Create(reset).Error
+}
+
+func (r *authRepository) FindPasswordResetByToken(token string) (model.PasswordReset, error) {
+	var reset model.PasswordReset
+	err := r.db.Where("token = ? AND is_used = ? AND expires_at > ?", token, false, time.Now()).First(&reset).Error
+	return reset, err
+}
+
+func (r *authRepository) MarkPasswordResetUsed(token string) error {
+	return r.db.Model(&model.PasswordReset{}).Where("token = ?", token).Update("is_used", true).Error
 }

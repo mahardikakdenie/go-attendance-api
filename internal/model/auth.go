@@ -44,3 +44,28 @@ type SessionResponse struct {
 	IsCurrent  bool      `json:"is_current"`
 	LastActive time.Time `json:"last_active"`
 }
+
+type PasswordReset struct {
+	ID        uint      `gorm:"primaryKey" json:"id"`
+	Email     string    `gorm:"type:varchar(100);index" json:"email"`
+	Token     string    `gorm:"type:varchar(255);uniqueIndex" json:"token"`
+	ExpiresAt time.Time `json:"expires_at"`
+	IsUsed    bool      `gorm:"default:false" json:"is_used"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
+type ChangePasswordRequest struct {
+	OldPassword     string `json:"old_password" binding:"required"`
+	NewPassword     string `json:"new_password" binding:"required,min=6"`
+	ConfirmPassword string `json:"confirm_password" binding:"required,eqfield=NewPassword"`
+}
+
+type ForgotPasswordRequest struct {
+	Email string `json:"email" binding:"required,email"`
+}
+
+type ResetPasswordRequest struct {
+	Token           string `json:"token" binding:"required"`
+	NewPassword     string `json:"new_password" binding:"required,min=6"`
+	ConfirmPassword string `json:"confirm_password" binding:"required,eqfield=NewPassword"`
+}

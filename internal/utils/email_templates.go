@@ -1,8 +1,29 @@
 package utils
 
-import "fmt"
+import (
+	"fmt"
+	"strings"
+)
 
-func GetWelcomeEmailTemplate(name, email, password string) string {
+func GetWelcomeEmailTemplate(name, email, password, companyName, logoURL string) string {
+	// Branding Logic: If no logo, use initials
+	brandingContent := ""
+	if logoURL != "" {
+		brandingContent = fmt.Sprintf(`<img src="%s" alt="%s Logo" style="max-height: 80px; margin-bottom: 20px;">`, logoURL, companyName)
+	} else {
+		initials := ""
+		parts := strings.Split(companyName, " ")
+		for i, part := range parts {
+			if i < 2 && len(part) > 0 {
+				initials += strings.ToUpper(string(part[0]))
+			}
+		}
+		brandingContent = fmt.Sprintf(`
+			<div style="width: 80px; height: 80px; background-color: #61AFEF; color: white; border-radius: 50%%; display: inline-flex; align-items: center; justify-content: center; font-size: 32px; font-weight: bold; margin: 0 auto 20px auto; line-height: 80px;">
+				%s
+			</div>`, initials)
+	}
+
 	return fmt.Sprintf(`
 <!DOCTYPE html>
 <html>
@@ -22,97 +43,139 @@ func GetWelcomeEmailTemplate(name, email, password string) string {
             max-width: 600px;
             margin: 20px auto;
             background: #ffffff;
-            border-radius: 8px;
+            border-radius: 12px;
             overflow: hidden;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.05);
+            border: 1px solid #eef2f5;
         }
         .header {
-            background: linear-gradient(135deg, #61AFEF 0%%, #282C34 100%%);
-            color: #ffffff;
+            background-color: #ffffff;
             padding: 40px 20px;
             text-align: center;
-        }
-        .header h1 {
-            margin: 0;
-            font-size: 28px;
-            letter-spacing: 1px;
+            border-bottom: 1px solid #f0f0f0;
         }
         .content {
-            padding: 30px;
+            padding: 40px 35px;
         }
         .welcome-text {
-            font-size: 18px;
-            color: #282C34;
-            font-weight: bold;
+            font-size: 22px;
+            color: #1a1a1a;
+            font-weight: 700;
+            margin-bottom: 10px;
+        }
+        .company-badge {
+            display: inline-block;
+            background-color: #e3f2fd;
+            color: #1976d2;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 25px;
         }
         .credentials {
-            background-color: #f8f9fa;
-            border-left: 4px solid #61AFEF;
-            padding: 20px;
-            margin: 20px 0;
+            background-color: #fafbfc;
+            border-radius: 10px;
+            padding: 25px;
+            margin: 30px 0;
+            border: 1px dashed #d1d5db;
         }
-        .credentials p {
-            margin: 5px 0;
-            font-family: 'Courier New', Courier, monospace;
+        .credential-item {
+            margin-bottom: 15px;
+        }
+        .credential-item:last-child {
+            margin-bottom: 0;
+        }
+        .label {
+            font-size: 13px;
+            color: #6b7280;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 5px;
+            display: block;
+        }
+        .value {
+            font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+            font-size: 16px;
+            color: #111827;
+            font-weight: 600;
         }
         .button-container {
             text-align: center;
-            margin: 30px 0;
+            margin: 35px 0;
         }
         .button {
-            background-color: #61AFEF;
-            color: #ffffff;
-            padding: 15px 30px;
+            background-color: #111827;
+            color: #ffffff !important;
+            padding: 16px 35px;
             text-decoration: none;
-            border-radius: 5px;
-            font-weight: bold;
+            border-radius: 8px;
+            font-weight: 600;
             display: inline-block;
-            transition: background-color 0.3s;
+            font-size: 16px;
         }
         .footer {
-            background-color: #f4f7f9;
-            color: #777;
-            padding: 20px;
+            background-color: #f9fafb;
+            color: #9ca3af;
+            padding: 25px;
             text-align: center;
-            font-size: 12px;
+            font-size: 13px;
+            border-top: 1px solid #f3f4f6;
         }
-        .warning {
-            color: #E06C75;
-            font-weight: bold;
+        .warning-box {
+            background-color: #fffbeb;
+            border: 1px solid #fef3c7;
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 25px;
+        }
+        .warning-text {
+            color: #92400e;
             font-size: 14px;
+            margin: 0;
         }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
-            <h1>Welcome to Attendance System</h1>
+            %s
+            <div class="company-badge">%s</div>
+            <h1 class="welcome-text">Account Activation</h1>
         </div>
         <div class="content">
-            <p class="welcome-text">Hello, %s!</p>
-            <p>Your account has been successfully created. You can now log in to the system using the following credentials:</p>
+            <p style="margin-top:0;">Hello <strong>%s</strong>,</p>
+            <p>Welcome aboard! Your workspace at <strong>%s</strong> is ready. We've created an account for you to access our Attendance & HR platform.</p>
             
             <div class="credentials">
-                <p><strong>Email:</strong> %s</p>
-                <p><strong>Temporary Password:</strong> %s</p>
+                <div class="credential-item">
+                    <span class="label">Email Address</span>
+                    <span class="value">%s</span>
+                </div>
+                <div class="credential-item">
+                    <span class="label">Temporary Password</span>
+                    <span class="value">%s</span>
+                </div>
             </div>
 
-            <p class="warning">⚠️ IMPORTANT: For your security, please log in and update your password immediately after your first access.</p>
+            <div class="warning-box">
+                <p class="warning-text"><strong>Security Note:</strong> This is a temporary password. You will be required to create a new, secure password upon your first sign-in.</p>
+            </div>
 
             <div class="button-container">
-                <a href="#" class="button">Login to Your Account</a>
+                <a href="#" class="button">Access Workspace</a>
             </div>
 
-            <p>If you have any questions or encounter any issues, please contact your administrator.</p>
+            <p style="font-size: 14px; color: #6b7280; text-align: center;">If you didn't expect this invitation, please ignore this email.</p>
         </div>
         <div class="footer">
-            <p>&copy; 2026 Attendance API. All rights reserved.</p>
-            <p>This is an automated message, please do not reply.</p>
+            <p>Powered by Attendance Management System</p>
+            <p>&copy; 2026 %s. All rights reserved.</p>
         </div>
     </div>
 </body>
 </html>
-`, name, email, password)
+`, brandingContent, companyName, name, companyName, email, password, companyName)
 }
 
 func GetLeaveApprovalRequestTemplate(approverName, requesterName, leaveType, startDate, endDate string, totalDays int, reason string) string {

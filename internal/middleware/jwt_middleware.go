@@ -83,6 +83,16 @@ func SecureAuth(authService service.AuthService) gin.HandlerFunc {
 			return
 		}
 
+		// Check if tenant is suspended
+		if user.Tenant != nil && user.Tenant.IsSuspended {
+			reason := "Tenant account is suspended"
+			if user.Tenant.SuspendedReason != "" {
+				reason = fmt.Sprintf("Tenant account is suspended: %s", user.Tenant.SuspendedReason)
+			}
+			c.AbortWithStatusJSON(403, gin.H{"message": reason})
+			return
+		}
+
 		////////////////////////////////////////////////////////
 		// 3.5 BLACKLIST CHECK (REDIS)
 		////////////////////////////////////////////////////////

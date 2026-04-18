@@ -15,6 +15,9 @@ type AuthHandler interface {
 	Login(c *gin.Context)
 	Logout(c *gin.Context)
 	GetSessions(c *gin.Context)
+	ChangePassword(c *gin.Context)
+	ForgotPassword(c *gin.Context)
+	ResetPassword(c *gin.Context)
 }
 
 type authHandler struct {
@@ -148,4 +151,77 @@ func (h *authHandler) GetSessions(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, utils.BuildResponse("Sessions fetched successfully", 200, "success", sessions))
+}
+
+// @Summary Change Password
+// @Description Change current user password
+// @Tags Auth
+// @Accept json
+// @Produce json
+// @Param request body model.ChangePasswordRequest true "Change Password Data"
+// @Security BearerAuth
+// @Security CookieAuth
+// @Success 200 {object} utils.APIResponse
+// @Router /api/v1/auth/change-password [post]
+func (h *authHandler) ChangePassword(c *gin.Context) {
+	userID := c.MustGet("user_id").(uint)
+
+	var req model.ChangePasswordRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, utils.BuildErrorResponse("Invalid request", 400, "error", err.Error()))
+		return
+	}
+
+	if err := h.service.ChangePassword(c.Request.Context(), userID, req); err != nil {
+		c.JSON(http.StatusBadRequest, utils.BuildErrorResponse(err.Error(), 400, "error", nil))
+		return
+	}
+
+	c.JSON(http.StatusOK, utils.BuildResponse("Password changed successfully", 200, "success", nil))
+}
+
+// @Summary Forgot Password
+// @Description Request password reset link
+// @Tags Auth
+// @Accept json
+// @Produce json
+// @Param request body model.ForgotPasswordRequest true "Forgot Password Data"
+// @Success 200 {object} utils.APIResponse
+// @Router /api/v1/auth/forgot-password [post]
+func (h *authHandler) ForgotPassword(c *gin.Context) {
+	var req model.ForgotPasswordRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, utils.BuildErrorResponse("Invalid request", 400, "error", err.Error()))
+		return
+	}
+
+	if err := h.service.ForgotPassword(c.Request.Context(), req); err != nil {
+		c.JSON(http.StatusInternalServerError, utils.BuildErrorResponse("Failed to process request", 500, "error", err.Error()))
+		return
+	}
+
+	c.JSON(http.StatusOK, utils.BuildResponse("If your email is registered, you will receive a reset link", 200, "success", nil))
+}
+
+// @Summary Reset Password
+// @Description Reset password using token
+// @Tags Auth
+// @Accept json
+// @Produce json
+// @Param request body model.ResetPasswordRequest true "Reset Password Data"
+// @Success 200 {object} utils.APIResponse
+// @Router /api/v1/auth/reset-password [post]
+func (h *authHandler) ResetPassword(c *gin.Context) {
+	var req model.ResetPasswordRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, utils.BuildErrorResponse("Invalid request", 400, "error", err.Error()))
+		return
+	}
+
+	if err := h.service.ResetPassword(c.Request.Context(), req); err != nil {
+		c.JSON(http.StatusBadRequest, utils.BuildErrorResponse(err.Error(), 400, "error", nil))
+		return
+	}
+
+	c.JSON(http.StatusOK, utils.BuildResponse("Password reset successfully", 200, "success", nil))
 }
