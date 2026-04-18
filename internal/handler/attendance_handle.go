@@ -391,16 +391,14 @@ func (h *attendanceHandler) GetAttendanceHistory(c *gin.Context) {
 	}
 
 	// 6. Build Response
-	lastPage := int(math.Ceil(float64(total) / float64(limit)))
-	if lastPage == 0 {
-		lastPage = 1
-	}
-
 	pagination := utils.Pagination{
 		Total:       total,
 		PerPage:     limit,
 		CurrentPage: page,
-		LastPage:    lastPage,
+		LastPage:    int(math.Ceil(float64(total) / float64(limit))),
+	}
+	if pagination.LastPage == 0 {
+		pagination.LastPage = 1
 	}
 
 	c.JSON(http.StatusOK, utils.BuildResponseWithPagination(

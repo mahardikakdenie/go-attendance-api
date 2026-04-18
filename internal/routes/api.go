@@ -33,11 +33,14 @@ func SetupRoutes(r *gin.Engine, db *gorm.DB, rdb *redis.Client) service.Calendar
 	permissionRepo := repository.NewPermissionRepository(db)
 	hierarchyRepo := repository.NewRoleHierarchyRepository(db)
 	hrOpsRepo := repository.NewHrOpsRepository(db)
+	subscriptionRepo := repository.NewSubscriptionRepository(db)
+	userPayrollProfileRepo := repository.NewUserPayrollProfileRepository(db)
+	timesheetRepo := repository.NewTimesheetRepository(db)
 
 	// Services
 	authService := service.NewAuthService(authRepo, activityRepo)
-	userService := service.NewUserService(userRepo, roleRepo, activityRepo, hierarchyRepo, hrOpsRepo, leaveRepo)
-	tenantService := service.NewTenantService(tenantRepo)
+	userService := service.NewUserService(userRepo, roleRepo, activityRepo, hierarchyRepo, hrOpsRepo, leaveRepo, userPayrollProfileRepo)
+	tenantService := service.NewTenantService(tenantRepo, subscriptionRepo)
 	tenantSettingService := service.NewTenantSettingService(tenantSettingRepo)
 	mediaService := service.NewMediaService(mediaRepo)
 	attendanceService := service.NewAttendanceService(attendanceRepo, userRepo, tenantSettingRepo, tenantRepo, activityRepo, hrOpsRepo, leaveRepo, userService, rdb)
@@ -46,18 +49,21 @@ func SetupRoutes(r *gin.Engine, db *gorm.DB, rdb *redis.Client) service.Calendar
 	overtimeService := service.NewOvertimeService(overtimeRepo, userService)
 	ucrService := service.NewUserChangeRequestService(ucrRepo, userRepo)
 	payrollRepo := repository.NewPayrollRepository(db)
-	payrollService := service.NewPayrollService(payrollRepo, userRepo, tenantRepo, tenantSettingRepo, attendanceRepo, leaveRepo)
+	payrollService := service.NewPayrollService(payrollRepo, userRepo, tenantRepo, tenantSettingRepo, attendanceRepo, leaveRepo, userPayrollProfileRepo)
 	dashboardService := service.NewDashboardService(tenantRepo, userRepo, attendanceRepo, leaveRepo, overtimeRepo, rdb)
 	tenantRoleService := service.NewTenantRoleService(roleRepo, permissionRepo, hierarchyRepo)
 	supportRepo := repository.NewSupportRepository(db)
-	supportService := service.NewSupportService(supportRepo, tenantRepo, userRepo, roleRepo)
+	supportService := service.NewSupportService(supportRepo, tenantRepo, userRepo, roleRepo, subscriptionRepo, tenantSettingRepo, userPayrollProfileRepo)
 	correctionRepo := repository.NewAttendanceCorrectionRepository(db)
+	timesheetService := service.NewTimesheetService(timesheetRepo, userRepo)
+
 	correctionService := service.NewAttendanceCorrectionService(correctionRepo, attendanceRepo, userRepo, activityRepo)
 	performanceRepo := repository.NewPerformanceRepository(db)
 	performanceService := service.NewPerformanceService(performanceRepo, userRepo)
 
 	superadminRepo := repository.NewSuperadminRepository(db)
-	superadminService := service.NewSuperadminService(superadminRepo)
+	superadminService := service.NewSuperadminService(superadminRepo, userRepo, roleRepo, activityRepo)
+	subscriptionService := service.NewSubscriptionService(subscriptionRepo, tenantRepo)
 
 	expenseRepo := repository.NewExpenseRepository(db)
 	expenseService := service.NewExpenseService(expenseRepo, userRepo, activityRepo)
@@ -83,6 +89,8 @@ func SetupRoutes(r *gin.Engine, db *gorm.DB, rdb *redis.Client) service.Calendar
 	correctionHandler := handler.NewAttendanceCorrectionHandler(correctionService)
 	financeHandler := handler.NewFinanceHandler(expenseService)
 	superadminHandler := handler.NewSuperadminHandler(superadminService)
+	subscriptionHandler := handler.NewSubscriptionHandler(subscriptionService)
+	timesheetHandler := handler.NewTimesheetHandler(timesheetService)
 	hrOpsService := service.NewHrOpsService(hrOpsRepo, userRepo, leaveRepo, tenantSettingRepo)
 	hrOpsHandler := handler.NewHrOpsHandler(hrOpsService)
 	performanceHandler := handler.NewPerformanceHandler(performanceService)
@@ -97,6 +105,8 @@ func SetupRoutes(r *gin.Engine, db *gorm.DB, rdb *redis.Client) service.Calendar
 	{
 		authGroup.POST("/register", authHandler.Register)
 		authGroup.POST("/login", authHandler.Login)
+		authGroup.POST("/forgot-password", authHandler.ForgotPassword)
+		authGroup.POST("/reset-password", authHandler.ResetPassword)
 	}
 
 	api.POST("/public/trial-request", supportHandler.CreateTrialRequest)
@@ -110,6 +120,7 @@ func SetupRoutes(r *gin.Engine, db *gorm.DB, rdb *redis.Client) service.Calendar
 	{
 		protected.GET("/auth/sessions", authHandler.GetSessions)
 		protected.POST("/auth/logout", authHandler.Logout)
+		protected.POST("/auth/change-password", authHandler.ChangePassword)
 
 		attendance := protected.Group("/attendance")
 		{
@@ -184,6 +195,22 @@ func SetupRoutes(r *gin.Engine, db *gorm.DB, rdb *redis.Client) service.Calendar
 			payroll.GET("/employee/:user_id/baseline", payrollHandler.GetBaseline)
 			payroll.GET("/employee/:user_id/attendance-sync", payrollHandler.SyncAttendance)
 			payroll.POST("/employee/:user_id/save", payrollHandler.SaveIndividual)
+		}
+
+		// Self Service Payroll
+		myPayroll := protected.Group("/my-payroll")
+		{
+			myPayroll.GET("/profile", payrollHandler.GetMyPayrollProfile)
+			myPayroll.GET("/slips", payrollHandler.GetMySlip)
+			myPayroll.GET("/history", payrollHandler.GetMyPayrolls)
+		}
+
+		// Admin side user profile management
+		adminUsers := protected.Group("/admin/users")
+		adminUsers.Use(middleware.RequireRole("superadmin", "admin", "hr"))
+		{
+			adminUsers.GET("/:id/payroll-profile", payrollHandler.GetPayrollProfile)
+			adminUsers.PUT("/:id/payroll-profile", payrollHandler.UpdatePayrollProfile)
 		}
 
 		dashboards := protected.Group("/dashboards")
@@ -272,6 +299,14 @@ func SetupRoutes(r *gin.Engine, db *gorm.DB, rdb *redis.Client) service.Calendar
 		// User side support
 		protected.POST("/support/message", supportHandler.CreateSupportMessage)
 
+		// Subscription (Admin/Owner side)
+		subs := protected.Group("/subscriptions")
+		subs.Use(middleware.RequireRole("superadmin", "admin"))
+		{
+			subs.GET("/me", subscriptionHandler.GetMySubscription)
+			subs.POST("/upgrade", subscriptionHandler.UpgradeSubscription)
+		}
+
 		// Finance Module
 		finance := protected.Group("/finance")
 		{
@@ -296,11 +331,49 @@ func SetupRoutes(r *gin.Engine, db *gorm.DB, rdb *redis.Client) service.Calendar
 			perf.PUT("/appraisals/:id/self-review", performanceHandler.SubmitSelfReview)
 		}
 
+		// Timesheet Module
+		timesheet := protected.Group("/timesheet")
+		{
+			// Employee endpoints
+			timesheet.POST("/entries", timesheetHandler.CreateEntry)
+			timesheet.GET("/me/report", timesheetHandler.GetMyReport)
+			timesheet.POST("/tasks", timesheetHandler.CreateTask)
+			timesheet.GET("/tasks", timesheetHandler.GetTasks)
+			timesheet.GET("/projects", timesheetHandler.GetProjects)
+
+			// HR/Admin endpoints
+			hrTimesheet := timesheet.Group("/admin")
+			hrTimesheet.Use(middleware.RequireRole("superadmin", "admin", "hr"))
+			{
+				hrTimesheet.POST("/projects", timesheetHandler.CreateProject)
+				hrTimesheet.PUT("/projects/:id", timesheetHandler.UpdateProject)
+				hrTimesheet.GET("/report/employee/:user_id", timesheetHandler.GetEmployeeReport)
+			}
+		}
+
 		// Superadmin specialized routes
 		superadmin := protected.Group("/superadmin")
 		superadmin.Use(middleware.RequireBaseRole(model.BaseRoleSuperAdmin))
 		{
 			superadmin.GET("/owners-stats", superadminHandler.GetOwnersWithStats)
+			superadmin.PUT("/tenants/:id", tenantHandler.UpdateTenant)
+
+			// Platform Accounts Management
+			platform := superadmin.Group("/platform-accounts")
+			{
+				platform.GET("", superadminHandler.GetPlatformAccounts)
+				platform.POST("", superadminHandler.CreatePlatformAccount)
+				platform.PUT("/:id", superadminHandler.UpdatePlatformAccount)
+				platform.PATCH("/:id/status", superadminHandler.TogglePlatformAccountStatus)
+			}
+
+			// Subscription & Billing
+			subscriptions := superadmin.Group("/subscriptions")
+			{
+				subscriptions.GET("", subscriptionHandler.GetSubscriptions)
+				subscriptions.POST("/:id/remind", subscriptionHandler.RemindTenant)
+				subscriptions.POST("/:id/suspend", subscriptionHandler.SuspendTenant)
+			}
 		}
 	}
 
