@@ -17,6 +17,12 @@ type PayrollHandler interface {
 	Publish(c *gin.Context)
 	GetMyPayrolls(c *gin.Context)
 
+	// User Payroll Profile
+	GetPayrollProfile(c *gin.Context)
+	UpdatePayrollProfile(c *gin.Context)
+	GetMyPayrollProfile(c *gin.Context)
+	GetMySlip(c *gin.Context)
+
 	// Individual Extensions
 	GetBaseline(c *gin.Context)
 	SyncAttendance(c *gin.Context)
@@ -87,15 +93,14 @@ func (h *payrollHandler) GetList(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"meta": gin.H{
-			"total": total,
-			"limit": limit,
-			"offset": offset,
-		},
-		"data": data,
-	})
+	pagination := utils.Pagination{
+		Total:       total,
+		PerPage:     limit,
+		CurrentPage: (offset / limit) + 1,
+		LastPage:    int((total + int64(limit) - 1) / int64(limit)),
+	}
+
+	c.JSON(http.StatusOK, utils.BuildResponseWithPagination("Payroll list fetched successfully", 200, "success", data, pagination))
 }
 
 // @Summary Get Payroll Summary Stats
@@ -132,6 +137,62 @@ func (h *payrollHandler) GetMyPayrolls(c *gin.Context) {
 	res, err := h.service.GetMyPayrolls(c.Request.Context(), userID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, utils.BuildErrorResponse("Fetch failed", 500, "error", err.Error()))
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"success": true, "data": res})
+}
+
+// @Summary Get Payroll Profile (Admin)
+func (h *payrollHandler) GetPayrollProfile(c *gin.Context) {
+	id, _ := strconv.Atoi(c.Param("id"))
+	res, err := h.service.GetUserPayrollProfile(c.Request.Context(), uint(id))
+	if err != nil {
+		c.JSON(http.StatusNotFound, utils.BuildErrorResponse("Profile not found", 404, "error", nil))
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"success": true, "data": res})
+}
+
+// @Summary Update Payroll Profile (Admin)
+func (h *payrollHandler) UpdatePayrollProfile(c *gin.Context) {
+	id, _ := strconv.Atoi(c.Param("id"))
+	var req service.UpdateUserPayrollProfileRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, utils.BuildErrorResponse("Invalid request", 400, "error", err.Error()))
+		return
+	}
+
+	err := h.service.UpdateUserPayrollProfile(c.Request.Context(), uint(id), req)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, utils.BuildErrorResponse("Update failed", 500, "error", err.Error()))
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"success": true, "message": "Profile updated successfully"})
+}
+
+// @Summary Get My Payroll Profile (Self)
+func (h *payrollHandler) GetMyPayrollProfile(c *gin.Context) {
+	userID := c.MustGet("user_id").(uint)
+	res, err := h.service.GetMyPayrollProfile(c.Request.Context(), userID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, utils.BuildErrorResponse("Profile not found", 404, "error", nil))
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"success": true, "data": res})
+}
+
+// @Summary Get My Detailed Slip
+func (h *payrollHandler) GetMySlip(c *gin.Context) {
+	userID := c.MustGet("user_id").(uint)
+	period := c.Query("period")
+	if period == "" {
+		c.JSON(http.StatusBadRequest, utils.BuildErrorResponse("Period is required", 400, "error", nil))
+		return
+	}
+
+	res, err := h.service.GetMySlip(c.Request.Context(), userID, period)
+	if err != nil {
+		c.JSON(http.StatusNotFound, utils.BuildErrorResponse("Slip not found", 404, "error", nil))
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"success": true, "data": res})

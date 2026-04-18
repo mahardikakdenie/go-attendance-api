@@ -17,6 +17,12 @@ type PayrollService interface {
 	PublishPayroll(ctx context.Context, tenantID uint, id uint) error
 	GetMyPayrolls(ctx context.Context, userID uint) ([]PayrollResponse, error)
 
+	// User Payroll Profile
+	GetUserPayrollProfile(ctx context.Context, userID uint) (*model.UserPayrollProfile, error)
+	UpdateUserPayrollProfile(ctx context.Context, userID uint, req UpdateUserPayrollProfileRequest) error
+	GetMyPayrollProfile(ctx context.Context, userID uint) (*model.UserPayrollProfile, error)
+	GetMySlip(ctx context.Context, userID uint, period string) (*PayrollResponse, error)
+
 	// Individual Extensions
 	GetEmployeeBaseline(ctx context.Context, userID uint) (EmployeeBaselineResponse, error)
 	SyncEmployeeAttendance(ctx context.Context, userID uint, period string) (AttendanceSyncResponse, error)
@@ -129,6 +135,20 @@ type SaveIndividualPayrollRequest struct {
 	Status                  model.PayrollStatus `json:"status"`
 }
 
+type UpdateUserPayrollProfileRequest struct {
+	BankName                string           `json:"bank_name"`
+	BankAccountNumber       string           `json:"bank_account_number"`
+	BankAccountHolder       string           `json:"bank_account_holder"`
+	BpjsHealthNumber        string           `json:"bpjs_health_number"`
+	BpjsEmploymentNumber    string           `json:"bpjs_employment_number"`
+	NpwpNumber              string           `json:"npwp_number"`
+	PtkpStatus              model.PtkpStatus `json:"ptkp_status"`
+	BasicSalary             float64          `json:"basic_salary"`
+	FixedAllowance          float64          `json:"fixed_allowance"`
+	DailyMealAllowance      float64          `json:"daily_meal_allowance"`
+	DailyTransportAllowance float64          `json:"daily_transport_allowance"`
+}
+
 type payrollService struct {
 	repo           repository.PayrollRepository
 	userRepo       repository.UserRepository
@@ -136,6 +156,7 @@ type payrollService struct {
 	settingRepo    repository.TenantSettingRepository
 	attendanceRepo repository.AttendanceRepository
 	leaveRepo      repository.LeaveRepository
+	profileRepo    repository.UserPayrollProfileRepository
 }
 
 func NewPayrollService(
@@ -145,6 +166,7 @@ func NewPayrollService(
 	settingRepo repository.TenantSettingRepository,
 	attendanceRepo repository.AttendanceRepository,
 	leaveRepo repository.LeaveRepository,
+	profileRepo repository.UserPayrollProfileRepository,
 ) PayrollService {
 	return &payrollService{
 		repo:           repo,
@@ -153,6 +175,7 @@ func NewPayrollService(
 		settingRepo:    settingRepo,
 		attendanceRepo: attendanceRepo,
 		leaveRepo:      leaveRepo,
+		profileRepo:    profileRepo,
 	}
 }
 
@@ -163,10 +186,29 @@ const (
 )
 
 func (s *payrollService) Calculate(ctx context.Context, req PayrollRequest) (PayrollResponse, error) {
+	// If profile exists, use it as baseline
 	if req.UserID != 0 {
-		user, err := s.userRepo.FindByID(ctx, req.UserID, []string{})
-		if err == nil {
+		profile, _ := s.profileRepo.FindByUserID(ctx, req.UserID)
+		if profile != nil {
 			if req.BasicSalary == 0 {
+				req.BasicSalary = profile.BasicSalary
+			}
+			if req.FixedAllowances == 0 {
+				req.FixedAllowances = profile.FixedAllowance
+			}
+			if req.PTKPStatus == "" {
+				req.PTKPStatus = string(profile.PtkpStatus)
+			}
+			if req.DailyMealAllowance == 0 {
+				req.DailyMealAllowance = profile.DailyMealAllowance
+			}
+			if req.DailyTransportAllowance == 0 {
+				req.DailyTransportAllowance = profile.DailyTransportAllowance
+			}
+		} else {
+			// Fallback to user base salary
+			user, err := s.userRepo.FindByID(ctx, req.UserID, []string{})
+			if err == nil && req.BasicSalary == 0 {
 				req.BasicSalary = user.BaseSalary
 			}
 		}
@@ -178,21 +220,13 @@ func (s *payrollService) Calculate(ctx context.Context, req PayrollRequest) (Pay
 	unpaidLeaveDeduction := 0.0
 
 	if req.WorkingDaysInMonth > 0 {
-		// Basic pro-rate based on attendance
 		attendanceRatio := float64(req.AttendanceDays) / float64(req.WorkingDaysInMonth)
 		proratedBasic = req.BasicSalary * attendanceRatio
 		proratedFixedAllowance = req.FixedAllowances * attendanceRatio
 
-		// Additional deduction for Unpaid Leave (if recorded separately from attendance gap)
 		if req.UnpaidLeaveDays > 0 {
 			oneDayBasis := (req.BasicSalary + req.FixedAllowances) / float64(req.WorkingDaysInMonth)
 			unpaidLeaveDeduction = float64(req.UnpaidLeaveDays) * oneDayBasis
-
-			// Reduce further if Unpaid Leave is not already accounted for in attendanceRatio
-			// In many systems, AttendanceDays = WorkingDays - UnpaidLeave - Absent
-			// If AttendanceDays already reflects the absence, we don't need to subtract unpaidLeaveDeduction again.
-			// However, to be safe and following user request "variable not multiplied by working days":
-			// We ensure the base is multiplied by attendance/working ratio.
 		}
 	}
 
@@ -238,7 +272,6 @@ func (s *payrollService) Calculate(ctx context.Context, req PayrollRequest) (Pay
 			res.Breakdown.EmployerContributions.BpjsJkm
 
 	// 5. PPh 21 TER 2024
-	// Tax Basis Bruto = GrossIncome + BPJS Company Health + JKK + JKM
 	taxBruto := grossIncome +
 		res.Breakdown.EmployerContributions.BpjsHealthCompany +
 		res.Breakdown.EmployerContributions.BpjsJkk +
@@ -261,10 +294,8 @@ func (s *payrollService) Calculate(ctx context.Context, req PayrollRequest) (Pay
 	return res, nil
 }
 
-// Simplified TER 2024 implementation
 func (s *payrollService) calculatePPh21TER(ptkp string, bruto float64) float64 {
-	// 1. Determine Category
-	category := "A" // Default
+	category := "A"
 	switch strings.ToUpper(ptkp) {
 	case "TK/0", "TK/1", "K/0":
 		category = "A"
@@ -275,7 +306,6 @@ func (s *payrollService) calculatePPh21TER(ptkp string, bruto float64) float64 {
 	}
 
 	rate := 0.0
-	// Simplified TER Rate Table (A few brackets for demo)
 	switch category {
 	case "A":
 		if bruto <= 5400000 {
@@ -364,15 +394,33 @@ func (s *payrollService) GeneratePayroll(ctx context.Context, tenantID uint, per
 
 	for _, user := range users {
 		sync, _ := s.SyncEmployeeAttendance(ctx, user.ID, period)
+		
+		profile, _ := s.profileRepo.FindByUserID(ctx, user.ID)
+		ptkp := "TK/0"
+		basic := user.BaseSalary
+		fixed := 0.0
+		meal := 0.0
+		transport := 0.0
+		
+		if profile != nil {
+			ptkp = string(profile.PtkpStatus)
+			basic = profile.BasicSalary
+			fixed = profile.FixedAllowance
+			meal = profile.DailyMealAllowance
+			transport = profile.DailyTransportAllowance
+		}
 
 		calcRes, _ := s.Calculate(ctx, PayrollRequest{
-			BasicSalary:        user.BaseSalary,
-			FixedAllowances:    0, // Default for now
-			WorkingDaysInMonth: sync.WorkingDaysInMonth,
-			AttendanceDays:     sync.AttendanceDays,
-			UnpaidLeaveDays:    sync.UnpaidLeaveDays,
-			OvertimeHours:      sync.OvertimeHours,
-			PTKPStatus:         "TK/0",
+			UserID:                  user.ID,
+			BasicSalary:             basic,
+			FixedAllowances:         fixed,
+			DailyMealAllowance:      meal,
+			DailyTransportAllowance: transport,
+			WorkingDaysInMonth:      sync.WorkingDaysInMonth,
+			AttendanceDays:          sync.AttendanceDays,
+			UnpaidLeaveDays:         sync.UnpaidLeaveDays,
+			OvertimeHours:           sync.OvertimeHours,
+			PTKPStatus:              ptkp,
 		})
 
 		payroll := &model.Payroll{
@@ -383,9 +431,9 @@ func (s *payrollService) GeneratePayroll(ctx context.Context, tenantID uint, per
 			EmployeeID:           user.EmployeeID,
 			EmployeePosition:     user.Position.Name,
 			EmployeeDepartment:   user.Department,
-			EmployeePtkpStatus:   "TK/0",
-			BasicSalary:          user.BaseSalary,
-			FixedAllowances:      0,
+			EmployeePtkpStatus:   ptkp,
+			BasicSalary:          basic,
+			FixedAllowances:      fixed,
 			VariableAllowances:   calcRes.Breakdown.Earnings.VariableAllowances,
 			Incentives:           0,
 			Bonus:                0,
@@ -455,15 +503,12 @@ func (s *payrollService) mapModelToResponse(p *model.Payroll, tenant *model.Tena
 		Department: p.EmployeeDepartment,
 		PTKPStatus: p.EmployeePtkpStatus,
 	}
-
-	// Fallback
-	if res.User.FullName == "" && p.User.ID != 0 {
-		res.User.FullName = p.User.Name
-		res.User.EmployeeID = p.User.EmployeeID
-		res.User.Department = p.User.Department
-		if p.User.Position != nil {
-			res.User.Position = p.User.Position.Name
-		}
+	
+	// Add profile info if available
+	profile, _ := s.profileRepo.FindByUserID(context.Background(), p.UserID)
+	if profile != nil {
+		res.User.BankName = profile.BankName
+		res.User.BankAccountNumber = profile.BankAccountNumber
 	}
 
 	res.Breakdown.Earnings.BasicSalary = p.BasicSalary
@@ -519,7 +564,6 @@ func (s *payrollService) GetMyPayrolls(ctx context.Context, userID uint) ([]Payr
 		return nil, err
 	}
 
-	// Fetch tenant and settings for context
 	user, _ := s.userRepo.FindByID(ctx, userID, []string{"tenant.tenant_settings"})
 	var tenant *model.Tenant
 	var setting *model.TenantSetting
@@ -542,13 +586,24 @@ func (s *payrollService) GetEmployeeBaseline(ctx context.Context, userID uint) (
 		return EmployeeBaselineResponse{}, err
 	}
 
+	profile, _ := s.profileRepo.FindByUserID(ctx, userID)
+	ptkp := "TK/0"
+	basic := user.BaseSalary
+	fixed := 0.0
+
+	if profile != nil {
+		ptkp = string(profile.PtkpStatus)
+		basic = profile.BasicSalary
+		fixed = profile.FixedAllowance
+	}
+
 	return EmployeeBaselineResponse{
 		UserID:          user.ID,
 		EmployeeName:    user.Name,
 		Department:      user.Department,
-		PTKPStatus:      "TK/0",
-		BasicSalary:     user.BaseSalary,
-		FixedAllowances: 0,
+		PTKPStatus:      ptkp,
+		BasicSalary:     basic,
+		FixedAllowances: fixed,
 	}, nil
 }
 
@@ -566,6 +621,7 @@ func (s *payrollService) SaveIndividualPayroll(ctx context.Context, tenantID uin
 	user, _ := s.userRepo.FindByID(ctx, userID, []string{"position"})
 
 	calcRes, err := s.Calculate(ctx, PayrollRequest{
+		UserID:                  userID,
 		BasicSalary:             req.BasicSalary,
 		FixedAllowances:         req.FixedAllowances,
 		DailyMealAllowance:      req.DailyMealAllowance,
@@ -624,4 +680,52 @@ func (s *payrollService) SaveIndividualPayroll(ctx context.Context, tenantID uin
 	}
 
 	return s.repo.Save(ctx, payroll)
+}
+
+func (s *payrollService) GetUserPayrollProfile(ctx context.Context, userID uint) (*model.UserPayrollProfile, error) {
+	return s.profileRepo.FindByUserID(ctx, userID)
+}
+
+func (s *payrollService) UpdateUserPayrollProfile(ctx context.Context, userID uint, req UpdateUserPayrollProfileRequest) error {
+	profile, err := s.profileRepo.FindByUserID(ctx, userID)
+	if err != nil {
+		// If not found, create new
+		profile = &model.UserPayrollProfile{UserID: userID}
+	}
+
+	profile.BankName = req.BankName
+	profile.BankAccountNumber = req.BankAccountNumber
+	profile.BankAccountHolder = req.BankAccountHolder
+	profile.BpjsHealthNumber = req.BpjsHealthNumber
+	profile.BpjsEmploymentNumber = req.BpjsEmploymentNumber
+	profile.NpwpNumber = req.NpwpNumber
+	profile.PtkpStatus = req.PtkpStatus
+	profile.BasicSalary = req.BasicSalary
+	profile.FixedAllowance = req.FixedAllowance
+	profile.DailyMealAllowance = req.DailyMealAllowance
+	profile.DailyTransportAllowance = req.DailyTransportAllowance
+
+	return s.profileRepo.Upsert(ctx, profile)
+}
+
+func (s *payrollService) GetMyPayrollProfile(ctx context.Context, userID uint) (*model.UserPayrollProfile, error) {
+	return s.profileRepo.FindByUserID(ctx, userID)
+}
+
+func (s *payrollService) GetMySlip(ctx context.Context, userID uint, period string) (*PayrollResponse, error) {
+	p, err := s.repo.FindByUserPeriod(ctx, userID, period)
+	if err != nil {
+		return nil, err
+	}
+
+	user, _ := s.userRepo.FindByID(ctx, userID, []string{"tenant.tenant_settings"})
+	var tenant *model.Tenant
+	var setting *model.TenantSetting
+	if user != nil && user.Tenant != nil {
+		tenant = user.Tenant
+		setting = user.Tenant.TenantSettings
+	}
+
+	res := s.mapModelToResponse(p, tenant, setting)
+	return &res, nil
 }
