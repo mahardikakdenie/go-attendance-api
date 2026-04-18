@@ -36,10 +36,13 @@ type SupportService interface {
 }
 
 type supportService struct {
-	repo       repository.SupportRepository
-	tenantRepo repository.TenantRepository
-	userRepo   repository.UserRepository
-	roleRepo   repository.RoleRepository
+	repo              repository.SupportRepository
+	tenantRepo        repository.TenantRepository
+	userRepo          repository.UserRepository
+	roleRepo          repository.RoleRepository
+	subscriptionRepo  repository.SubscriptionRepository
+	tenantSettingRepo repository.TenantSettingRepository
+	profileRepo       repository.UserPayrollProfileRepository
 }
 
 func NewSupportService(
@@ -47,12 +50,18 @@ func NewSupportService(
 	tenantRepo repository.TenantRepository,
 	userRepo repository.UserRepository,
 	roleRepo repository.RoleRepository,
+	subscriptionRepo repository.SubscriptionRepository,
+	tenantSettingRepo repository.TenantSettingRepository,
+	profileRepo repository.UserPayrollProfileRepository,
 ) SupportService {
 	return &supportService{
-		repo:       repo,
-		tenantRepo: tenantRepo,
-		userRepo:   userRepo,
-		roleRepo:   roleRepo,
+		repo:              repo,
+		tenantRepo:        tenantRepo,
+		userRepo:          userRepo,
+		roleRepo:          roleRepo,
+		subscriptionRepo:  subscriptionRepo,
+		tenantSettingRepo: tenantSettingRepo,
+		profileRepo:       profileRepo,
 	}
 }
 
@@ -213,20 +222,61 @@ func (s *supportService) ExecuteProvisioning(ctx context.Context, ticketID uuid.
 		hashedPassword, _ := bcrypt.GenerateFromPassword([]byte(tempPassword), bcrypt.DefaultCost)
 
 		user := &model.User{
-			Name:       ticket.TrialRequest.ContactName,
-			Email:      ticket.TrialRequest.Email,
-			Password:   string(hashedPassword),
-			RoleID:     adminRole.ID,
-			TenantID:   tenant.ID,
-			EmployeeID: fmt.Sprintf("OWNER-%03d-001", tenant.ID),
+			Name:               ticket.TrialRequest.ContactName,
+			Email:              ticket.TrialRequest.Email,
+			Password:           string(hashedPassword),
+			RoleID:             adminRole.ID,
+			TenantID:           tenant.ID,
+			EmployeeID:         fmt.Sprintf("OWNER-%03d-001", tenant.ID),
+			IsSystemCreated:    true,
+			MustChangePassword: true,
 		}
 		if err := s.userRepo.Create(ctx, user); err != nil {
 			return fmt.Errorf("failed to create admin user: %v", err)
 		}
 
-		// 4. Dispatch Email
-		emailHtml := utils.GetWelcomeEmailTemplate(user.Name, user.Email, tempPassword)
-		subject := "Welcome to Attendance System - Your Account Details"
+		// 🆕 Automatic creation of Payroll Profile baseline
+		profile := &model.UserPayrollProfile{
+			UserID: user.ID,
+		}
+		if err := s.profileRepo.Upsert(ctx, profile); err != nil {
+			return fmt.Errorf("failed to create user payroll profile: %v", err)
+		}
+
+		// 4. Create Default Subscription (Trial)
+		subscription := &model.Subscription{
+			TenantID:        tenant.ID,
+			Plan:            "Basic", // Default plan
+			BillingCycle:    model.BillingCycleMonthly,
+			Amount:          0, // Trial is free
+			Status:          model.SubscriptionStatusTrial,
+			NextBillingDate: time.Now().AddDate(0, 1, 0), // 30 days trial
+		}
+		if err := s.subscriptionRepo.Create(ctx, subscription); err != nil {
+			return fmt.Errorf("failed to create subscription: %v", err)
+		}
+
+		// 5. Create Default Tenant Settings
+		tenantSetting := &model.TenantSetting{
+			TenantID:           tenant.ID,
+			MaxRadiusMeter:     100,
+			AllowRemote:        true,
+			RequireLocation:    true,
+			ClockInStartTime:   "08:00",
+			ClockInEndTime:     "09:00",
+			ClockOutStartTime:  "17:00",
+			ClockOutEndTime:    "18:00",
+			LateAfterMinute:    15,
+			RequireSelfie:      true,
+			AllowMultipleCheck: false,
+		}
+		if err := s.tenantSettingRepo.Create(ctx, tenantSetting); err != nil {
+			return fmt.Errorf("failed to create tenant settings: %v", err)
+		}
+
+		// 6. Dispatch Email
+		emailHtml := utils.GetWelcomeEmailTemplate(user.Name, user.Email, tempPassword, tenant.Name, "")
+		subject := fmt.Sprintf("Welcome to %s - Your Account Details", tenant.Name)
 		go func() {
 			_ = utils.SendEmail([]string{user.Email}, subject, emailHtml)
 		}()
