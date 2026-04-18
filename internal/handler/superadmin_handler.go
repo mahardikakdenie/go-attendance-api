@@ -3,6 +3,7 @@ package handler
 import (
 	"strconv"
 
+	modelDto "go-attendance-api/internal/dto"
 	"go-attendance-api/internal/model"
 	"go-attendance-api/internal/service"
 	"go-attendance-api/internal/utils"
@@ -16,6 +17,13 @@ type SuperadminHandler interface {
 	CreatePlatformAccount(c *gin.Context)
 	UpdatePlatformAccount(c *gin.Context)
 	TogglePlatformAccountStatus(c *gin.Context)
+
+	// System Role Management
+	ListSystemRoles(c *gin.Context)
+	ListAllPermissions(c *gin.Context)
+	CreateSystemRole(c *gin.Context)
+	UpdateSystemRole(c *gin.Context)
+	DeleteSystemRole(c *gin.Context)
 }
 
 type superadminHandler struct {
@@ -123,4 +131,76 @@ func (h *superadminHandler) TogglePlatformAccountStatus(c *gin.Context) {
 	}
 
 	c.JSON(200, utils.BuildResponse("Status updated successfully", 200, "success", nil))
+}
+
+// @Summary List System Roles
+func (h *superadminHandler) ListSystemRoles(c *gin.Context) {
+	roles, err := h.service.ListSystemRoles(c.Request.Context())
+	if err != nil {
+		c.JSON(500, utils.BuildErrorResponse("Failed to list system roles", 500, "error", err.Error()))
+		return
+	}
+
+	c.JSON(200, utils.BuildResponse("Success", 200, "success", roles))
+}
+
+// @Summary List All Available Permissions
+func (h *superadminHandler) ListAllPermissions(c *gin.Context) {
+	permissions, err := h.service.ListAllPermissions(c.Request.Context())
+	if err != nil {
+		c.JSON(500, utils.BuildErrorResponse("Failed to list permissions", 500, "error", err.Error()))
+		return
+	}
+
+	c.JSON(200, utils.BuildResponse("Success", 200, "success", permissions))
+}
+
+// @Summary Create System Role
+func (h *superadminHandler) CreateSystemRole(c *gin.Context) {
+	userID := c.GetUint("user_id")
+	var req modelDto.CreateSystemRoleRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(400, utils.BuildErrorResponse("Invalid request", 400, "error", err.Error()))
+		return
+	}
+
+	role, err := h.service.CreateSystemRole(c.Request.Context(), req, userID)
+	if err != nil {
+		c.JSON(500, utils.BuildErrorResponse("Failed to create system role", 500, "error", err.Error()))
+		return
+	}
+
+	c.JSON(201, utils.BuildResponse("System role created successfully", 201, "success", role))
+}
+
+// @Summary Update System Role
+func (h *superadminHandler) UpdateSystemRole(c *gin.Context) {
+	userID := c.GetUint("user_id")
+	id, _ := strconv.Atoi(c.Param("id"))
+	var req modelDto.CreateSystemRoleRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(400, utils.BuildErrorResponse("Invalid request", 400, "error", err.Error()))
+		return
+	}
+
+	role, err := h.service.UpdateSystemRole(c.Request.Context(), uint(id), req, userID)
+	if err != nil {
+		c.JSON(500, utils.BuildErrorResponse("Failed to update system role", 500, "error", err.Error()))
+		return
+	}
+
+	c.JSON(200, utils.BuildResponse("System role updated successfully", 200, "success", role))
+}
+
+// @Summary Delete System Role
+func (h *superadminHandler) DeleteSystemRole(c *gin.Context) {
+	userID := c.GetUint("user_id")
+	id, _ := strconv.Atoi(c.Param("id"))
+	err := h.service.DeleteSystemRole(c.Request.Context(), uint(id), userID)
+	if err != nil {
+		c.JSON(500, utils.BuildErrorResponse("Failed to delete system role", 500, "error", err.Error()))
+		return
+	}
+
+	c.JSON(200, utils.BuildResponse("System role deleted successfully", 200, "success", nil))
 }

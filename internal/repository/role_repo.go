@@ -11,6 +11,8 @@ type RoleRepository interface {
 	FindByName(ctx context.Context, name string) (*model.Role, error)
 	FindByID(ctx context.Context, id uint) (*model.Role, error)
 	FindByTenantID(ctx context.Context, tenantID uint) ([]model.Role, error)
+	FindSystemRoles(ctx context.Context) ([]model.Role, error)
+	CheckRoleInUse(ctx context.Context, roleID uint) (bool, error)
 	Create(ctx context.Context, role *model.Role) error
 	Update(ctx context.Context, role *model.Role) error
 	Delete(ctx context.Context, id uint) error
@@ -53,6 +55,21 @@ func (r *roleRepository) FindByTenantID(ctx context.Context, tenantID uint) ([]m
 		Preload("Permissions").
 		Find(&roles).Error
 	return roles, err
+}
+
+func (r *roleRepository) FindSystemRoles(ctx context.Context) ([]model.Role, error) {
+	var roles []model.Role
+	err := r.db.WithContext(ctx).
+		Where("tenant_id IS NULL").
+		Preload("Permissions").
+		Find(&roles).Error
+	return roles, err
+}
+
+func (r *roleRepository) CheckRoleInUse(ctx context.Context, roleID uint) (bool, error) {
+	var count int64
+	err := r.db.WithContext(ctx).Model(&model.User{}).Where("role_id = ?", roleID).Count(&count).Error
+	return count > 0, err
 }
 
 func (r *roleRepository) Create(ctx context.Context, role *model.Role) error {

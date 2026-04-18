@@ -62,7 +62,7 @@ func SetupRoutes(r *gin.Engine, db *gorm.DB, rdb *redis.Client) service.Calendar
 	performanceService := service.NewPerformanceService(performanceRepo, userRepo)
 
 	superadminRepo := repository.NewSuperadminRepository(db)
-	superadminService := service.NewSuperadminService(superadminRepo, userRepo, roleRepo, activityRepo)
+	superadminService := service.NewSuperadminService(superadminRepo, userRepo, roleRepo, permissionRepo, activityRepo)
 	subscriptionService := service.NewSubscriptionService(subscriptionRepo, tenantRepo)
 
 	expenseRepo := repository.NewExpenseRepository(db)
@@ -366,6 +366,16 @@ func SetupRoutes(r *gin.Engine, db *gorm.DB, rdb *redis.Client) service.Calendar
 				platform.PUT("/:id", superadminHandler.UpdatePlatformAccount)
 				platform.PATCH("/:id/status", superadminHandler.TogglePlatformAccountStatus)
 			}
+
+			// System Roles & Permissions
+			roles := superadmin.Group("/system-roles")
+			{
+				roles.GET("", superadminHandler.ListSystemRoles)
+				roles.POST("", superadminHandler.CreateSystemRole)
+				roles.PUT("/:id", superadminHandler.UpdateSystemRole)
+				roles.DELETE("/:id", superadminHandler.DeleteSystemRole)
+			}
+			superadmin.GET("/permissions", superadminHandler.ListAllPermissions)
 
 			// Subscription & Billing
 			subscriptions := superadmin.Group("/subscriptions")

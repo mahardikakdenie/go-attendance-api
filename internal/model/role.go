@@ -21,6 +21,7 @@ type Role struct {
 	Description string    `gorm:"type:text" json:"description"`
 	BaseRole    BaseRole  `gorm:"type:varchar(20);not null;default:'EMPLOYEE'" json:"base_role"`
 	IsSystem    bool      `gorm:"default:false" json:"is_system"`
+	IsImmutable bool      `gorm:"default:false" json:"is_immutable"`
 	CreatedAt   time.Time `json:"created_at"`
 	UpdatedAt   time.Time `json:"updated_at"`
 
@@ -33,5 +34,6 @@ type RoleResponse struct {
 	Description string       `json:"description"`
 	BaseRole    BaseRole     `json:"base_role"`
 	IsSystem    bool         `json:"is_system"`
+	IsImmutable bool         `json:"is_immutable"`
 	Permissions []Permission `json:"permissions,omitempty"`
 }

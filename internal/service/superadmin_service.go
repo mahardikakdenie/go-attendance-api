@@ -18,26 +18,36 @@ type SuperadminService interface {
 	CreatePlatformAccount(ctx context.Context, req model.CreateUserRequest) (model.UserResponse, error)
 	UpdatePlatformAccount(ctx context.Context, id uint, req model.CreateUserRequest) (model.UserResponse, error)
 	TogglePlatformAccountStatus(ctx context.Context, id uint, isActive bool) error
+
+	// System Role Management
+	ListSystemRoles(ctx context.Context) ([]model.Role, error)
+	ListAllPermissions(ctx context.Context) ([]model.Permission, error)
+	CreateSystemRole(ctx context.Context, req modelDto.CreateSystemRoleRequest, performerID uint) (model.Role, error)
+	UpdateSystemRole(ctx context.Context, id uint, req modelDto.CreateSystemRoleRequest, performerID uint) (model.Role, error)
+	DeleteSystemRole(ctx context.Context, id uint, performerID uint) error
 }
 
 type superadminService struct {
-	repo         repository.SuperadminRepository
-	userRepo     repository.UserRepository
-	roleRepo     repository.RoleRepository
-	activityRepo repository.RecentActivityRepository
+	repo           repository.SuperadminRepository
+	userRepo       repository.UserRepository
+	roleRepo       repository.RoleRepository
+	permissionRepo repository.PermissionRepository
+	activityRepo   repository.RecentActivityRepository
 }
 
 func NewSuperadminService(
 	repo repository.SuperadminRepository,
 	userRepo repository.UserRepository,
 	roleRepo repository.RoleRepository,
+	permissionRepo repository.PermissionRepository,
 	activityRepo repository.RecentActivityRepository,
 ) SuperadminService {
 	return &superadminService{
-		repo:         repo,
-		userRepo:     userRepo,
-		roleRepo:     roleRepo,
-		activityRepo: activityRepo,
+		repo:           repo,
+		userRepo:       userRepo,
+		roleRepo:       roleRepo,
+		permissionRepo: permissionRepo,
+		activityRepo:   activityRepo,
 	}
 }
 
@@ -188,4 +198,123 @@ func (s *superadminService) TogglePlatformAccountStatus(ctx context.Context, id 
 
 	user.IsActive = isActive
 	return s.userRepo.Update(ctx, user)
+}
+
+func (s *superadminService) ListSystemRoles(ctx context.Context) ([]model.Role, error) {
+	return s.roleRepo.FindSystemRoles(ctx)
+}
+
+func (s *superadminService) ListAllPermissions(ctx context.Context) ([]model.Permission, error) {
+	return s.permissionRepo.FindAll(ctx)
+}
+
+func (s *superadminService) CreateSystemRole(ctx context.Context, req modelDto.CreateSystemRoleRequest, performerID uint) (model.Role, error) {
+	role := &model.Role{
+		TenantID:    nil,
+		Name:        req.Name,
+		Description: req.Description,
+		BaseRole:    model.BaseRole(req.BaseRole),
+		IsSystem:    true,
+	}
+
+	if role.BaseRole == "" {
+		role.BaseRole = model.BaseRoleEmployee
+	}
+
+	if err := s.roleRepo.Create(ctx, role); err != nil {
+		return model.Role{}, err
+	}
+
+	if len(req.PermissionIDs) > 0 {
+		if err := s.roleRepo.UpdatePermissions(ctx, role.ID, req.PermissionIDs); err != nil {
+			return model.Role{}, err
+		}
+	}
+
+	// Audit Log
+	_ = s.activityRepo.Create(ctx, &model.RecentActivity{
+		UserID: performerID,
+		Title:  "System Role Created",
+		Action: fmt.Sprintf("Created system role: %s", role.Name),
+		Status: "success",
+	})
+
+	// Fetch with permissions
+	return *role, nil
+}
+
+func (s *superadminService) UpdateSystemRole(ctx context.Context, id uint, req modelDto.CreateSystemRoleRequest, performerID uint) (model.Role, error) {
+	role, err := s.roleRepo.FindByID(ctx, id)
+	if err != nil {
+		return model.Role{}, errors.New("role not found")
+	}
+
+	if role.TenantID != nil {
+		return model.Role{}, errors.New("cannot update tenant role via system role API")
+	}
+
+	if role.IsImmutable {
+		return model.Role{}, errors.New("this system role is immutable and cannot be modified")
+	}
+
+	role.Name = req.Name
+	role.Description = req.Description
+	if req.BaseRole != "" {
+		role.BaseRole = model.BaseRole(req.BaseRole)
+	}
+
+	if err := s.roleRepo.Update(ctx, role); err != nil {
+		return model.Role{}, err
+	}
+
+	if err := s.roleRepo.UpdatePermissions(ctx, role.ID, req.PermissionIDs); err != nil {
+		return model.Role{}, err
+	}
+
+	// Audit Log
+	_ = s.activityRepo.Create(ctx, &model.RecentActivity{
+		UserID: performerID,
+		Title:  "System Role Updated",
+		Action: fmt.Sprintf("Updated system role: %s", role.Name),
+		Status: "success",
+	})
+
+	return *role, nil
+}
+
+func (s *superadminService) DeleteSystemRole(ctx context.Context, id uint, performerID uint) error {
+	role, err := s.roleRepo.FindByID(ctx, id)
+	if err != nil {
+		return errors.New("role not found")
+	}
+
+	if role.TenantID != nil {
+		return errors.New("cannot delete tenant role via system role API")
+	}
+
+	if role.IsImmutable {
+		return errors.New("cannot delete immutable system role")
+	}
+
+	inUse, err := s.roleRepo.CheckRoleInUse(ctx, id)
+	if err != nil {
+		return err
+	}
+	if inUse {
+		return errors.New("cannot delete role that is currently in use by users")
+	}
+
+	if err := s.roleRepo.Delete(ctx, id); err != nil {
+		return err
+	}
+
+	// Audit Log
+	_ = s.activityRepo.Create(ctx, &model.RecentActivity{
+		UserID: performerID,
+		Title:  "System Role Deleted",
+		Action: fmt.Sprintf("Deleted system role: %s", role.Name),
+		Status: "success",
+	})
+
+	return nil
 }

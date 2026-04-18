@@ -55,6 +55,7 @@ func SeedRoles(db *gorm.DB) {
 			Description: "Platform Owner with full access",
 			BaseRole:    model.BaseRoleSuperAdmin,
 			IsSystem:    true,
+			IsImmutable: true,
 		},
 		{
 			Name:        "admin",

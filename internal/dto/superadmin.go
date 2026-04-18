@@ -18,3 +18,10 @@ type OwnerWithStatsResponse struct {
 	ExpenseCount    int64     `json:"expense_count"`
 	CreatedAt       time.Time `json:"created_at"`
 }
+
+type CreateSystemRoleRequest struct {
+	Name          string   `json:"name" binding:"required"`
+	Description   string   `json:"description"`
+	BaseRole      string   `json:"base_role"`
+	PermissionIDs []string `json:"permission_ids"`
+}
