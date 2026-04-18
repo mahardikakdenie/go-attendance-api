@@ -19,6 +19,7 @@ type UserRepository interface {
 	Update(ctx context.Context, user *model.User) error
 	Create(ctx context.Context, user *model.User) error
 	CountByTenantID(ctx context.Context, tenantID uint) (int64, error)
+	FindTenantByID(ctx context.Context, tenantID uint) (*model.Tenant, error)
 	UpdateQuota(ctx context.Context, userID uint, quota float64) error
 	DecreaseQuota(ctx context.Context, userID uint, amount float64) error
 	Transaction(ctx context.Context, fn func(repo UserRepository) error) error
@@ -201,6 +202,15 @@ func (r *userRepository) CountByTenantID(ctx context.Context, tenantID uint) (in
 	var count int64
 	err := r.db.WithContext(ctx).Model(&model.User{}).Where("tenant_id = ?", tenantID).Count(&count).Error
 	return count, err
+}
+
+func (r *userRepository) FindTenantByID(ctx context.Context, tenantID uint) (*model.Tenant, error) {
+	var tenant model.Tenant
+	err := r.db.WithContext(ctx).Preload("TenantSettings").First(&tenant, tenantID).Error
+	if err != nil {
+		return nil, err
+	}
+	return &tenant, nil
 }
 
 func (r *userRepository) UpdateQuota(ctx context.Context, userID uint, quota float64) error {

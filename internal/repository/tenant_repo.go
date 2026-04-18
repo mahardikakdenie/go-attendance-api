@@ -12,6 +12,7 @@ type TenantRepository interface {
 	Create(ctx context.Context, tenant *model.Tenant) error
 	FindAll(ctx context.Context) ([]model.Tenant, error)
 	FindByID(ctx context.Context, id uint) (*model.Tenant, error)
+	Update(ctx context.Context, tenant *model.Tenant) error
 }
 
 type tenantRepository struct {
@@ -39,4 +40,8 @@ func (r *tenantRepository) FindByID(ctx context.Context, id uint) (*model.Tenant
 		return nil, err
 	}
 	return &tenant, nil
+}
+
+func (r *tenantRepository) Update(ctx context.Context, tenant *model.Tenant) error {
+	return r.db.WithContext(ctx).Save(tenant).Error
 }

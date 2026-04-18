@@ -15,6 +15,7 @@ type TenantHandler interface {
 	CreateTenant(c *gin.Context)
 	GetAllTenant(c *gin.Context)
 	GetTenantByID(c *gin.Context)
+	UpdateTenant(c *gin.Context)
 }
 
 type tenantHandler struct {
@@ -109,4 +110,38 @@ func (h *tenantHandler) GetTenantByID(c *gin.Context) {
 	}
 
 	c.JSON(200, utils.BuildResponse("Success", 200, "success", data))
+}
+
+// @Summary Update Tenant
+// @Description Update tenant details (SuperAdmin only)
+// @Tags SuperAdmin
+// @Accept json
+// @Produce json
+// @Param id path int true "Tenant ID"
+// @Param request body model.Tenant true "Tenant Data"
+// @Security BearerAuth
+// @Security CookieAuth
+// @Success 200 {object} utils.APIResponse{data=model.Tenant}
+// @Router /api/v1/superadmin/tenants/{id} [put]
+func (h *tenantHandler) UpdateTenant(c *gin.Context) {
+	idParam := c.Param("id")
+	id, err := strconv.Atoi(idParam)
+	if err != nil {
+		c.JSON(400, utils.BuildErrorResponse("Invalid ID", 400, "error", err.Error()))
+		return
+	}
+
+	var req model.Tenant
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(400, utils.BuildErrorResponse("Invalid request", 400, "error", err.Error()))
+		return
+	}
+
+	data, err := h.service.UpdateTenant(c.Request.Context(), uint(id), req)
+	if err != nil {
+		c.JSON(500, utils.BuildErrorResponse("Failed to update tenant", 500, "error", err.Error()))
+		return
+	}
+
+	c.JSON(200, utils.BuildResponse("Tenant updated successfully", 200, "success", data))
 }

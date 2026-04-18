@@ -9,6 +9,7 @@ type OwnerWithStatsResponse struct {
 	TenantID        uint      `json:"tenant_id"`
 	TenantName      string    `json:"tenant_name"`
 	TenantCode      string    `json:"tenant_code"`
+	TenantPlan      string    `json:"tenant_plan"`
 	EmployeeCount   int64     `json:"employee_count"`
 	AttendanceCount int64     `json:"attendance_count"`
 	LeaveCount      int64     `json:"leave_count"`

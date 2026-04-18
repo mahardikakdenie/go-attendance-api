@@ -10,6 +10,7 @@ import (
 
 type SuperadminRepository interface {
 	GetOwnersWithStats(ctx context.Context, limit, offset int) ([]modelDto.OwnerWithStatsResponse, int64, error)
+	GetPlatformAccounts(ctx context.Context, search string, limit, offset int) ([]model.User, int64, error)
 }
 
 type superadminRepository struct {
@@ -39,7 +40,7 @@ func (r *superadminRepository) GetOwnersWithStats(ctx context.Context, limit, of
 	query := `
 		SELECT 
 			u.id, u.name, u.email, u.created_at, u.tenant_id,
-			t.name as tenant_name, t.code as tenant_code,
+			t.name as tenant_name, t.code as tenant_code, t.plan as tenant_plan,
 			(SELECT COUNT(*) FROM users WHERE tenant_id = u.tenant_id) as employee_count,
 			(SELECT COUNT(*) FROM attendances WHERE tenant_id = u.tenant_id) as attendance_count,
 			(SELECT COUNT(*) FROM leaves WHERE tenant_id = u.tenant_id) as leave_count,
@@ -60,4 +61,29 @@ func (r *superadminRepository) GetOwnersWithStats(ctx context.Context, limit, of
 	}
 
 	return results, total, nil
+}
+
+func (r *superadminRepository) GetPlatformAccounts(ctx context.Context, search string, limit, offset int) ([]model.User, int64, error) {
+	var users []model.User
+	var total int64
+
+	query := r.db.WithContext(ctx).Model(&model.User{}).
+		Joins("JOIN roles ON users.role_id = roles.id").
+		Where("roles.base_role IN ?", []model.BaseRole{model.BaseRoleSuperAdmin, model.BaseRoleSupport, model.BaseRoleEngineer})
+
+	if search != "" {
+		query = query.Where("users.name ILIKE ? OR users.email ILIKE ?", "%"+search+"%", "%"+search+"%")
+	}
+
+	err := query.Count(&total).Error
+	if err != nil {
+		return nil, 0, err
+	}
+
+	err = query.Preload("Role").Preload("Role.Permissions").
+		Order("users.created_at DESC").
+		Limit(limit).Offset(offset).
+		Find(&users).Error
+
+	return users, total, err
 }
