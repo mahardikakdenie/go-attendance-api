@@ -40,6 +40,10 @@ type User struct {
 	BaseSalary float64 `gorm:"type:decimal(15,2);default:0" json:"base_salary"`
 	ExpenseQuota float64 `gorm:"type:decimal(15,2);default:0" json:"expense_quota"`
 
+	IsSystemCreated    bool `gorm:"default:false" json:"is_system_created"`
+	MustChangePassword bool `gorm:"default:false" json:"must_change_password"`
+	IsActive           bool `gorm:"default:true" json:"is_active"`
+
 	Attendances      []Attendance     `gorm:"foreignKey:UserID" json:"attendances,omitempty"`
 	RecentActivities []RecentActivity `gorm:"foreignKey:UserID" json:"recent_activities,omitempty"`
 
@@ -69,7 +73,7 @@ type UserFilter struct {
 type CreateUserRequest struct {
 	Name        string `json:"name" binding:"required" example:"Budi Santoso"`
 	Email       string `json:"email" binding:"required,email" example:"budi@company.com"`
-	Password    string `json:"password" binding:"required,min=6" example:"123456"`
+	Password    string `json:"password" example:"123456"` // Optional now
 	RoleID      uint   `json:"role_id" example:"1"`
 	TenantID    uint   `json:"tenant_id" example:"1"`
 	Department  string `json:"department" example:"IT"`
@@ -97,6 +101,10 @@ type UserResponse struct {
 	CreatedAt   time.Time     `json:"created_at"`
 
 	ExpenseQuota float64 `json:"expense_quota"`
+
+	IsSystemCreated    bool `json:"is_system_created"`
+	MustChangePassword bool `json:"must_change_password"`
+	IsActive           bool `json:"is_active"`
 
 	BaseRole    BaseRole `json:"base_role"`
 	Permissions []string `json:"permissions,omitempty"`

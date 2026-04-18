@@ -6,6 +6,8 @@ type BaseRole string
 
 const (
 	BaseRoleSuperAdmin BaseRole = "SUPERADMIN"
+	BaseRoleSupport    BaseRole = "SUPPORT"
+	BaseRoleEngineer   BaseRole = "ENGINEER"
 	BaseRoleAdmin      BaseRole = "ADMIN"
 	BaseRoleHR         BaseRole = "HR"
 	BaseRoleFinance    BaseRole = "FINANCE"

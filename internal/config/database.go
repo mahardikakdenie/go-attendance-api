@@ -63,6 +63,7 @@ func InitDB() *gorm.DB {
 			&model.RolePermission{},
 			&model.RoleHierarchy{},
 			&model.User{},
+			&model.UserPayrollProfile{},
 		)
 		if err != nil {
 			log.Fatalf("❌ Gagal migrasi Stage 2: %v", err)
@@ -91,12 +92,20 @@ func InitDB() *gorm.DB {
 			&model.PerformanceGoal{},
 			&model.PerformanceCycle{},
 			&model.Appraisal{},
+			&model.Subscription{},
+			&model.PasswordReset{},
+			&model.Project{},
+			&model.Task{},
+			&model.TimesheetEntry{},
 		)
 		if err != nil {
 			log.Fatalf("❌ Gagal migrasi Stage 3: %v", err)
 		}
-
 		log.Println("✅ Migrasi database berhasil")
+
+		// 🔄 Data Backfill: Ensure existing tenants have a subscription record
+		backfillSubscriptions(db)
+		backfillPayrollProfiles(db)
 	}
 
 	// Register Tenant Plugin AFTER migration to avoid interference with schema changes
@@ -119,9 +128,46 @@ func InitDB() *gorm.DB {
 		seeder.SeedAttendanceHistory(db)
 		seeder.SeedOvertimes(db)
 		seeder.SeedSupport(db)
+		seeder.SeedUserPayrollProfiles(db)
 
 		log.Println("✅ Seeder selesai")
 	}
 
 	return db
+}
+
+func backfillSubscriptions(db *gorm.DB) {
+	log.Println("🔄 Checking for tenants without subscriptions...")
+
+	// Query: Insert default subscription for tenants that don't have one
+	// Kita ambil status 'Active' untuk tenant lama agar tidak langsung tersuspensi
+	result := db.Exec(`
+		INSERT INTO subscriptions (tenant_id, plan, billing_cycle, amount, status, next_billing_date, created_at, updated_at)
+		SELECT id, plan, 'Monthly', 0, 'Active', (NOW() + INTERVAL '30 days'), NOW(), NOW()
+		FROM tenants
+		WHERE id NOT IN (SELECT tenant_id FROM subscriptions)
+	`)
+
+	if result.Error != nil {
+		log.Printf("⚠️ Warning during subscription backfill: %v\n", result.Error)
+	} else if result.RowsAffected > 0 {
+		log.Printf("✅ Successfully backfilled %d tenant subscriptions\n", result.RowsAffected)
+	}
+}
+
+func backfillPayrollProfiles(db *gorm.DB) {
+	log.Println("🔄 Checking for users without payroll profiles...")
+
+	result := db.Exec(`
+		INSERT INTO user_payroll_profiles (user_id, ptkp_status, basic_salary, fixed_allowance, created_at, updated_at)
+		SELECT id, 'TK/0', base_salary, 0, NOW(), NOW()
+		FROM users
+		WHERE id NOT IN (SELECT user_id FROM user_payroll_profiles)
+	`)
+
+	if result.Error != nil {
+		log.Printf("⚠️ Warning during payroll profile backfill: %v\n", result.Error)
+	} else if result.RowsAffected > 0 {
+		log.Printf("✅ Successfully backfilled %d user payroll profiles\n", result.RowsAffected)
+	}
 }
