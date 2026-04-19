@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"gorm.io/gorm"
 )
 
 type ProjectStatus string
@@ -15,19 +16,43 @@ const (
 )
 
 type Project struct {
-	ID          uint          `gorm:"primaryKey" json:"id"`
-	TenantID    uint          `gorm:"not null;index" json:"tenant_id"`
-	Name        string        `gorm:"type:varchar(255);not null" json:"name" binding:"required"`
-	Description string        `gorm:"type:text" json:"description"`
-	ClientName  string        `gorm:"type:varchar(255)" json:"client_name"`
-	StartDate   *time.Time    `json:"start_date"`
-	EndDate     *time.Time    `json:"end_date"`
-	Status      ProjectStatus `gorm:"type:varchar(20);default:'Active'" json:"status"`
-	CreatedAt   time.Time     `json:"created_at"`
-	UpdatedAt   time.Time     `json:"updated_at"`
+	ID          uint           `gorm:"primaryKey" json:"id"`
+	TenantID    uint           `gorm:"not null;index" json:"tenant_id"`
+	Name        string         `gorm:"type:varchar(255);not null;index" json:"name" binding:"required"`
+	Description string         `gorm:"type:text" json:"description"`
+	ClientName  string         `gorm:"type:varchar(255);index" json:"client_name"`
+	StartDate   *time.Time     `json:"start_date"`
+	EndDate     *time.Time     `json:"end_date"`
+	Status      ProjectStatus  `gorm:"type:varchar(20);default:'Active'" json:"status"`
+	Budget      float64        `gorm:"type:decimal(15,2)" json:"budget"`
+	CreatedAt   time.Time      `json:"created_at"`
+	UpdatedAt   time.Time      `json:"updated_at"`
+	DeletedAt   gorm.DeletedAt `gorm:"index" json:"-"`
 
-	Tasks       []Task           `gorm:"foreignKey:ProjectID" json:"tasks,omitempty"`
-	Timesheets  []TimesheetEntry `gorm:"foreignKey:ProjectID" json:"timesheets,omitempty"`
+	Members    []ProjectMember  `gorm:"foreignKey:ProjectID" json:"members,omitempty"`
+	Tasks      []Task           `gorm:"foreignKey:ProjectID" json:"tasks,omitempty"`
+	Timesheets []TimesheetEntry `gorm:"foreignKey:ProjectID" json:"timesheets,omitempty"`
+}
+
+type ProjectRequest struct {
+	Name        string        `json:"name" binding:"required"`
+	Description string        `json:"description"`
+	ClientName  string        `json:"client_name"`
+	StartDate   string        `json:"start_date"` // YYYY-MM-DD
+	EndDate     string        `json:"end_date"`   // YYYY-MM-DD
+	Status      ProjectStatus `json:"status"`
+	Budget      float64       `json:"budget"`
+}
+
+type ProjectMember struct {
+	ProjectID      uint   `gorm:"primaryKey" json:"project_id"`
+	UserID         uint   `gorm:"primaryKey" json:"user_id"`
+	Role           string `gorm:"type:varchar(50)" json:"role"` // e.g., "Lead", "Member"
+	AllocatedHours int    `json:"allocated_hours"`
+	CreatedAt      time.Time `json:"created_at"`
+	UpdatedAt      time.Time `json:"updated_at"`
+
+	User *User `gorm:"foreignKey:UserID" json:"user,omitempty"`
 }
 
 type Task struct {

@@ -5,13 +5,21 @@ import (
 	"errors"
 	"go-attendance-api/internal/model"
 	"go-attendance-api/internal/repository"
+	"time"
 )
 
 type TimesheetService interface {
 	// Project (Admin/HR)
-	CreateProject(ctx context.Context, tenantID uint, req model.Project) (model.Project, error)
-	GetProjects(ctx context.Context, tenantID uint) ([]model.Project, error)
-	UpdateProject(ctx context.Context, id uint, tenantID uint, req model.Project) (model.Project, error)
+	CreateProject(ctx context.Context, tenantID uint, req model.ProjectRequest) (model.Project, error)
+	GetProjects(ctx context.Context, tenantID uint, status string, search string) ([]model.Project, error)
+	UpdateProject(ctx context.Context, id uint, tenantID uint, req model.ProjectRequest) (model.Project, error)
+	DeleteProject(ctx context.Context, id uint, tenantID uint) error
+	SuggestProjectStatus(project *model.Project) model.ProjectStatus
+
+	// Project Members
+	AddMembers(ctx context.Context, projectID uint, tenantID uint, members []model.ProjectMember) error
+	RemoveMember(ctx context.Context, projectID uint, tenantID uint, userID uint) error
+	GetMembers(ctx context.Context, projectID uint, tenantID uint) ([]model.ProjectMember, error)
 
 	// Task (Employee)
 	CreateTask(ctx context.Context, userID uint, req model.Task) (model.Task, error)
@@ -37,31 +45,110 @@ func NewTimesheetService(repo repository.TimesheetRepository, userRepo repositor
 	}
 }
 
-func (s *timesheetService) CreateProject(ctx context.Context, tenantID uint, req model.Project) (model.Project, error) {
-	req.TenantID = tenantID
-	err := s.repo.CreateProject(ctx, &req)
-	return req, err
+func (s *timesheetService) CreateProject(ctx context.Context, tenantID uint, req model.ProjectRequest) (model.Project, error) {
+	startDate, _ := time.Parse("2006-01-02", req.StartDate)
+	var endDate *time.Time
+	if req.EndDate != "" {
+		t, err := time.Parse("2006-01-02", req.EndDate)
+		if err == nil {
+			endDate = &t
+		}
+	}
+
+	project := &model.Project{
+		TenantID:    tenantID,
+		Name:        req.Name,
+		Description: req.Description,
+		ClientName:  req.ClientName,
+		StartDate:   &startDate,
+		EndDate:     endDate,
+		Status:      req.Status,
+		Budget:      req.Budget,
+	}
+
+	if project.Status == "" {
+		project.Status = model.ProjectStatusActive
+	}
+
+	err := s.repo.CreateProject(ctx, project)
+	return *project, err
 }
 
-func (s *timesheetService) GetProjects(ctx context.Context, tenantID uint) ([]model.Project, error) {
-	return s.repo.FindProjectsByTenant(ctx, tenantID)
+func (s *timesheetService) GetProjects(ctx context.Context, tenantID uint, status string, search string) ([]model.Project, error) {
+	return s.repo.FindProjects(ctx, tenantID, status, search)
 }
 
-func (s *timesheetService) UpdateProject(ctx context.Context, id uint, tenantID uint, req model.Project) (model.Project, error) {
+func (s *timesheetService) UpdateProject(ctx context.Context, id uint, tenantID uint, req model.ProjectRequest) (model.Project, error) {
 	project, err := s.repo.FindProjectByID(ctx, id, tenantID)
 	if err != nil {
 		return model.Project{}, errors.New("project not found")
+	}
+
+	if req.StartDate != "" {
+		t, err := time.Parse("2006-01-02", req.StartDate)
+		if err == nil {
+			project.StartDate = &t
+		}
+	}
+
+	if req.EndDate != "" {
+		t, err := time.Parse("2006-01-02", req.EndDate)
+		if err == nil {
+			project.EndDate = &t
+		}
 	}
 
 	project.Name = req.Name
 	project.Description = req.Description
 	project.ClientName = req.ClientName
 	project.Status = req.Status
-	project.StartDate = req.StartDate
-	project.EndDate = req.EndDate
+	project.Budget = req.Budget
 
 	err = s.repo.UpdateProject(ctx, project)
 	return *project, err
+}
+
+func (s *timesheetService) DeleteProject(ctx context.Context, id uint, tenantID uint) error {
+	return s.repo.DeleteProject(ctx, id, tenantID)
+}
+
+func (s *timesheetService) SuggestProjectStatus(project *model.Project) model.ProjectStatus {
+	if project.EndDate != nil && project.EndDate.Before(time.Now()) && project.Status == model.ProjectStatusActive {
+		return model.ProjectStatusCompleted
+	}
+	return project.Status
+}
+
+func (s *timesheetService) AddMembers(ctx context.Context, projectID uint, tenantID uint, members []model.ProjectMember) error {
+	// Verify project belongs to tenant
+	_, err := s.repo.FindProjectByID(ctx, projectID, tenantID)
+	if err != nil {
+		return errors.New("project not found or access denied")
+	}
+
+	for i := range members {
+		members[i].ProjectID = projectID
+		if err := s.repo.AddProjectMember(ctx, &members[i]); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (s *timesheetService) RemoveMember(ctx context.Context, projectID uint, tenantID uint, userID uint) error {
+	_, err := s.repo.FindProjectByID(ctx, projectID, tenantID)
+	if err != nil {
+		return errors.New("project not found or access denied")
+	}
+	return s.repo.RemoveProjectMember(ctx, projectID, userID)
+}
+
+func (s *timesheetService) GetMembers(ctx context.Context, projectID uint, tenantID uint) ([]model.ProjectMember, error) {
+	_, err := s.repo.FindProjectByID(ctx, projectID, tenantID)
+	if err != nil {
+		return nil, errors.New("project not found or access denied")
+	}
+	return s.repo.FindProjectMembers(ctx, projectID)
 }
 
 func (s *timesheetService) CreateTask(ctx context.Context, userID uint, req model.Task) (model.Task, error) {

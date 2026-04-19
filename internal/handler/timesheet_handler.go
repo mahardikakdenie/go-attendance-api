@@ -16,6 +16,12 @@ type TimesheetHandler interface {
 	CreateProject(c *gin.Context)
 	GetProjects(c *gin.Context)
 	UpdateProject(c *gin.Context)
+	DeleteProject(c *gin.Context)
+
+	// Members
+	AssignMembers(c *gin.Context)
+	RemoveMember(c *gin.Context)
+	GetMembers(c *gin.Context)
 
 	// Task
 	CreateTask(c *gin.Context)
@@ -37,7 +43,7 @@ func NewTimesheetHandler(service service.TimesheetService) TimesheetHandler {
 
 // Projects
 func (h *timesheetHandler) CreateProject(c *gin.Context) {
-	var req model.Project
+	var req model.ProjectRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(400, utils.BuildErrorResponse("Invalid request", 400, "error", err.Error()))
 		return
@@ -55,7 +61,10 @@ func (h *timesheetHandler) CreateProject(c *gin.Context) {
 
 func (h *timesheetHandler) GetProjects(c *gin.Context) {
 	tenantID := c.MustGet("tenant_id").(uint)
-	res, err := h.service.GetProjects(c.Request.Context(), tenantID)
+	status := c.Query("status")
+	search := c.Query("search")
+
+	res, err := h.service.GetProjects(c.Request.Context(), tenantID, status, search)
 	if err != nil {
 		c.JSON(500, utils.BuildErrorResponse("Failed to fetch projects", 500, "error", err.Error()))
 		return
@@ -66,7 +75,7 @@ func (h *timesheetHandler) GetProjects(c *gin.Context) {
 
 func (h *timesheetHandler) UpdateProject(c *gin.Context) {
 	id, _ := strconv.Atoi(c.Param("id"))
-	var req model.Project
+	var req model.ProjectRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(400, utils.BuildErrorResponse("Invalid request", 400, "error", err.Error()))
 		return
@@ -80,6 +89,63 @@ func (h *timesheetHandler) UpdateProject(c *gin.Context) {
 	}
 
 	c.JSON(200, utils.BuildResponse("Project updated successfully", 200, "success", res))
+}
+
+func (h *timesheetHandler) DeleteProject(c *gin.Context) {
+	id, _ := strconv.Atoi(c.Param("id"))
+	tenantID := c.MustGet("tenant_id").(uint)
+
+	if err := h.service.DeleteProject(c.Request.Context(), uint(id), tenantID); err != nil {
+		c.JSON(500, utils.BuildErrorResponse("Failed to delete project", 500, "error", err.Error()))
+		return
+	}
+
+	c.JSON(200, utils.BuildResponse("Project deleted successfully", 200, "success", nil))
+}
+
+// Members
+func (h *timesheetHandler) AssignMembers(c *gin.Context) {
+	projectID, _ := strconv.Atoi(c.Param("id"))
+	tenantID := c.MustGet("tenant_id").(uint)
+
+	var req []model.ProjectMember
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(400, utils.BuildErrorResponse("Invalid request", 400, "error", err.Error()))
+		return
+	}
+
+	if err := h.service.AddMembers(c.Request.Context(), uint(projectID), tenantID, req); err != nil {
+		c.JSON(500, utils.BuildErrorResponse("Failed to assign members", 500, "error", err.Error()))
+		return
+	}
+
+	c.JSON(200, utils.BuildResponse("Members assigned successfully", 200, "success", nil))
+}
+
+func (h *timesheetHandler) RemoveMember(c *gin.Context) {
+	projectID, _ := strconv.Atoi(c.Param("id"))
+	userID, _ := strconv.Atoi(c.Param("user_id"))
+	tenantID := c.MustGet("tenant_id").(uint)
+
+	if err := h.service.RemoveMember(c.Request.Context(), uint(projectID), tenantID, uint(userID)); err != nil {
+		c.JSON(500, utils.BuildErrorResponse("Failed to remove member", 500, "error", err.Error()))
+		return
+	}
+
+	c.JSON(200, utils.BuildResponse("Member removed successfully", 200, "success", nil))
+}
+
+func (h *timesheetHandler) GetMembers(c *gin.Context) {
+	projectID, _ := strconv.Atoi(c.Param("id"))
+	tenantID := c.MustGet("tenant_id").(uint)
+
+	res, err := h.service.GetMembers(c.Request.Context(), uint(projectID), tenantID)
+	if err != nil {
+		c.JSON(500, utils.BuildErrorResponse("Failed to fetch members", 500, "error", err.Error()))
+		return
+	}
+
+	c.JSON(200, utils.BuildResponse("Members fetched successfully", 200, "success", res))
 }
 
 // Tasks

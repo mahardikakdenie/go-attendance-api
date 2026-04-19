@@ -331,7 +331,7 @@ func SetupRoutes(r *gin.Engine, db *gorm.DB, rdb *redis.Client) service.Calendar
 			perf.PUT("/appraisals/:id/self-review", performanceHandler.SubmitSelfReview)
 		}
 
-		// Timesheet Module
+		// Timesheet & Project Module
 		timesheet := protected.Group("/timesheet")
 		{
 			// Employee endpoints
@@ -339,16 +339,40 @@ func SetupRoutes(r *gin.Engine, db *gorm.DB, rdb *redis.Client) service.Calendar
 			timesheet.GET("/me/report", timesheetHandler.GetMyReport)
 			timesheet.POST("/tasks", timesheetHandler.CreateTask)
 			timesheet.GET("/tasks", timesheetHandler.GetTasks)
+			
+			// Project endpoints (Accessible by all for selection)
 			timesheet.GET("/projects", timesheetHandler.GetProjects)
+			timesheet.GET("/projects/:id/members", timesheetHandler.GetMembers)
 
 			// HR/Admin endpoints
-			hrTimesheet := timesheet.Group("/admin")
-			hrTimesheet.Use(middleware.RequireRole("superadmin", "admin", "hr"))
+			adminTimesheet := timesheet.Group("/admin")
+			adminTimesheet.Use(middleware.RequireRole("superadmin", "admin", "hr"))
 			{
-				hrTimesheet.POST("/projects", timesheetHandler.CreateProject)
-				hrTimesheet.PUT("/projects/:id", timesheetHandler.UpdateProject)
-				hrTimesheet.GET("/report/employee/:user_id", timesheetHandler.GetEmployeeReport)
+				// Project Management
+				adminTimesheet.POST("/projects", timesheetHandler.CreateProject)
+				adminTimesheet.PUT("/projects/:id", timesheetHandler.UpdateProject)
+				adminTimesheet.DELETE("/projects/:id", timesheetHandler.DeleteProject)
+				
+				// Member Management
+				adminTimesheet.POST("/projects/:id/members", timesheetHandler.AssignMembers)
+				adminTimesheet.DELETE("/projects/:id/members/:user_id", timesheetHandler.RemoveMember)
+
+				// Report Management
+				adminTimesheet.GET("/report/employee/:user_id", timesheetHandler.GetEmployeeReport)
 			}
+		}
+
+		// Backward Compatibility / Explicit Project Endpoints as per Issue
+		projects := protected.Group("/projects")
+		{
+			projects.GET("", middleware.HasPermission("user.view"), timesheetHandler.GetProjects)
+			projects.POST("", middleware.HasPermission("project.manage"), timesheetHandler.CreateProject)
+			projects.PUT("/:id", middleware.HasPermission("project.manage"), timesheetHandler.UpdateProject)
+			projects.DELETE("/:id", middleware.HasPermission("project.manage"), timesheetHandler.DeleteProject)
+			
+			projects.POST("/:id/members", middleware.HasPermission("project.manage"), timesheetHandler.AssignMembers)
+			projects.DELETE("/:id/members/:user_id", middleware.HasPermission("project.manage"), timesheetHandler.RemoveMember)
+			projects.GET("/:id/members", middleware.HasPermission("user.view"), timesheetHandler.GetMembers)
 		}
 
 		// Superadmin specialized routes

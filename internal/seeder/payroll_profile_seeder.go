@@ -34,6 +34,9 @@ func SeedUserPayrollProfiles(db *gorm.DB) {
 			} else if user.Email == "hr@friendship.com" {
 				profile.PtkpStatus = model.PtkpK0
 				profile.FixedAllowance = 2000000
+			} else if user.Email == "finance@friendship.com" {
+				profile.PtkpStatus = model.PtkpK0
+				profile.FixedAllowance = 1500000
 			}
 
 			db.Create(&profile)

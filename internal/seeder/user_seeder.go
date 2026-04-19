@@ -36,10 +36,11 @@ func SeedUsers(db *gorm.DB) {
 	}
 
 	// Roles
-	var superAdminRole, adminRole, hrRole, employeeRole model.Role
+	var superAdminRole, adminRole, hrRole, financeRole, employeeRole model.Role
 	db.Where("name = ?", "superadmin").First(&superAdminRole)
 	db.Where("name = ?", "admin").First(&adminRole)
 	db.Where("name = ?", "hr").First(&hrRole)
+	db.Where("name = ?", "finance").First(&financeRole)
 	db.Where("name = ?", "employee").First(&employeeRole)
 
 	// Positions
@@ -97,6 +98,24 @@ func SeedUsers(db *gorm.DB) {
 		BaseSalary:  15000000,
 	}
 	db.Create(&hr)
+
+	// 3.5 Finance Manager (Reports to Admin)
+	financeUser := model.User{
+		Name:        "Finance Manager",
+		Email:       "finance@friendship.com",
+		Password:    string(hashedPassword),
+		TenantID:    friendshipTenant.ID,
+		RoleID:      financeRole.ID,
+		PositionID:  &managerPos.ID,
+		ManagerID:   &admin.ID,
+		EmployeeID:  "FIN-001",
+		Department:  "Finance",
+		Address:     "Friendship Office",
+		PhoneNumber: "0844444444",
+		MediaUrl:    mediaUrl,
+		BaseSalary:  14000000,
+	}
+	db.Create(&financeUser)
 
 	// 4. Employee User (Reports to HR)
 	emp := model.User{

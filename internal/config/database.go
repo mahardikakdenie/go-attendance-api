@@ -124,6 +124,7 @@ func InitDB() *gorm.DB {
 		seeder.SeedUsers(db)
 		seeder.SeedTenantSetting(db)
 		seeder.SeedRecentActivities(db)
+		seeder.SeedProjects(db)
 		seeder.SeedLeaves(db)
 		seeder.SeedAttendanceHistory(db)
 		seeder.SeedOvertimes(db)

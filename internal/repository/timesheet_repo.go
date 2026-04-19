@@ -10,9 +10,15 @@ import (
 type TimesheetRepository interface {
 	// Project
 	CreateProject(ctx context.Context, project *model.Project) error
-	FindProjectsByTenant(ctx context.Context, tenantID uint) ([]model.Project, error)
+	FindProjects(ctx context.Context, tenantID uint, status string, search string) ([]model.Project, error)
 	FindProjectByID(ctx context.Context, id uint, tenantID uint) (*model.Project, error)
 	UpdateProject(ctx context.Context, project *model.Project) error
+	DeleteProject(ctx context.Context, id uint, tenantID uint) error
+
+	// Project Members
+	AddProjectMember(ctx context.Context, member *model.ProjectMember) error
+	RemoveProjectMember(ctx context.Context, projectID uint, userID uint) error
+	FindProjectMembers(ctx context.Context, projectID uint) ([]model.ProjectMember, error)
 
 	// Task
 	CreateTask(ctx context.Context, task *model.Task) error
@@ -38,9 +44,19 @@ func (r *timesheetRepository) CreateProject(ctx context.Context, project *model.
 	return r.db.WithContext(ctx).Create(project).Error
 }
 
-func (r *timesheetRepository) FindProjectsByTenant(ctx context.Context, tenantID uint) ([]model.Project, error) {
+func (r *timesheetRepository) FindProjects(ctx context.Context, tenantID uint, status string, search string) ([]model.Project, error) {
 	var projects []model.Project
-	err := r.db.WithContext(ctx).Where("tenant_id = ?", tenantID).Order("created_at DESC").Find(&projects).Error
+	query := r.db.WithContext(ctx).Where("tenant_id = ?", tenantID)
+
+	if status != "" {
+		query = query.Where("status = ?", status)
+	}
+
+	if search != "" {
+		query = query.Where("(name ILIKE ? OR client_name ILIKE ?)", "%"+search+"%", "%"+search+"%")
+	}
+
+	err := query.Order("created_at DESC").Find(&projects).Error
 	return projects, err
 }
 
@@ -55,6 +71,24 @@ func (r *timesheetRepository) FindProjectByID(ctx context.Context, id uint, tena
 
 func (r *timesheetRepository) UpdateProject(ctx context.Context, project *model.Project) error {
 	return r.db.WithContext(ctx).Save(project).Error
+}
+
+func (r *timesheetRepository) DeleteProject(ctx context.Context, id uint, tenantID uint) error {
+	return r.db.WithContext(ctx).Where("id = ? AND tenant_id = ?", id, tenantID).Delete(&model.Project{}).Error
+}
+
+func (r *timesheetRepository) AddProjectMember(ctx context.Context, member *model.ProjectMember) error {
+	return r.db.WithContext(ctx).Save(member).Error
+}
+
+func (r *timesheetRepository) RemoveProjectMember(ctx context.Context, projectID uint, userID uint) error {
+	return r.db.WithContext(ctx).Where("project_id = ? AND user_id = ?", projectID, userID).Delete(&model.ProjectMember{}).Error
+}
+
+func (r *timesheetRepository) FindProjectMembers(ctx context.Context, projectID uint) ([]model.ProjectMember, error) {
+	var members []model.ProjectMember
+	err := r.db.WithContext(ctx).Preload("User").Where("project_id = ?", projectID).Find(&members).Error
+	return members, err
 }
 
 func (r *timesheetRepository) CreateTask(ctx context.Context, task *model.Task) error {
