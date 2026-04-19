@@ -1,7 +1,6 @@
 package handler
 
 import (
-	modelDto "go-attendance-api/internal/dto"
 	"go-attendance-api/internal/model"
 	"go-attendance-api/internal/service"
 	"go-attendance-api/internal/utils"

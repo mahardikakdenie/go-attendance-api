@@ -10,6 +10,9 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+var _ = model.RecentActivityResponse{}
+var _ = modelDto.QuickInfoResponse{}
+
 type ActivityHandler interface {
 	GetRecentActivities(c *gin.Context)
 	GetQuickInfo(c *gin.Context)

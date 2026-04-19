@@ -3,7 +3,7 @@ package handler
 import (
 	"strconv"
 
-	dto "go-attendance-api/internal/dto"
+	modelDto "go-attendance-api/internal/dto"
 	"go-attendance-api/internal/service"
 	"go-attendance-api/internal/utils"
 
@@ -34,7 +34,7 @@ func NewSubscriptionHandler(service service.SubscriptionService) SubscriptionHan
 // @Param limit query int false "Limit per page"
 // @Param status query string false "Filter by status"
 // @Param search query string false "Search by tenant name/code"
-// @Success 200 {object} utils.APIResponse{data=dto.SubscriptionsDataResponse}
+// @Success 200 {object} utils.APIResponse{data=modelDto.SubscriptionsDataResponse}
 // @Router /api/v1/superadmin/subscriptions [get]
 func (h *subscriptionHandler) GetSubscriptions(c *gin.Context) {
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
@@ -83,7 +83,7 @@ func (h *subscriptionHandler) SuspendTenant(ctx *gin.Context) {
 		return
 	}
 
-	var req dto.SuspendRequest
+	var req modelDto.SuspendRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
 		ctx.JSON(400, utils.BuildErrorResponse("Invalid request", 400, "error", err.Error()))
 		return
@@ -113,7 +113,7 @@ func (h *subscriptionHandler) GetMySubscription(ctx *gin.Context) {
 func (h *subscriptionHandler) UpgradeSubscription(ctx *gin.Context) {
 	tenantID := ctx.MustGet("tenant_id").(uint)
 
-	var req dto.UpgradeRequest
+	var req modelDto.UpgradeRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
 		ctx.JSON(400, utils.BuildErrorResponse("Invalid request", 400, "error", err.Error()))
 		return

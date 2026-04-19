@@ -12,6 +12,8 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+var _ = model.Media{}
+
 type MediaHandler struct {
 	service service.MediaService
 }
