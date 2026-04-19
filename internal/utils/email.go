@@ -2,6 +2,7 @@ package utils
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -16,7 +17,7 @@ type ResendPayload struct {
 	Html    string   `json:"html"`
 }
 
-func SendEmail(to []string, subject, html string) error {
+func SendEmail(ctx context.Context, to []string, subject, html string) error {
 	apiKey := os.Getenv("RESEND_API_KEY")
 	fromEmail := os.Getenv("RESEND_FROM_EMAIL")
 
@@ -40,7 +41,7 @@ func SendEmail(to []string, subject, html string) error {
 		return err
 	}
 
-	req, err := http.NewRequest("POST", "https://api.resend.com/emails", bytes.NewBuffer(jsonData))
+	req, err := http.NewRequestWithContext(ctx, "POST", "https://api.resend.com/emails", bytes.NewBuffer(jsonData))
 	if err != nil {
 		return err
 	}

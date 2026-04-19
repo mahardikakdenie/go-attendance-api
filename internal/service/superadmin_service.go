@@ -4,10 +4,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"go-attendance-api/internal/dto"
+	modelDto "go-attendance-api/internal/dto"
 	"go-attendance-api/internal/model"
 	"go-attendance-api/internal/repository"
 	"go-attendance-api/internal/utils"
+	"log"
+	"sort"
+	"time"
 
 	"golang.org/x/crypto/bcrypt"
 )
@@ -15,8 +18,8 @@ import (
 type SuperadminService interface {
 	GetOwnersWithStats(ctx context.Context, limit, offset int) ([]modelDto.OwnerWithStatsResponse, int64, error)
 	GetPlatformAccounts(ctx context.Context, search string, limit, offset int) ([]model.UserResponse, int64, error)
-	CreatePlatformAccount(ctx context.Context, req model.CreateUserRequest) (model.UserResponse, error)
-	UpdatePlatformAccount(ctx context.Context, id uint, req model.CreateUserRequest) (model.UserResponse, error)
+	CreatePlatformAccount(ctx context.Context, req model.CreateUserRequest, performerID uint) (model.UserResponse, error)
+	UpdatePlatformAccount(ctx context.Context, id uint, req model.CreateUserRequest, performerID uint) (model.UserResponse, error)
 	TogglePlatformAccountStatus(ctx context.Context, id uint, isActive bool) error
 
 	// System Role Management
@@ -51,6 +54,30 @@ func NewSuperadminService(
 	}
 }
 
+func (s *superadminService) toUserResponse(user model.User) model.UserResponse {
+	resp := model.UserResponse{
+		ID:        user.ID,
+		Name:      user.Name,
+		Email:     user.Email,
+		TenantID:  user.TenantID,
+		IsActive:  user.IsActive,
+		CreatedAt: user.CreatedAt,
+		BaseRole:  user.Role.BaseRole,
+	}
+	if user.Role.ID != 0 {
+		resp.Role = &model.RoleResponse{
+			ID:       user.Role.ID,
+			Name:     user.Role.Name,
+			BaseRole: user.Role.BaseRole,
+		}
+	}
+	return resp
+}
+
+func (s *superadminService) isSystemRole(baseRole model.BaseRole) bool {
+	return baseRole == model.BaseRoleSuperAdmin || baseRole == model.BaseRoleSupport || baseRole == model.BaseRoleEngineer
+}
+
 func (s *superadminService) GetOwnersWithStats(ctx context.Context, limit, offset int) ([]modelDto.OwnerWithStatsResponse, int64, error) {
 	if limit <= 0 {
 		limit = 10
@@ -68,30 +95,19 @@ func (s *superadminService) GetPlatformAccounts(ctx context.Context, search stri
 		return nil, 0, err
 	}
 
-	var responses []model.UserResponse
+	// ISSUE-002: Pre-allocate with capacity and ensure it's not nil
+	responses := make([]model.UserResponse, 0, len(users))
 	for _, user := range users {
-		responses = append(responses, model.UserResponse{
-			ID:        user.ID,
-			Name:      user.Name,
-			Email:     user.Email,
-			TenantID:  user.TenantID,
-			IsActive:  user.IsActive,
-			CreatedAt: user.CreatedAt,
-			Role: &model.RoleResponse{
-				ID:       user.Role.ID,
-				Name:     user.Role.Name,
-				BaseRole: user.Role.BaseRole,
-			},
-			BaseRole: user.Role.BaseRole,
-		})
+		responses = append(responses, s.toUserResponse(user))
 	}
 
 	return responses, total, nil
 }
 
-func (s *superadminService) CreatePlatformAccount(ctx context.Context, req model.CreateUserRequest) (model.UserResponse, error) {
+func (s *superadminService) CreatePlatformAccount(ctx context.Context, req model.CreateUserRequest, performerID uint) (model.UserResponse, error) {
 	// Platform accounts are always tenant 1 (HQ)
-	req.TenantID = 1
+	var HQTenantID = 1
+	req.TenantID = uint(HQTenantID)
 
 	// Validate Role is a system role (SUPERADMIN, SUPPORT, ENGINEER)
 	role, err := s.roleRepo.FindByID(ctx, req.RoleID)
@@ -99,7 +115,7 @@ func (s *superadminService) CreatePlatformAccount(ctx context.Context, req model
 		return model.UserResponse{}, errors.New("invalid role")
 	}
 
-	if role.BaseRole != model.BaseRoleSuperAdmin && role.BaseRole != model.BaseRoleSupport && role.BaseRole != model.BaseRoleEngineer {
+	if !s.isSystemRole(role.BaseRole) {
 		return model.UserResponse{}, errors.New("role must be a system role (SUPERADMIN, SUPPORT, or ENGINEER)")
 	}
 
@@ -108,7 +124,15 @@ func (s *superadminService) CreatePlatformAccount(ctx context.Context, req model
 		password = utils.GenerateRandomString(12)
 	}
 
-	hashedPassword, _ := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	// ISSUE-001: Validate length and handle error
+	if len([]byte(password)) > 72 {
+		return model.UserResponse{}, errors.New("password exceeds maximum length of 72 bytes")
+	}
+
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	if err != nil {
+		return model.UserResponse{}, fmt.Errorf("failed to hash password: %w", err)
+	}
 
 	user := &model.User{
 		Name:               req.Name,
@@ -125,33 +149,31 @@ func (s *superadminService) CreatePlatformAccount(ctx context.Context, req model
 		return model.UserResponse{}, err
 	}
 
-	// Audit Log
+	// Audit Log (ISSUE-008: use performerID)
 	_ = s.activityRepo.Create(ctx, &model.RecentActivity{
-		UserID: 1, // System/Root Admin ID placeholder
+		UserID: performerID,
 		Title:  "Platform Administration",
 		Action: fmt.Sprintf("Created platform account: %s (%s)", user.Name, role.BaseRole),
 		Status: "success",
 	})
 
-	// Send Email
+	// Send Email (ISSUE-007: add timeout and logging)
 	emailHtml := utils.GetWelcomeEmailTemplate(user.Name, user.Email, password, "Attendance System HQ", "")
 	subject := "Platform Administrator Account Created"
 	go func() {
-		_ = utils.SendEmail([]string{user.Email}, subject, emailHtml)
+		emailCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
+		if err := utils.SendEmail(emailCtx, []string{user.Email}, subject, emailHtml); err != nil {
+			log.Printf("warn: failed to send welcome email to %s: %v", user.Email, err)
+		}
 	}()
 
-	return model.UserResponse{
-		ID:        user.ID,
-		Name:      user.Name,
-		Email:     user.Email,
-		TenantID:  user.TenantID,
-		IsActive:  user.IsActive,
-		CreatedAt: user.CreatedAt,
-		BaseRole:  role.BaseRole,
-	}, nil
+	// Ensure role is loaded for the response
+	user.Role = role
+	return s.toUserResponse(*user), nil
 }
 
-func (s *superadminService) UpdatePlatformAccount(ctx context.Context, id uint, req model.CreateUserRequest) (model.UserResponse, error) {
+func (s *superadminService) UpdatePlatformAccount(ctx context.Context, id uint, req model.CreateUserRequest, performerID uint) (model.UserResponse, error) {
 	user, err := s.userRepo.FindByID(ctx, id, []string{"role"})
 	if err != nil {
 		return model.UserResponse{}, errors.New("account not found")
@@ -168,22 +190,30 @@ func (s *superadminService) UpdatePlatformAccount(ctx context.Context, id uint, 
 
 	if req.RoleID != 0 {
 		role, err := s.roleRepo.FindByID(ctx, req.RoleID)
-		if err == nil && role != nil {
-			if role.BaseRole == model.BaseRoleSuperAdmin || role.BaseRole == model.BaseRoleSupport || role.BaseRole == model.BaseRoleEngineer {
-				user.RoleID = req.RoleID
-			}
+		if err != nil || role == nil {
+			return model.UserResponse{}, errors.New("invalid role")
 		}
+		// ISSUE-003: explicitly check if system role
+		if !s.isSystemRole(role.BaseRole) {
+			return model.UserResponse{}, errors.New("role must be a system role")
+		}
+		user.RoleID = req.RoleID
+		user.Role = role // update loaded role for response
 	}
 
 	if err := s.userRepo.Update(ctx, user); err != nil {
 		return model.UserResponse{}, err
 	}
 
-	return model.UserResponse{
-		ID:    user.ID,
-		Name:  user.Name,
-		Email: user.Email,
-	}, nil
+	// Audit Log
+	_ = s.activityRepo.Create(ctx, &model.RecentActivity{
+		UserID: performerID,
+		Title:  "Platform Administration",
+		Action: fmt.Sprintf("Updated platform account: %s", user.Name),
+		Status: "success",
+	})
+
+	return s.toUserResponse(*user), nil
 }
 
 func (s *superadminService) TogglePlatformAccountStatus(ctx context.Context, id uint, isActive bool) error {
@@ -241,7 +271,6 @@ func (s *superadminService) ListAllPermissions(ctx context.Context) ([]modelDto.
 
 	// Convert map to slice of PermissionModule
 	var result []modelDto.PermissionModule
-	// We can iterate over a fixed order if we want consistency, but for now simple iteration
 	for moduleKey, perms := range modulesMap {
 		name := moduleNames[moduleKey]
 		if name == "" {
@@ -254,6 +283,11 @@ func (s *superadminService) ListAllPermissions(ctx context.Context) ([]modelDto.
 			Permissions: perms,
 		})
 	}
+
+	// ISSUE-005: Sort for deterministic response
+	sort.Slice(result, func(i, j int) bool {
+		return result[i].Key < result[j].Key
+	})
 
 	return result, nil
 }
@@ -271,14 +305,9 @@ func (s *superadminService) CreateSystemRole(ctx context.Context, req modelDto.C
 		role.BaseRole = model.BaseRoleEmployee
 	}
 
-	if err := s.roleRepo.Create(ctx, role); err != nil {
+	// ISSUE-006: Use transactional method
+	if err := s.roleRepo.CreateWithPermissions(ctx, role, req.PermissionIDs); err != nil {
 		return model.Role{}, err
-	}
-
-	if len(req.PermissionIDs) > 0 {
-		if err := s.roleRepo.UpdatePermissions(ctx, role.ID, req.PermissionIDs); err != nil {
-			return model.Role{}, err
-		}
 	}
 
 	// Audit Log
@@ -290,6 +319,10 @@ func (s *superadminService) CreateSystemRole(ctx context.Context, req modelDto.C
 	})
 
 	// Fetch with permissions
+	updatedRole, _ := s.roleRepo.FindByID(ctx, role.ID)
+	if updatedRole != nil {
+		return *updatedRole, nil
+	}
 	return *role, nil
 }
 
@@ -313,11 +346,8 @@ func (s *superadminService) UpdateSystemRole(ctx context.Context, id uint, req m
 		role.BaseRole = model.BaseRole(req.BaseRole)
 	}
 
-	if err := s.roleRepo.Update(ctx, role); err != nil {
-		return model.Role{}, err
-	}
-
-	if err := s.roleRepo.UpdatePermissions(ctx, role.ID, req.PermissionIDs); err != nil {
+	// ISSUE-006: Use transactional method
+	if err := s.roleRepo.UpdateWithPermissions(ctx, role, req.PermissionIDs); err != nil {
 		return model.Role{}, err
 	}
 
@@ -329,6 +359,11 @@ func (s *superadminService) UpdateSystemRole(ctx context.Context, id uint, req m
 		Status: "success",
 	})
 
+	// Fetch with permissions
+	updatedRole, _ := s.roleRepo.FindByID(ctx, role.ID)
+	if updatedRole != nil {
+		return *updatedRole, nil
+	}
 	return *role, nil
 }
 

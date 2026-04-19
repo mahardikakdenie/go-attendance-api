@@ -50,7 +50,7 @@ func SetupRoutes(r *gin.Engine, db *gorm.DB, rdb *redis.Client) service.Calendar
 	ucrService := service.NewUserChangeRequestService(ucrRepo, userRepo)
 	payrollRepo := repository.NewPayrollRepository(db)
 	payrollService := service.NewPayrollService(payrollRepo, userRepo, tenantRepo, tenantSettingRepo, attendanceRepo, leaveRepo, userPayrollProfileRepo)
-	dashboardService := service.NewDashboardService(tenantRepo, userRepo, attendanceRepo, leaveRepo, overtimeRepo, rdb)
+	dashboardService := service.NewDashboardService(tenantRepo, userRepo, attendanceRepo, leaveRepo, overtimeRepo, timesheetRepo, rdb)
 	tenantRoleService := service.NewTenantRoleService(roleRepo, permissionRepo, hierarchyRepo)
 	supportRepo := repository.NewSupportRepository(db)
 	supportService := service.NewSupportService(supportRepo, tenantRepo, userRepo, roleRepo, subscriptionRepo, tenantSettingRepo, userPayrollProfileRepo)
@@ -218,6 +218,7 @@ func SetupRoutes(r *gin.Engine, db *gorm.DB, rdb *redis.Client) service.Calendar
 			dashboards.GET("/admin", middleware.RequireBaseRole(model.BaseRoleSuperAdmin), dashboardHandler.GetAdminDashboard)
 			dashboards.GET("/hr", middleware.RequireBaseRole(model.BaseRoleSuperAdmin, model.BaseRoleAdmin, model.BaseRoleHR), dashboardHandler.GetHrDashboard)
 			dashboards.GET("/hr/daily-pulse", middleware.RequireBaseRole(model.BaseRoleSuperAdmin, model.BaseRoleAdmin, model.BaseRoleHR), dashboardHandler.GetDailyPulse)
+			dashboards.GET("/hr/employee-dna/:user_id", middleware.RequireBaseRole(model.BaseRoleSuperAdmin, model.BaseRoleAdmin, model.BaseRoleHR), dashboardHandler.GetEmployeeDNA)
 			dashboards.GET("/finance", middleware.RequireBaseRole(model.BaseRoleSuperAdmin, model.BaseRoleAdmin, model.BaseRoleFinance), dashboardHandler.GetFinanceDashboard)
 			dashboards.GET("/heatmap", middleware.RequireBaseRole(model.BaseRoleSuperAdmin, model.BaseRoleAdmin, model.BaseRoleHR), dashboardHandler.GetHeatmap)
 		}

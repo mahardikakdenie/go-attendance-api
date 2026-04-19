@@ -79,13 +79,14 @@ func (h *superadminHandler) GetPlatformAccounts(c *gin.Context) {
 
 // @Summary Create Platform Account
 func (h *superadminHandler) CreatePlatformAccount(c *gin.Context) {
+	userID := c.GetUint("user_id")
 	var req model.CreateUserRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(400, utils.BuildErrorResponse("Invalid request", 400, "error", err.Error()))
 		return
 	}
 
-	res, err := h.service.CreatePlatformAccount(c.Request.Context(), req)
+	res, err := h.service.CreatePlatformAccount(c.Request.Context(), req, userID)
 	if err != nil {
 		c.JSON(500, utils.BuildErrorResponse("Failed to create account", 500, "error", err.Error()))
 		return
@@ -96,6 +97,7 @@ func (h *superadminHandler) CreatePlatformAccount(c *gin.Context) {
 
 // @Summary Update Platform Account
 func (h *superadminHandler) UpdatePlatformAccount(c *gin.Context) {
+	userID := c.GetUint("user_id")
 	id, _ := strconv.Atoi(c.Param("id"))
 	var req model.CreateUserRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -103,7 +105,7 @@ func (h *superadminHandler) UpdatePlatformAccount(c *gin.Context) {
 		return
 	}
 
-	res, err := h.service.UpdatePlatformAccount(c.Request.Context(), uint(id), req)
+	res, err := h.service.UpdatePlatformAccount(c.Request.Context(), uint(id), req, userID)
 	if err != nil {
 		c.JSON(500, utils.BuildErrorResponse("Failed to update account", 500, "error", err.Error()))
 		return

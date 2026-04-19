@@ -451,7 +451,9 @@ func (s *userService) CreateUser(ctx context.Context, adminID uint, req model.Cr
 		subject := fmt.Sprintf("Welcome to %s - Your Account Details", companyName)
 
 		go func() {
-			_ = utils.SendEmail([]string{user.Email}, subject, emailHtml)
+			emailCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+			defer cancel()
+			_ = utils.SendEmail(emailCtx, []string{user.Email}, subject, emailHtml)
 		}()
 
 		return nil

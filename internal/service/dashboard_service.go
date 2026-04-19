@@ -23,6 +23,7 @@ type DashboardService interface {
 	GetFinanceDashboard(ctx context.Context, tenantID uint, currentUserID uint) (modelDto.FinanceDashboardResponse, error)
 	GetHeatmapData(ctx context.Context, tenantID uint, query modelDto.HeatmapQuery) ([]modelDto.HeatmapItem, error)
 	GetDailyPulse(ctx context.Context, tenantID uint) (modelDto.DailyPulseResponse, error)
+	GetEmployeeDNA(ctx context.Context, tenantID uint, userID uint) (modelDto.EmployeeDnaResponse, error)
 }
 
 type dashboardService struct {
@@ -31,6 +32,7 @@ type dashboardService struct {
 	attendanceRepo repository.AttendanceRepository
 	leaveRepo      repository.LeaveRepository
 	overtimeRepo   repository.OvertimeRepository
+	timesheetRepo  repository.TimesheetRepository
 	redis          *redis.Client
 }
 
@@ -40,6 +42,7 @@ func NewDashboardService(
 	attendanceRepo repository.AttendanceRepository,
 	leaveRepo repository.LeaveRepository,
 	overtimeRepo repository.OvertimeRepository,
+	timesheetRepo repository.TimesheetRepository,
 	redis *redis.Client,
 ) DashboardService {
 	return &dashboardService{
@@ -48,6 +51,7 @@ func NewDashboardService(
 		attendanceRepo: attendanceRepo,
 		leaveRepo:      leaveRepo,
 		overtimeRepo:   overtimeRepo,
+		timesheetRepo:  timesheetRepo,
 		redis:          redis,
 	}
 }
@@ -410,27 +414,49 @@ func (s *dashboardService) GetHrDashboard(ctx context.Context, tenantID uint, cu
 
 	// 5. Build Top/Bottom Lists
 	atRiskUsers := make([]modelDto.MappedUser, 0)
+	topPerformersCandidates := make([]modelDto.EmployeePerformanceItem, 0)
+	needAttentionCandidates := make([]modelDto.EmployeePerformanceItem, 0)
+
 	for _, p := range performanceMatrix {
+		// Populate atRiskUsers (Stats section)
 		if p.Score < 75 && len(atRiskUsers) < 10 {
 			atRiskUsers = append(atRiskUsers, modelDto.MappedUser{
 				ID: p.ID, Name: p.Name, Avatar: p.Avatar, Department: p.Department, Score: p.Score,
 			})
 		}
+
+		// Categorize for Top Performers vs Need Attention
+		if p.Score >= 80 {
+			topPerformersCandidates = append(topPerformersCandidates, p)
+		} else {
+			needAttentionCandidates = append(needAttentionCandidates, p)
+		}
 	}
 
-	topPerformers := make([]modelDto.EmployeePerformanceItem, len(performanceMatrix))
-	copy(topPerformers, performanceMatrix)
-	sort.Slice(topPerformers, func(i, j int) bool { return topPerformers[i].Score > topPerformers[j].Score })
-	if len(topPerformers) > 5 {
-		topPerformers = topPerformers[:5]
+	// Sort Top Performers: Higher Score first, then more OvertimeHours
+	sort.Slice(topPerformersCandidates, func(i, j int) bool {
+		if topPerformersCandidates[i].Score != topPerformersCandidates[j].Score {
+			return topPerformersCandidates[i].Score > topPerformersCandidates[j].Score
+		}
+		return topPerformersCandidates[i].OvertimeHours > topPerformersCandidates[j].OvertimeHours
+	})
+	if len(topPerformersCandidates) > 5 {
+		topPerformersCandidates = topPerformersCandidates[:5]
 	}
 
-	needAttention := make([]modelDto.EmployeePerformanceItem, len(performanceMatrix))
-	copy(needAttention, performanceMatrix)
-	sort.Slice(needAttention, func(i, j int) bool { return needAttention[i].Score < needAttention[j].Score })
-	if len(needAttention) > 5 {
-		needAttention = needAttention[:5]
+	// Sort Need Attention: Lower Score first, then more TotalLate
+	sort.Slice(needAttentionCandidates, func(i, j int) bool {
+		if needAttentionCandidates[i].Score != needAttentionCandidates[j].Score {
+			return needAttentionCandidates[i].Score < needAttentionCandidates[j].Score
+		}
+		return needAttentionCandidates[i].TotalLate > needAttentionCandidates[j].TotalLate
+	})
+	if len(needAttentionCandidates) > 5 {
+		needAttentionCandidates = needAttentionCandidates[:5]
 	}
+
+	topPerformers := topPerformersCandidates
+	needAttention := needAttentionCandidates
 
 	presenceRate := (float64(totalPresenceCount) / float64(totalUsersCount*22)) * 100
 	if presenceRate > 100 {
@@ -821,4 +847,271 @@ func (s *dashboardService) GetDailyPulse(ctx context.Context, tenantID uint) (mo
 		HotlineRequests: hotline,
 		TopPerformers:   topPerformers,
 	}, nil
+}
+
+func (s *dashboardService) GetEmployeeDNA(ctx context.Context, tenantID uint, userID uint) (modelDto.EmployeeDnaResponse, error) {
+	now := time.Now().In(WIB)
+	last30Days := now.AddDate(0, 0, -30)
+
+	// 1. Fetch User Data
+	user, err := s.userRepo.FindByID(ctx, userID, []string{"role", "position"})
+	if err != nil || user == nil || user.TenantID != tenantID {
+		return modelDto.EmployeeDnaResponse{}, fmt.Errorf("employee not found")
+	}
+
+	// 2. Fetch Aggregated Data in Parallel
+	var (
+		attendances []model.Attendance
+		overtimes   []model.Overtime
+		leaves      []model.Leave
+		timesheets  []model.TimesheetEntry
+		wg          sync.WaitGroup
+	)
+
+	wg.Add(4)
+	go func() {
+		defer wg.Done()
+		a, _, _ := s.attendanceRepo.FindAll(ctx, model.AttendanceFilter{UserID: userID, TenantID: tenantID, DateFrom: &last30Days, DateTo: &now}, nil, 0, 0)
+		attendances = a
+	}()
+	go func() {
+		defer wg.Done()
+		o, _, _ := s.overtimeRepo.FindAll(ctx, model.OvertimeFilter{UserID: userID, TenantID: tenantID, DateFrom: &last30Days, DateTo: &now, Status: model.OvertimeStatusApproved})
+		overtimes = o
+	}()
+	go func() {
+		defer wg.Done()
+		l, _, _ := s.leaveRepo.FindAll(ctx, model.LeaveFilter{UserID: userID, TenantID: tenantID}, 0, 0)
+		leaves = l
+	}()
+	go func() {
+		defer wg.Done()
+		// Fetch timesheets for current month
+		ts, _ := s.timesheetRepo.FindEntriesByUserPeriod(ctx, userID, int(now.Month()), now.Year())
+		timesheets = ts
+	}()
+	wg.Wait()
+
+	// 3. Calculate Radar Metrics
+	// A. Punctuality (last 30 days)
+	onTimeCount := 0
+	totalAttendance := len(attendances)
+	for _, a := range attendances {
+		if a.Status != model.StatusLate {
+			onTimeCount++
+		}
+	}
+	punctualityScore := 0.0
+	if totalAttendance > 0 {
+		punctualityScore = (float64(onTimeCount) / float64(totalAttendance)) * 100
+	}
+
+	// B. Overtime Efficiency
+	// Target: approved OT vs total work hours. Let's say 20% of work hours as "efficient" cap.
+	totalOTHours := 0.0
+	for _, o := range overtimes {
+		start, _ := time.Parse("15:04", o.StartTime)
+		end, _ := time.Parse("15:04", o.EndTime)
+		diff := end.Sub(start).Hours()
+		if diff < 0 {
+			diff += 24
+		}
+		totalOTHours += diff
+	}
+	// Simplified: Score 100 if OT < 20 hours/month, decrease after that.
+	overtimeEfficiency := 100.0
+	if totalOTHours > 20 {
+		overtimeEfficiency = math.Max(0, 100-(totalOTHours-20)*5)
+	}
+
+	// C. Leave Regularity
+	// % of leaves that are approved vs total. Or based on planned days in advance.
+	// For now, based on % approved.
+	approvedLeave := 0
+	totalLeave := len(leaves)
+	for _, l := range leaves {
+		if l.Status == model.LeaveStatusApproved {
+			approvedLeave++
+		}
+	}
+	leaveRegularity := 100.0
+	if totalLeave > 0 {
+		leaveRegularity = (float64(approvedLeave) / float64(totalLeave)) * 100
+	}
+
+	// D. Productivity Index
+	// Ratio of timesheet hours vs attendance hours.
+	totalWorkHours := 0.0
+	for _, a := range attendances {
+		if a.ClockOutTime != nil {
+			totalWorkHours += a.ClockOutTime.Sub(a.ClockInTime).Hours()
+		}
+	}
+	totalTimesheetHours := 0.0
+	for _, ts := range timesheets {
+		totalTimesheetHours += ts.DurationHours
+	}
+	productivityIndex := 0.0
+	if totalWorkHours > 0 {
+		productivityIndex = math.Min(100, (totalTimesheetHours/totalWorkHours)*100)
+	} else if totalTimesheetHours > 0 {
+		productivityIndex = 100
+	}
+
+	// E. Compliance Rate
+	// selfie present, no missing clock-out
+	complianceCount := 0
+	for _, a := range attendances {
+		if a.ClockInMediaUrl != "" && a.ClockOutTime != nil {
+			complianceCount++
+		}
+	}
+	complianceRate := 100.0
+	if totalAttendance > 0 {
+		complianceRate = (float64(complianceCount) / float64(totalAttendance)) * 100
+	}
+
+	// 4. Punctuality DNA
+	// Arrival Consistency (Standard Deviation of Clock-In Time)
+	var arrivalConsistency float64 = 100.0
+	if totalAttendance > 1 {
+		var sum, sumSq float64
+		for _, a := range attendances {
+			minutes := float64(a.ClockInTime.Hour()*60 + a.ClockInTime.Minute())
+			sum += minutes
+			sumSq += minutes * minutes
+		}
+		mean := sum / float64(totalAttendance)
+		variance := (sumSq / float64(totalAttendance)) - (mean * mean)
+		stdDev := math.Sqrt(math.Max(0, variance))
+		// Consistency: 100 - stdDev (capped). If stdDev is 0, consistency is 100.
+		arrivalConsistency = math.Max(0, 100-stdDev)
+	}
+
+	avgClockInMin := 0
+	avgClockOutMin := 0
+	clockOutCount := 0
+	for _, a := range attendances {
+		avgClockInMin += a.ClockInTime.Hour()*60 + a.ClockInTime.Minute()
+		if a.ClockOutTime != nil {
+			avgClockOutMin += a.ClockOutTime.Hour()*60 + a.ClockOutTime.Minute()
+			clockOutCount++
+		}
+	}
+	avgClockInStr := "09:00"
+	if totalAttendance > 0 {
+		m := avgClockInMin / totalAttendance
+		avgClockInStr = fmt.Sprintf("%02d:%02d", m/60, m%60)
+	}
+	avgClockOutStr := "18:00"
+	if clockOutCount > 0 {
+		m := avgClockOutMin / clockOutCount
+		avgClockOutStr = fmt.Sprintf("%02d:%02d", m/60, m%60)
+	}
+
+	lateIncidentRate := 0
+	thisMonth := now.Month()
+	thisYear := now.Year()
+	for _, a := range attendances {
+		if a.ClockInTime.Month() == thisMonth && a.ClockInTime.Year() == thisYear && a.Status == model.StatusLate {
+			lateIncidentRate++
+		}
+	}
+
+	// 5. Workspace Balance
+	totalLeaveTaken := 0
+	for _, l := range leaves {
+		if l.Status == model.LeaveStatusApproved && l.EndDate.Before(now) {
+			days := int(l.EndDate.Sub(l.StartDate).Hours()/24) + 1
+			totalLeaveTaken += days
+		}
+	}
+	remainingLeave := 12 - totalLeaveTaken // Default annual leave 12
+	if remainingLeave < 0 {
+		remainingLeave = 0
+	}
+
+	// 6. Insights
+	insights := []string{}
+	if punctualityScore > 95 {
+		insights = append(insights, "Karyawan sangat konsisten dalam waktu kedatangan.")
+	} else if punctualityScore < 80 {
+		insights = append(insights, "Karyawan sering terlambat dalam 30 hari terakhir.")
+	}
+
+	if totalOTHours > 30 {
+		insights = append(insights, "Terdapat kecenderungan lembur yang tinggi, waspada burnout.")
+	} else if totalOTHours > 0 {
+		// Detect day of week for OT
+		otDays := make(map[time.Weekday]int)
+		for _, o := range overtimes {
+			otDays[o.Date.Weekday()]++
+		}
+		maxDay := time.Friday
+		maxCount := 0
+		for d, c := range otDays {
+			if c > maxCount {
+				maxCount = c
+				maxDay = d
+			}
+		}
+		if maxCount > 2 {
+			insights = append(insights, fmt.Sprintf("Terdapat kecenderungan lembur di hari %s.", translateWeekday(maxDay)))
+		}
+	}
+
+	if complianceRate == 100 {
+		insights = append(insights, "Kepatuhan pengisian data absensi mencapai 100%.")
+	}
+
+	performanceScore := (punctualityScore + overtimeEfficiency + leaveRegularity + productivityIndex + complianceRate) / 5
+
+	positionName := ""
+	if user.Position != nil {
+		positionName = user.Position.Name
+	}
+
+	return modelDto.EmployeeDnaResponse{
+		User: map[string]interface{}{
+			"id":         user.ID,
+			"name":       user.Name,
+			"avatar":     s.getAvatar(user.Name, user.MediaUrl),
+			"department": user.Department,
+			"position":   positionName,
+			"joined_at":  user.CreatedAt,
+		},
+		PerformanceScore: math.Round(performanceScore*10) / 10,
+		RadarMetrics: modelDto.EmployeeDnaRadarMetrics{
+			Punctuality:        math.Round(punctualityScore*10) / 10,
+			OvertimeEfficiency: math.Round(overtimeEfficiency*10) / 10,
+			LeaveRegularity:    math.Round(leaveRegularity*10) / 10,
+			ProductivityIndex:  math.Round(productivityIndex*10) / 10,
+			ComplianceRate:     math.Round(complianceRate*10) / 10,
+		},
+		PunctualityDna: modelDto.PunctualityDna{
+			ArrivalConsistency: math.Round(arrivalConsistency*10) / 10,
+			LateIncidentRate:   float64(lateIncidentRate),
+			AvgClockIn:         avgClockInStr,
+			AvgClockOut:        avgClockOutStr,
+		},
+		WorkspaceBalance: modelDto.WorkspaceBalance{
+			RemainingLeave:   remainingLeave,
+			TotalLeaveTaken:  totalLeaveTaken,
+			OvertimeHours30d: totalOTHours,
+		},
+		Insights: insights,
+	}, nil
+}
+
+func translateWeekday(w time.Weekday) string {
+	days := map[time.Weekday]string{
+		time.Monday:    "Senin",
+		time.Tuesday:   "Selasa",
+		time.Wednesday: "Rabu",
+		time.Thursday:  "Kamis",
+		time.Friday:    "Jumat",
+		time.Saturday:  "Sabtu",
+		time.Sunday:    "Minggu",
+	}
+	return days[w]
 }

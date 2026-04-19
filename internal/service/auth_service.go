@@ -365,7 +365,7 @@ func (s *authService) ForgotPassword(ctx context.Context, req model.ForgotPasswo
 		<p>This link will expire in 4 hours.</p>
 	`, os.Getenv("FRONTEND_URL"), token)
 
-	_ = utils.SendEmail([]string{req.Email}, subject, html)
+	_ = utils.SendEmail(ctx, []string{req.Email}, subject, html)
 
 	return nil
 }

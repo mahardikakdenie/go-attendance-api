@@ -37,7 +37,7 @@ func InitDB() *gorm.DB {
 	if os.Getenv("RESET_DB") == "true" {
 		log.Println("⚠️ Resetting database tables...")
 		// Disable FK checks for clean drop if possible or drop in strict reverse order
-		db.Exec("DROP TABLE IF EXISTS attendance_corrections, employee_lifecycle_tasks, lifecycle_tasks, employee_rosters, holidays, work_shifts, support_messages, provisioning_tickets, trial_requests, leaves, leave_balances, leave_types, attendances, overtimes, user_change_requests, recent_activities, tokens, media, users, role_hierarchies, role_permissions, permissions, roles, tenant_settings, tenants CASCADE")
+		db.Exec("DROP TABLE IF EXISTS timesheet_entries, tasks, projects, password_resets, subscriptions, appraisals, performance_cycles, performance_goals, expenses, payrolls, attendance_corrections, employee_lifecycle_tasks, lifecycle_tasks, employee_rosters, holidays, work_shifts, support_messages, provisioning_tickets, trial_requests, leaves, leave_balances, leave_types, attendances, overtimes, user_change_requests, recent_activities, tokens, media, user_payroll_profiles, users, positions, role_hierarchies, role_permissions, permissions, roles, tenant_settings, tenants CASCADE")
 		log.Println("⚠️ Semua tabel berhasil di-reset (CASCADE)")
 	}
 

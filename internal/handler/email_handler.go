@@ -28,11 +28,12 @@ type EmailRequest struct {
 func SendEmailTest(c *gin.Context) {
 	var req EmailRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, utils.BuildErrorResponse("Invalid request", http.StatusBadRequest, "error", err.Error()))
+		c.JSON(http.StatusBadRequest, utils.BuildErrorResponse("Invalid request", 400, "error", err.Error()))
 		return
 	}
 
-	err := utils.SendEmail(req.To, req.Subject, req.Html)
+	err := utils.SendEmail(c.Request.Context(), req.To, req.Subject, req.Html)
+
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, utils.BuildErrorResponse("Failed to send email", http.StatusInternalServerError, "error", err.Error()))
 		return

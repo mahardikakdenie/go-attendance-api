@@ -98,7 +98,9 @@ func (s *calendarCronService) SendUpcomingEventReminders() error {
 
 			// Send Email asynchronously
 			go func(email string, sub, body string) {
-				if err := utils.SendEmail([]string{email}, sub, body); err != nil {
+				emailCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+				defer cancel()
+				if err := utils.SendEmail(emailCtx, []string{email}, sub, body); err != nil {
 					log.Printf("[Cron] Failed to send email to %s: %v\n", email, err)
 				}
 			}(user.Email, subject, html)

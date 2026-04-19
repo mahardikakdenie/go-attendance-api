@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"fmt"
 	modelDto "go-attendance-api/internal/dto"
 	"go-attendance-api/internal/service"
 	"go-attendance-api/internal/utils"
@@ -15,6 +16,7 @@ type DashboardHandler interface {
 	GetFinanceDashboard(c *gin.Context)
 	GetHeatmap(c *gin.Context)
 	GetDailyPulse(c *gin.Context)
+	GetEmployeeDNA(c *gin.Context)
 }
 
 type dashboardHandler struct {
@@ -123,4 +125,30 @@ func (h *dashboardHandler) GetDailyPulse(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, utils.BuildResponse("Success", 200, "success", data))
+}
+
+// @Summary Get Employee Behavioral DNA
+// @Description Get deep behavioral analysis for a specific employee
+// @Tags Dashboard
+// @Produce json
+// @Param user_id path int true "User ID"
+// @Security BearerAuth
+// @Security CookieAuth
+// @Router /api/v1/dashboards/hr/employee-dna/{user_id} [get]
+func (h *dashboardHandler) GetEmployeeDNA(c *gin.Context) {
+	userIDStr := c.Param("user_id")
+	var userID uint
+	if _, err := fmt.Sscanf(userIDStr, "%d", &userID); err != nil {
+		c.JSON(http.StatusBadRequest, utils.BuildErrorResponse("ID User tidak valid", 400, "error", err.Error()))
+		return
+	}
+
+	tenantID := c.MustGet("tenant_id").(uint)
+	data, err := h.service.GetEmployeeDNA(c.Request.Context(), tenantID, userID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, utils.BuildErrorResponse("Gagal mengambil data Employee DNA", 500, "error", err.Error()))
+		return
+	}
+
+	c.JSON(http.StatusOK, utils.BuildResponse("Employee DNA retrieved successfully", 200, "success", data))
 }

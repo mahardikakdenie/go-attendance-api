@@ -82,9 +82,11 @@ func (s *supportService) CreateTrialRequest(ctx context.Context, req modelDto.Cr
 
 	// Kirim email konfirmasi secara asinkron
 	go func() {
+		emailCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
 		emailHtml := utils.GetTrialConfirmationEmailTemplate(trial.ContactName, trial.CompanyName)
 		subject := "Trial Request Received - Attendance System"
-		_ = utils.SendEmail([]string{trial.Email}, subject, emailHtml)
+		_ = utils.SendEmail(emailCtx, []string{trial.Email}, subject, emailHtml)
 	}()
 
 	return mapToTrialRequestResponse(trial), nil
@@ -278,7 +280,9 @@ func (s *supportService) ExecuteProvisioning(ctx context.Context, ticketID uuid.
 		emailHtml := utils.GetWelcomeEmailTemplate(user.Name, user.Email, tempPassword, tenant.Name, "")
 		subject := fmt.Sprintf("Welcome to %s - Your Account Details", tenant.Name)
 		go func() {
-			_ = utils.SendEmail([]string{user.Email}, subject, emailHtml)
+			emailCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+			defer cancel()
+			_ = utils.SendEmail(emailCtx, []string{user.Email}, subject, emailHtml)
 		}()
 
 		// 5. Mark Ticket COMPLETED

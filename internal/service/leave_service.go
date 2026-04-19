@@ -138,15 +138,15 @@ func (s *leaveService) RequestLeave(ctx context.Context, userID uint, tenantID u
 			req.EndDate,
 			totalDays,
 			req.Reason,
-		)
-		
-		utils.SendEmail([]string{approvalManager.Email}, subject, html)
-	}
+			)
 
-	// 2. Notify Delegate
-	if req.DelegateID != nil {
-		delegate, _ := s.userRepo.FindByID(ctx, *req.DelegateID, nil)
-		if delegate != nil {
+			utils.SendEmail(ctx, []string{approvalManager.Email}, subject, html)
+			}
+
+			// 2. Notify Delegate
+			if req.DelegateID != nil {
+			delegate, _ := s.userRepo.FindByID(ctx, *req.DelegateID, nil)
+			if delegate != nil {
 			subject := fmt.Sprintf("Leave Delegation: %s", user.Name)
 			html := utils.GetLeaveDelegationTemplate(
 				delegate.Name,
@@ -154,11 +154,10 @@ func (s *leaveService) RequestLeave(ctx context.Context, userID uint, tenantID u
 				req.StartDate,
 				req.EndDate,
 			)
-			
-			utils.SendEmail([]string{delegate.Email}, subject, html)
-		}
-	}
 
+			utils.SendEmail(ctx, []string{delegate.Email}, subject, html)
+			}
+			}
 	return model.LeaveResponse{
 		ID:          leave.ID,
 		UserID:      leave.UserID,

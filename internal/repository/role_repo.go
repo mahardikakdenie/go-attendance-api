@@ -17,6 +17,8 @@ type RoleRepository interface {
 	Update(ctx context.Context, role *model.Role) error
 	Delete(ctx context.Context, id uint) error
 	UpdatePermissions(ctx context.Context, roleID uint, permissionIDs []string) error
+	CreateWithPermissions(ctx context.Context, role *model.Role, permissionIDs []string) error
+	UpdateWithPermissions(ctx context.Context, role *model.Role, permissionIDs []string) error
 }
 
 type roleRepository struct {
@@ -95,6 +97,50 @@ func (r *roleRepository) UpdatePermissions(ctx context.Context, roleID uint, per
 		for _, pID := range permissionIDs {
 			rp := model.RolePermission{
 				RoleID:       roleID,
+				PermissionID: pID,
+			}
+			if err := tx.Create(&rp).Error; err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+}
+
+func (r *roleRepository) CreateWithPermissions(ctx context.Context, role *model.Role, permissionIDs []string) error {
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if err := tx.Create(role).Error; err != nil {
+			return err
+		}
+
+		for _, pID := range permissionIDs {
+			rp := model.RolePermission{
+				RoleID:       role.ID,
+				PermissionID: pID,
+			}
+			if err := tx.Create(&rp).Error; err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+}
+
+func (r *roleRepository) UpdateWithPermissions(ctx context.Context, role *model.Role, permissionIDs []string) error {
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if err := tx.Save(role).Error; err != nil {
+			return err
+		}
+
+		// Delete existing permissions
+		if err := tx.Where("role_id = ?", role.ID).Delete(&model.RolePermission{}).Error; err != nil {
+			return err
+		}
+
+		// Add new permissions
+		for _, pID := range permissionIDs {
+			rp := model.RolePermission{
+				RoleID:       role.ID,
 				PermissionID: pID,
 			}
 			if err := tx.Create(&rp).Error; err != nil {

@@ -131,3 +131,34 @@ type DailyPulseResponse struct {
 	HotlineRequests []HotlineRequest          `json:"hotline_requests"`
 	TopPerformers   []EmployeePerformanceItem `json:"top_performers"`
 }
+
+// Employee DNA Profile
+type EmployeeDnaRadarMetrics struct {
+	Punctuality        float64 `json:"punctuality"`
+	OvertimeEfficiency float64 `json:"overtime_efficiency"`
+	LeaveRegularity    float64 `json:"leave_regularity"`
+	ProductivityIndex  float64 `json:"productivity_index"`
+	ComplianceRate     float64 `json:"compliance_rate"`
+}
+
+type PunctualityDna struct {
+	ArrivalConsistency float64 `json:"arrival_consistency"`
+	LateIncidentRate   float64 `json:"late_incident_rate"`
+	AvgClockIn         string  `json:"avg_clock_in"`
+	AvgClockOut        string  `json:"avg_clock_out"`
+}
+
+type WorkspaceBalance struct {
+	RemainingLeave   int     `json:"remaining_leave"`
+	TotalLeaveTaken  int     `json:"total_leave_taken"`
+	OvertimeHours30d float64 `json:"overtime_hours_30d"`
+}
+
+type EmployeeDnaResponse struct {
+	User             interface{}             `json:"user"`
+	PerformanceScore float64                 `json:"performance_score"`
+	RadarMetrics     EmployeeDnaRadarMetrics `json:"radar_metrics"`
+	PunctualityDna   PunctualityDna          `json:"punctuality_dna"`
+	WorkspaceBalance WorkspaceBalance        `json:"workspace_balance"`
+	Insights         []string                `json:"insights"`
+}
