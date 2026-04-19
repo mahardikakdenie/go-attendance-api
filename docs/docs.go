@@ -46,7 +46,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/modelDto.QuickInfoResponse"
+                            "$ref": "#/definitions/go-attendance-api_internal_dto.QuickInfoResponse"
                         }
                     }
                 }
@@ -76,7 +76,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/utils.APIResponse"
+                                    "$ref": "#/definitions/go-attendance-api_internal_utils.APIResponse"
                                 },
                                 {
                                     "type": "object",
@@ -84,7 +84,7 @@ const docTemplate = `{
                                         "data": {
                                             "type": "array",
                                             "items": {
-                                                "$ref": "#/definitions/model.RecentActivityResponse"
+                                                "$ref": "#/definitions/go-attendance-api_internal_model.RecentActivityResponse"
                                             }
                                         }
                                     }
@@ -163,13 +163,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/utils.APIResponse"
+                                    "$ref": "#/definitions/go-attendance-api_internal_utils.APIResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/modelDto.AttendanceListResponse"
+                                            "$ref": "#/definitions/go-attendance-api_internal_dto.AttendanceListResponse"
                                         }
                                     }
                                 }
@@ -179,7 +179,7 @@ const docTemplate = `{
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/utils.APIResponse"
+                            "$ref": "#/definitions/go-attendance-api_internal_utils.APIResponse"
                         }
                     }
                 }
@@ -211,7 +211,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/model.AttendanceRequest"
+                            "$ref": "#/definitions/go-attendance-api_internal_model.AttendanceRequest"
                         }
                     }
                 ],
@@ -221,13 +221,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/utils.APIResponse"
+                                    "$ref": "#/definitions/go-attendance-api_internal_utils.APIResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/model.AttendanceResponse"
+                                            "$ref": "#/definitions/go-attendance-api_internal_model.AttendanceResponse"
                                         }
                                     }
                                 }
@@ -237,13 +237,13 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/utils.APIResponse"
+                            "$ref": "#/definitions/go-attendance-api_internal_utils.APIResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/utils.APIResponse"
+                            "$ref": "#/definitions/go-attendance-api_internal_utils.APIResponse"
                         }
                     }
                 }
@@ -310,7 +310,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/model.CreateCorrectionRequest"
+                            "$ref": "#/definitions/go-attendance-api_internal_model.CreateCorrectionRequest"
                         }
                     }
                 ],
@@ -349,7 +349,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/model.ReviewCorrectionRequest"
+                            "$ref": "#/definitions/go-attendance-api_internal_model.ReviewCorrectionRequest"
                         }
                     }
                 ],
@@ -388,7 +388,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/model.ReviewCorrectionRequest"
+                            "$ref": "#/definitions/go-attendance-api_internal_model.ReviewCorrectionRequest"
                         }
                     }
                 ],
@@ -439,7 +439,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/utils.APIResponse"
+                                    "$ref": "#/definitions/go-attendance-api_internal_utils.APIResponse"
                                 },
                                 {
                                     "type": "object",
@@ -447,7 +447,7 @@ const docTemplate = `{
                                         "data": {
                                             "type": "array",
                                             "items": {
-                                                "$ref": "#/definitions/modelDto.AttendanceHistoryItem"
+                                                "$ref": "#/definitions/go-attendance-api_internal_dto.AttendanceHistoryItem"
                                             }
                                         }
                                     }
@@ -482,13 +482,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/utils.APIResponse"
+                                    "$ref": "#/definitions/go-attendance-api_internal_utils.APIResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/model.AttendanceSummaryResponse"
+                                            "$ref": "#/definitions/go-attendance-api_internal_model.AttendanceSummaryResponse"
                                         }
                                     }
                                 }
@@ -498,7 +498,7 @@ const docTemplate = `{
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/utils.APIResponse"
+                            "$ref": "#/definitions/go-attendance-api_internal_utils.APIResponse"
                         }
                     }
                 }
@@ -526,13 +526,89 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/modelDto.TodayAttendanceResponse"
+                            "$ref": "#/definitions/go-attendance-api_internal_dto.TodayAttendanceResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/utils.APIResponse"
+                            "$ref": "#/definitions/go-attendance-api_internal_utils.APIResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/auth/change-password": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    },
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "description": "Change current user password",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Change Password",
+                "parameters": [
+                    {
+                        "description": "Change Password Data",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/go-attendance-api_internal_model.ChangePasswordRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/go-attendance-api_internal_utils.APIResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/auth/forgot-password": {
+            "post": {
+                "description": "Request password reset link",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Forgot Password",
+                "parameters": [
+                    {
+                        "description": "Forgot Password Data",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/go-attendance-api_internal_model.ForgotPasswordRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/go-attendance-api_internal_utils.APIResponse"
                         }
                     }
                 }
@@ -558,7 +634,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/model.LoginRequest"
+                            "$ref": "#/definitions/go-attendance-api_internal_model.LoginRequest"
                         }
                     }
                 ],
@@ -568,13 +644,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/utils.APIResponse"
+                                    "$ref": "#/definitions/go-attendance-api_internal_utils.APIResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/model.UserResponse"
+                                            "$ref": "#/definitions/go-attendance-api_internal_model.UserResponse"
                                         }
                                     }
                                 }
@@ -584,13 +660,13 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/utils.APIResponse"
+                            "$ref": "#/definitions/go-attendance-api_internal_utils.APIResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/utils.APIResponse"
+                            "$ref": "#/definitions/go-attendance-api_internal_utils.APIResponse"
                         }
                     }
                 }
@@ -618,7 +694,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/utils.APIResponse"
+                            "$ref": "#/definitions/go-attendance-api_internal_utils.APIResponse"
                         }
                     }
                 }
@@ -644,7 +720,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/model.RegisterRequest"
+                            "$ref": "#/definitions/go-attendance-api_internal_model.RegisterRequest"
                         }
                     }
                 ],
@@ -654,13 +730,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/utils.APIResponse"
+                                    "$ref": "#/definitions/go-attendance-api_internal_utils.APIResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/model.User"
+                                            "$ref": "#/definitions/go-attendance-api_internal_model.User"
                                         }
                                     }
                                 }
@@ -670,7 +746,41 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/utils.APIResponse"
+                            "$ref": "#/definitions/go-attendance-api_internal_utils.APIResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/auth/reset-password": {
+            "post": {
+                "description": "Reset password using token",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Reset Password",
+                "parameters": [
+                    {
+                        "description": "Reset Password Data",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/go-attendance-api_internal_model.ResetPasswordRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/go-attendance-api_internal_utils.APIResponse"
                         }
                     }
                 }
@@ -700,7 +810,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/utils.APIResponse"
+                                    "$ref": "#/definitions/go-attendance-api_internal_utils.APIResponse"
                                 },
                                 {
                                     "type": "object",
@@ -708,7 +818,7 @@ const docTemplate = `{
                                         "data": {
                                             "type": "array",
                                             "items": {
-                                                "$ref": "#/definitions/model.SessionResponse"
+                                                "$ref": "#/definitions/go-attendance-api_internal_model.SessionResponse"
                                             }
                                         }
                                     }
@@ -868,7 +978,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/handler.EmailRequest"
+                            "$ref": "#/definitions/internal_handler.EmailRequest"
                         }
                     }
                 ],
@@ -876,22 +986,198 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/utils.APIResponse"
+                            "$ref": "#/definitions/go-attendance-api_internal_utils.APIResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/utils.APIResponse"
+                            "$ref": "#/definitions/go-attendance-api_internal_utils.APIResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/utils.APIResponse"
+                            "$ref": "#/definitions/go-attendance-api_internal_utils.APIResponse"
                         }
                     }
                 }
+            }
+        },
+        "/api/v1/finance/expenses": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Finance"
+                ],
+                "summary": "Get All Expenses",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Pending, Approved, Rejected",
+                        "name": "status",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "ID or Name",
+                        "name": "search",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Page number",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Limit per page",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {}
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Finance"
+                ],
+                "summary": "Create Expense Claim",
+                "parameters": [
+                    {
+                        "description": "Expense Payload",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/go-attendance-api_internal_dto.CreateExpenseRequest"
+                        }
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/api/v1/finance/expenses/summary": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Finance"
+                ],
+                "summary": "Get Expense Summary",
+                "responses": {}
+            }
+        },
+        "/api/v1/finance/expenses/{id}/approve": {
+            "patch": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "Finance"
+                ],
+                "summary": "Approve Expense Claim",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Expense ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/api/v1/finance/expenses/{id}/reject": {
+            "patch": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "Finance"
+                ],
+                "summary": "Reject Expense Claim",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Expense ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Reject Payload",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/go-attendance-api_internal_dto.RejectExpenseRequest"
+                        }
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/api/v1/finance/quotas/{id}": {
+            "patch": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "Finance"
+                ],
+                "summary": "Update User Expense Quota",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "User ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Quota Payload",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/go-attendance-api_internal_dto.UpdateQuotaRequest"
+                        }
+                    }
+                ],
+                "responses": {}
             }
         },
         "/api/v1/hr/calendar": {
@@ -907,7 +1193,7 @@ const docTemplate = `{
                 "tags": [
                     "HR Ops"
                 ],
-                "summary": "Get Calendar/Holidays",
+                "summary": "Get Calendar Events (Holidays, Meetings, etc)",
                 "parameters": [
                     {
                         "type": "integer",
@@ -933,15 +1219,15 @@ const docTemplate = `{
                 "tags": [
                     "HR Ops"
                 ],
-                "summary": "Create Holiday",
+                "summary": "Create Calendar Event",
                 "parameters": [
                     {
-                        "description": "Holiday Payload",
+                        "description": "Event Payload",
                         "name": "body",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/modelDto.CreateHolidayRequest"
+                            "$ref": "#/definitions/go-attendance-api_internal_dto.CreateCalendarEventRequest"
                         }
                     }
                 ],
@@ -964,22 +1250,22 @@ const docTemplate = `{
                 "tags": [
                     "HR Ops"
                 ],
-                "summary": "Update Holiday",
+                "summary": "Update Calendar Event",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Holiday UUID",
+                        "description": "Event UUID",
                         "name": "id",
                         "in": "path",
                         "required": true
                     },
                     {
-                        "description": "Holiday Payload",
+                        "description": "Event Payload",
                         "name": "body",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/modelDto.UpdateHolidayRequest"
+                            "$ref": "#/definitions/go-attendance-api_internal_dto.UpdateCalendarEventRequest"
                         }
                     }
                 ],
@@ -994,11 +1280,11 @@ const docTemplate = `{
                 "tags": [
                     "HR Ops"
                 ],
-                "summary": "Delete Holiday",
+                "summary": "Delete Calendar Event",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Holiday UUID",
+                        "description": "Event UUID",
                         "name": "id",
                         "in": "path",
                         "required": true
@@ -1065,8 +1351,85 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/modelDto.UpdateLifecycleTaskRequest"
+                            "$ref": "#/definitions/go-attendance-api_internal_dto.UpdateLifecycleTaskRequest"
                         }
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/api/v1/hr/lifecycle-templates": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "HR Ops"
+                ],
+                "summary": "Get Lifecycle Templates",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Category",
+                        "name": "category",
+                        "in": "query"
+                    }
+                ],
+                "responses": {}
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "HR Ops"
+                ],
+                "summary": "Create Lifecycle Template",
+                "parameters": [
+                    {
+                        "description": "Template Payload",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/go-attendance-api_internal_dto.CreateLifecycleTemplateRequest"
+                        }
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/api/v1/hr/lifecycle-templates/{id}": {
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "HR Ops"
+                ],
+                "summary": "Delete Lifecycle Template",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Template UUID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
                     }
                 ],
                 "responses": {}
@@ -1135,7 +1498,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/modelDto.SaveRosterRequest"
+                            "$ref": "#/definitions/go-attendance-api_internal_dto.SaveRosterRequest"
                         }
                     }
                 ],
@@ -1181,7 +1544,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/model.WorkShiftResponse"
+                            "$ref": "#/definitions/go-attendance-api_internal_model.WorkShiftResponse"
                         }
                     }
                 ],
@@ -1232,7 +1595,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/utils.APIResponse"
+                                    "$ref": "#/definitions/go-attendance-api_internal_utils.APIResponse"
                                 },
                                 {
                                     "type": "object",
@@ -1240,7 +1603,7 @@ const docTemplate = `{
                                         "data": {
                                             "type": "array",
                                             "items": {
-                                                "$ref": "#/definitions/model.LeaveResponse"
+                                                "$ref": "#/definitions/go-attendance-api_internal_model.LeaveResponse"
                                             }
                                         }
                                     }
@@ -1285,7 +1648,7 @@ const docTemplate = `{
                         "name": "body",
                         "in": "body",
                         "schema": {
-                            "$ref": "#/definitions/handler.ReviewLeaveRequest"
+                            "$ref": "#/definitions/internal_handler.ReviewLeaveRequest"
                         }
                     }
                 ],
@@ -1316,7 +1679,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/utils.APIResponse"
+                                    "$ref": "#/definitions/go-attendance-api_internal_utils.APIResponse"
                                 },
                                 {
                                     "type": "object",
@@ -1324,7 +1687,7 @@ const docTemplate = `{
                                         "data": {
                                             "type": "array",
                                             "items": {
-                                                "$ref": "#/definitions/model.LeaveBalance"
+                                                "$ref": "#/definitions/go-attendance-api_internal_model.LeaveBalance"
                                             }
                                         }
                                     }
@@ -1369,7 +1732,7 @@ const docTemplate = `{
                         "name": "body",
                         "in": "body",
                         "schema": {
-                            "$ref": "#/definitions/handler.ReviewLeaveRequest"
+                            "$ref": "#/definitions/internal_handler.ReviewLeaveRequest"
                         }
                     }
                 ],
@@ -1404,7 +1767,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/model.LeaveRequest"
+                            "$ref": "#/definitions/go-attendance-api_internal_model.LeaveRequest"
                         }
                     }
                 ],
@@ -1414,13 +1777,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/utils.APIResponse"
+                                    "$ref": "#/definitions/go-attendance-api_internal_utils.APIResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/model.LeaveResponse"
+                                            "$ref": "#/definitions/go-attendance-api_internal_model.LeaveResponse"
                                         }
                                     }
                                 }
@@ -1430,7 +1793,7 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/utils.APIResponse"
+                            "$ref": "#/definitions/go-attendance-api_internal_utils.APIResponse"
                         }
                     }
                 }
@@ -1483,13 +1846,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/utils.APIResponse"
+                                    "$ref": "#/definitions/go-attendance-api_internal_utils.APIResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/model.Media"
+                                            "$ref": "#/definitions/go-attendance-api_internal_model.Media"
                                         }
                                     }
                                 }
@@ -1499,13 +1862,13 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/utils.APIResponse"
+                            "$ref": "#/definitions/go-attendance-api_internal_utils.APIResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/utils.APIResponse"
+                            "$ref": "#/definitions/go-attendance-api_internal_utils.APIResponse"
                         }
                     }
                 }
@@ -1535,7 +1898,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/utils.APIResponse"
+                                    "$ref": "#/definitions/go-attendance-api_internal_utils.APIResponse"
                                 },
                                 {
                                     "type": "object",
@@ -1543,7 +1906,7 @@ const docTemplate = `{
                                         "data": {
                                             "type": "array",
                                             "items": {
-                                                "$ref": "#/definitions/model.OrgNode"
+                                                "$ref": "#/definitions/go-attendance-api_internal_model.OrgNode"
                                             }
                                         }
                                     }
@@ -1600,7 +1963,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/model.Position"
+                            "$ref": "#/definitions/go-attendance-api_internal_model.Position"
                         }
                     }
                 ],
@@ -1669,13 +2032,16 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/utils.APIResponse"
+                                    "$ref": "#/definitions/go-attendance-api_internal_utils.APIResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/modelDto.AttendanceListResponse"
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/go-attendance-api_internal_model.OvertimeResponse"
+                                            }
                                         }
                                     }
                                 }
@@ -1685,7 +2051,7 @@ const docTemplate = `{
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/utils.APIResponse"
+                            "$ref": "#/definitions/go-attendance-api_internal_utils.APIResponse"
                         }
                     }
                 }
@@ -1717,7 +2083,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/model.CreateOvertimeRequest"
+                            "$ref": "#/definitions/go-attendance-api_internal_model.CreateOvertimeRequest"
                         }
                     }
                 ],
@@ -1727,13 +2093,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/utils.APIResponse"
+                                    "$ref": "#/definitions/go-attendance-api_internal_utils.APIResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/model.OvertimeResponse"
+                                            "$ref": "#/definitions/go-attendance-api_internal_model.OvertimeResponse"
                                         }
                                     }
                                 }
@@ -1743,7 +2109,7 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/utils.APIResponse"
+                            "$ref": "#/definitions/go-attendance-api_internal_utils.APIResponse"
                         }
                     }
                 }
@@ -1784,7 +2150,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/model.ApproveOvertimeRequest"
+                            "$ref": "#/definitions/go-attendance-api_internal_model.ApproveOvertimeRequest"
                         }
                     }
                 ],
@@ -1794,13 +2160,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/utils.APIResponse"
+                                    "$ref": "#/definitions/go-attendance-api_internal_utils.APIResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/model.OvertimeResponse"
+                                            "$ref": "#/definitions/go-attendance-api_internal_model.OvertimeResponse"
                                         }
                                     }
                                 }
@@ -1810,7 +2176,7 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/utils.APIResponse"
+                            "$ref": "#/definitions/go-attendance-api_internal_utils.APIResponse"
                         }
                     }
                 }
@@ -1851,7 +2217,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/model.ApproveOvertimeRequest"
+                            "$ref": "#/definitions/go-attendance-api_internal_model.ApproveOvertimeRequest"
                         }
                     }
                 ],
@@ -1861,13 +2227,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/utils.APIResponse"
+                                    "$ref": "#/definitions/go-attendance-api_internal_utils.APIResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/model.OvertimeResponse"
+                                            "$ref": "#/definitions/go-attendance-api_internal_model.OvertimeResponse"
                                         }
                                     }
                                 }
@@ -1877,7 +2243,7 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/utils.APIResponse"
+                            "$ref": "#/definitions/go-attendance-api_internal_utils.APIResponse"
                         }
                     }
                 }
@@ -1915,13 +2281,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/utils.APIResponse"
+                                    "$ref": "#/definitions/go-attendance-api_internal_utils.APIResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/model.OvertimeResponse"
+                                            "$ref": "#/definitions/go-attendance-api_internal_model.OvertimeResponse"
                                         }
                                     }
                                 }
@@ -1931,10 +2297,182 @@ const docTemplate = `{
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/utils.APIResponse"
+                            "$ref": "#/definitions/go-attendance-api_internal_utils.APIResponse"
                         }
                     }
                 }
+            }
+        },
+        "/api/v1/performance/appraisals/cycle/{cycleId}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "Performance"
+                ],
+                "summary": "Get Appraisals by Cycle",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Cycle ID",
+                        "name": "cycleId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/api/v1/performance/appraisals/{id}/self-review": {
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Performance"
+                ],
+                "summary": "Submit Self Review",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Appraisal ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Review Payload",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/go-attendance-api_internal_dto.SubmitSelfReviewRequest"
+                        }
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/api/v1/performance/cycles": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "Performance"
+                ],
+                "summary": "Get All Cycles",
+                "responses": {}
+            }
+        },
+        "/api/v1/performance/goals": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Performance"
+                ],
+                "summary": "Create Goal",
+                "parameters": [
+                    {
+                        "description": "Goal Payload",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/go-attendance-api_internal_dto.CreateGoalRequest"
+                        }
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/api/v1/performance/goals/me": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "Performance"
+                ],
+                "summary": "Get My Goals",
+                "responses": {}
+            }
+        },
+        "/api/v1/performance/goals/user/{userId}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "Performance"
+                ],
+                "summary": "Get User Goals",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "User ID",
+                        "name": "userId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/api/v1/performance/goals/{id}/progress": {
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Performance"
+                ],
+                "summary": "Update Goal Progress",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Goal ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Progress Payload",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/go-attendance-api_internal_dto.UpdateGoalProgressRequest"
+                        }
+                    }
+                ],
+                "responses": {}
             }
         },
         "/api/v1/ping": {
@@ -1947,6 +2485,127 @@ const docTemplate = `{
                     "Health"
                 ],
                 "responses": {}
+            }
+        },
+        "/api/v1/superadmin/subscriptions": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Get all subscriptions with statistics (Superadmin only)",
+                "tags": [
+                    "Subscription"
+                ],
+                "summary": "Get Subscriptions",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Page number",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Limit per page",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by status",
+                        "name": "status",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Search by tenant name/code",
+                        "name": "search",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/go-attendance-api_internal_utils.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/go-attendance-api_internal_dto.SubscriptionsDataResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/superadmin/tenants/{id}": {
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    },
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "description": "Update tenant details (SuperAdmin only)",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "SuperAdmin"
+                ],
+                "summary": "Update Tenant",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Tenant ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Tenant Data",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/go-attendance-api_internal_model.Tenant"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/go-attendance-api_internal_utils.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/go-attendance-api_internal_model.Tenant"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
             }
         },
         "/api/v1/tenant-roles": {
@@ -1994,7 +2653,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/service.CreateRoleRequest"
+                            "$ref": "#/definitions/go-attendance-api_internal_service.CreateRoleRequest"
                         }
                     }
                 ],
@@ -2028,7 +2687,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/handler.SaveHierarchyRequest"
+                            "$ref": "#/definitions/internal_handler.SaveHierarchyRequest"
                         }
                     }
                 ],
@@ -2084,7 +2743,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/service.UpdateRoleRequest"
+                            "$ref": "#/definitions/go-attendance-api_internal_service.UpdateRoleRequest"
                         }
                     }
                 ],
@@ -2141,13 +2800,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/utils.APIResponse"
+                                    "$ref": "#/definitions/go-attendance-api_internal_utils.APIResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/model.TenantSetting"
+                                            "$ref": "#/definitions/go-attendance-api_internal_model.TenantSetting"
                                         }
                                     }
                                 }
@@ -2157,7 +2816,7 @@ const docTemplate = `{
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/utils.APIResponse"
+                            "$ref": "#/definitions/go-attendance-api_internal_utils.APIResponse"
                         }
                     }
                 }
@@ -2189,7 +2848,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/model.TenantSetting"
+                            "$ref": "#/definitions/go-attendance-api_internal_model.TenantSetting"
                         }
                     }
                 ],
@@ -2199,13 +2858,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/utils.APIResponse"
+                                    "$ref": "#/definitions/go-attendance-api_internal_utils.APIResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/model.TenantSetting"
+                                            "$ref": "#/definitions/go-attendance-api_internal_model.TenantSetting"
                                         }
                                     }
                                 }
@@ -2215,7 +2874,7 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/utils.APIResponse"
+                            "$ref": "#/definitions/go-attendance-api_internal_utils.APIResponse"
                         }
                     }
                 }
@@ -2245,7 +2904,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/utils.APIResponse"
+                                    "$ref": "#/definitions/go-attendance-api_internal_utils.APIResponse"
                                 },
                                 {
                                     "type": "object",
@@ -2253,7 +2912,7 @@ const docTemplate = `{
                                         "data": {
                                             "type": "array",
                                             "items": {
-                                                "$ref": "#/definitions/model.Tenant"
+                                                "$ref": "#/definitions/go-attendance-api_internal_model.Tenant"
                                             }
                                         }
                                     }
@@ -2264,7 +2923,7 @@ const docTemplate = `{
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/utils.APIResponse"
+                            "$ref": "#/definitions/go-attendance-api_internal_utils.APIResponse"
                         }
                     }
                 }
@@ -2296,7 +2955,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/model.Tenant"
+                            "$ref": "#/definitions/go-attendance-api_internal_model.Tenant"
                         }
                     }
                 ],
@@ -2306,13 +2965,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/utils.APIResponse"
+                                    "$ref": "#/definitions/go-attendance-api_internal_utils.APIResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/model.Tenant"
+                                            "$ref": "#/definitions/go-attendance-api_internal_model.Tenant"
                                         }
                                     }
                                 }
@@ -2322,7 +2981,7 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/utils.APIResponse"
+                            "$ref": "#/definitions/go-attendance-api_internal_utils.APIResponse"
                         }
                     }
                 }
@@ -2361,13 +3020,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/utils.APIResponse"
+                                    "$ref": "#/definitions/go-attendance-api_internal_utils.APIResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/model.Tenant"
+                                            "$ref": "#/definitions/go-attendance-api_internal_model.Tenant"
                                         }
                                     }
                                 }
@@ -2377,19 +3036,19 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/utils.APIResponse"
+                            "$ref": "#/definitions/go-attendance-api_internal_utils.APIResponse"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/utils.APIResponse"
+                            "$ref": "#/definitions/go-attendance-api_internal_utils.APIResponse"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/utils.APIResponse"
+                            "$ref": "#/definitions/go-attendance-api_internal_utils.APIResponse"
                         }
                     }
                 }
@@ -2469,7 +3128,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/utils.APIResponse"
+                                    "$ref": "#/definitions/go-attendance-api_internal_utils.APIResponse"
                                 },
                                 {
                                     "type": "object",
@@ -2477,7 +3136,7 @@ const docTemplate = `{
                                         "data": {
                                             "type": "array",
                                             "items": {
-                                                "$ref": "#/definitions/model.UserResponse"
+                                                "$ref": "#/definitions/go-attendance-api_internal_model.UserResponse"
                                             }
                                         }
                                     }
@@ -2488,7 +3147,7 @@ const docTemplate = `{
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/utils.APIResponse"
+                            "$ref": "#/definitions/go-attendance-api_internal_utils.APIResponse"
                         }
                     }
                 }
@@ -2520,7 +3179,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/model.CreateUserRequest"
+                            "$ref": "#/definitions/go-attendance-api_internal_model.CreateUserRequest"
                         }
                     }
                 ],
@@ -2530,13 +3189,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/utils.APIResponse"
+                                    "$ref": "#/definitions/go-attendance-api_internal_utils.APIResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/model.UserResponse"
+                                            "$ref": "#/definitions/go-attendance-api_internal_model.UserResponse"
                                         }
                                     }
                                 }
@@ -2546,7 +3205,7 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/utils.APIResponse"
+                            "$ref": "#/definitions/go-attendance-api_internal_utils.APIResponse"
                         }
                     }
                 }
@@ -2583,13 +3242,13 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/utils.APIResponse"
+                            "$ref": "#/definitions/go-attendance-api_internal_utils.APIResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/utils.APIResponse"
+                            "$ref": "#/definitions/go-attendance-api_internal_utils.APIResponse"
                         }
                     }
                 }
@@ -2627,13 +3286,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/utils.APIResponse"
+                                    "$ref": "#/definitions/go-attendance-api_internal_utils.APIResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/model.UserResponse"
+                                            "$ref": "#/definitions/go-attendance-api_internal_model.UserResponse"
                                         }
                                     }
                                 }
@@ -2643,13 +3302,13 @@ const docTemplate = `{
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/utils.APIResponse"
+                            "$ref": "#/definitions/go-attendance-api_internal_utils.APIResponse"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/utils.APIResponse"
+                            "$ref": "#/definitions/go-attendance-api_internal_utils.APIResponse"
                         }
                     }
                 }
@@ -2679,7 +3338,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/utils.APIResponse"
+                                    "$ref": "#/definitions/go-attendance-api_internal_utils.APIResponse"
                                 },
                                 {
                                     "type": "object",
@@ -2687,7 +3346,7 @@ const docTemplate = `{
                                         "data": {
                                             "type": "array",
                                             "items": {
-                                                "$ref": "#/definitions/model.RecentActivityResponse"
+                                                "$ref": "#/definitions/go-attendance-api_internal_model.RecentActivityResponse"
                                             }
                                         }
                                     }
@@ -2698,13 +3357,13 @@ const docTemplate = `{
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/utils.APIResponse"
+                            "$ref": "#/definitions/go-attendance-api_internal_utils.APIResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/utils.APIResponse"
+                            "$ref": "#/definitions/go-attendance-api_internal_utils.APIResponse"
                         }
                     }
                 }
@@ -2734,7 +3393,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/utils.APIResponse"
+                                    "$ref": "#/definitions/go-attendance-api_internal_utils.APIResponse"
                                 },
                                 {
                                     "type": "object",
@@ -2742,7 +3401,7 @@ const docTemplate = `{
                                         "data": {
                                             "type": "array",
                                             "items": {
-                                                "$ref": "#/definitions/model.UserChangeRequestResponse"
+                                                "$ref": "#/definitions/go-attendance-api_internal_model.UserChangeRequestResponse"
                                             }
                                         }
                                     }
@@ -2753,7 +3412,7 @@ const docTemplate = `{
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/utils.APIResponse"
+                            "$ref": "#/definitions/go-attendance-api_internal_utils.APIResponse"
                         }
                     }
                 }
@@ -2787,7 +3446,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/handler.UpdateProfilePhotoRequest"
+                            "$ref": "#/definitions/internal_handler.UpdateProfilePhotoRequest"
                         }
                     }
                 ],
@@ -2795,25 +3454,25 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/utils.APIResponse"
+                            "$ref": "#/definitions/go-attendance-api_internal_utils.APIResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/utils.APIResponse"
+                            "$ref": "#/definitions/go-attendance-api_internal_utils.APIResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/utils.APIResponse"
+                            "$ref": "#/definitions/go-attendance-api_internal_utils.APIResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/utils.APIResponse"
+                            "$ref": "#/definitions/go-attendance-api_internal_utils.APIResponse"
                         }
                     }
                 }
@@ -2854,7 +3513,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/model.ApproveUserChangeRequest"
+                            "$ref": "#/definitions/go-attendance-api_internal_model.ApproveUserChangeRequest"
                         }
                     }
                 ],
@@ -2862,13 +3521,13 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/utils.APIResponse"
+                            "$ref": "#/definitions/go-attendance-api_internal_utils.APIResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/utils.APIResponse"
+                            "$ref": "#/definitions/go-attendance-api_internal_utils.APIResponse"
                         }
                     }
                 }
@@ -2902,7 +3561,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/model.CreateUserChangeRequest"
+                            "$ref": "#/definitions/go-attendance-api_internal_model.CreateUserChangeRequest"
                         }
                     }
                 ],
@@ -2912,13 +3571,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/utils.APIResponse"
+                                    "$ref": "#/definitions/go-attendance-api_internal_utils.APIResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/model.UserChangeRequestResponse"
+                                            "$ref": "#/definitions/go-attendance-api_internal_model.UserChangeRequestResponse"
                                         }
                                     }
                                 }
@@ -2928,13 +3587,13 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/utils.APIResponse"
+                            "$ref": "#/definitions/go-attendance-api_internal_utils.APIResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/utils.APIResponse"
+                            "$ref": "#/definitions/go-attendance-api_internal_utils.APIResponse"
                         }
                     }
                 }
@@ -2979,13 +3638,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/utils.APIResponse"
+                                    "$ref": "#/definitions/go-attendance-api_internal_utils.APIResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/model.UserResponse"
+                                            "$ref": "#/definitions/go-attendance-api_internal_model.UserResponse"
                                         }
                                     }
                                 }
@@ -2995,13 +3654,13 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/utils.APIResponse"
+                            "$ref": "#/definitions/go-attendance-api_internal_utils.APIResponse"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/utils.APIResponse"
+                            "$ref": "#/definitions/go-attendance-api_internal_utils.APIResponse"
                         }
                     }
                 }
@@ -3028,7 +3687,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/utils.APIResponse"
+                                    "$ref": "#/definitions/go-attendance-api_internal_utils.APIResponse"
                                 },
                                 {
                                     "type": "object",
@@ -3036,7 +3695,7 @@ const docTemplate = `{
                                         "data": {
                                             "type": "array",
                                             "items": {
-                                                "$ref": "#/definitions/modelDto.SupportMessageResponse"
+                                                "$ref": "#/definitions/go-attendance-api_internal_dto.SupportMessageResponse"
                                             }
                                         }
                                     }
@@ -3079,7 +3738,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/modelDto.UpdateSupportMessageStatusRequest"
+                            "$ref": "#/definitions/go-attendance-api_internal_dto.UpdateSupportMessageStatusRequest"
                         }
                     }
                 ],
@@ -3087,7 +3746,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/utils.APIResponse"
+                            "$ref": "#/definitions/go-attendance-api_internal_utils.APIResponse"
                         }
                     }
                 }
@@ -3114,7 +3773,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/utils.APIResponse"
+                                    "$ref": "#/definitions/go-attendance-api_internal_utils.APIResponse"
                                 },
                                 {
                                     "type": "object",
@@ -3122,7 +3781,7 @@ const docTemplate = `{
                                         "data": {
                                             "type": "array",
                                             "items": {
-                                                "$ref": "#/definitions/modelDto.ProvisioningTicketResponse"
+                                                "$ref": "#/definitions/go-attendance-api_internal_dto.ProvisioningTicketResponse"
                                             }
                                         }
                                     }
@@ -3161,7 +3820,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/utils.APIResponse"
+                            "$ref": "#/definitions/go-attendance-api_internal_utils.APIResponse"
                         }
                     }
                 }
@@ -3188,7 +3847,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/utils.APIResponse"
+                                    "$ref": "#/definitions/go-attendance-api_internal_utils.APIResponse"
                                 },
                                 {
                                     "type": "object",
@@ -3196,7 +3855,7 @@ const docTemplate = `{
                                         "data": {
                                             "type": "array",
                                             "items": {
-                                                "$ref": "#/definitions/modelDto.TrialRequestResponse"
+                                                "$ref": "#/definitions/go-attendance-api_internal_dto.TrialRequestResponse"
                                             }
                                         }
                                     }
@@ -3239,7 +3898,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/modelDto.UpdateTrialRequestStatusRequest"
+                            "$ref": "#/definitions/go-attendance-api_internal_dto.UpdateTrialRequestStatusRequest"
                         }
                     }
                 ],
@@ -3247,7 +3906,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/utils.APIResponse"
+                            "$ref": "#/definitions/go-attendance-api_internal_utils.APIResponse"
                         }
                     }
                 }
@@ -3273,7 +3932,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/modelDto.CreateTrialRequestRequest"
+                            "$ref": "#/definitions/go-attendance-api_internal_dto.CreateTrialRequestRequest"
                         }
                     }
                 ],
@@ -3283,13 +3942,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/utils.APIResponse"
+                                    "$ref": "#/definitions/go-attendance-api_internal_utils.APIResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/modelDto.TrialRequestResponse"
+                                            "$ref": "#/definitions/go-attendance-api_internal_dto.TrialRequestResponse"
                                         }
                                     }
                                 }
@@ -3324,7 +3983,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/modelDto.CreateSupportMessageRequest"
+                            "$ref": "#/definitions/go-attendance-api_internal_dto.CreateSupportMessageRequest"
                         }
                     }
                 ],
@@ -3334,13 +3993,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/utils.APIResponse"
+                                    "$ref": "#/definitions/go-attendance-api_internal_utils.APIResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/modelDto.SupportMessageResponse"
+                                            "$ref": "#/definitions/go-attendance-api_internal_dto.SupportMessageResponse"
                                         }
                                     }
                                 }
@@ -3352,66 +4011,598 @@ const docTemplate = `{
         }
     },
     "definitions": {
-        "handler.EmailRequest": {
+        "go-attendance-api_internal_dto.AttendanceHistoryItem": {
             "type": "object",
-            "required": [
-                "html",
-                "subject",
-                "to"
-            ],
             "properties": {
-                "html": {
+                "clock_in": {
                     "type": "string"
                 },
-                "subject": {
+                "clock_out": {
                     "type": "string"
                 },
-                "to": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
+                "date": {
+                    "type": "string"
+                },
+                "employee": {
+                    "type": "object",
+                    "properties": {
+                        "avatar": {
+                            "type": "string"
+                        },
+                        "id": {
+                            "type": "string"
+                        },
+                        "name": {
+                            "type": "string"
+                        }
                     }
-                }
-            }
-        },
-        "handler.ReviewLeaveRequest": {
-            "type": "object",
-            "properties": {
-                "notes": {
+                },
+                "id": {
+                    "type": "string"
+                },
+                "location": {
+                    "type": "string"
+                },
+                "overtime": {
+                    "type": "string"
+                },
+                "status": {
                     "type": "string"
                 }
             }
         },
-        "handler.SaveHierarchyRequest": {
+        "go-attendance-api_internal_dto.AttendanceListResponse": {
+            "type": "object",
+            "properties": {
+                "data": {},
+                "meta": {
+                    "$ref": "#/definitions/go-attendance-api_internal_dto.Meta"
+                }
+            }
+        },
+        "go-attendance-api_internal_dto.CreateCalendarEventRequest": {
             "type": "object",
             "required": [
-                "child_role_ids",
-                "parent_role_id"
+                "date",
+                "name",
+                "type"
             ],
             "properties": {
-                "child_role_ids": {
+                "category": {
+                    "$ref": "#/definitions/go-attendance-api_internal_model.EventCategory"
+                },
+                "date": {
+                    "description": "YYYY-MM-DD",
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "is_all_users": {
+                    "type": "boolean"
+                },
+                "is_paid": {
+                    "type": "boolean"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "type": {
+                    "$ref": "#/definitions/go-attendance-api_internal_model.EventType"
+                },
+                "user_ids": {
                     "type": "array",
                     "items": {
                         "type": "integer"
                     }
+                }
+            }
+        },
+        "go-attendance-api_internal_dto.CreateExpenseRequest": {
+            "type": "object",
+            "required": [
+                "amount",
+                "category",
+                "date",
+                "description"
+            ],
+            "properties": {
+                "amount": {
+                    "type": "number"
                 },
-                "parent_role_id": {
+                "category": {
+                    "$ref": "#/definitions/go-attendance-api_internal_model.ExpenseCategory"
+                },
+                "date": {
+                    "description": "YYYY-MM-DD",
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "receipt": {
+                    "description": "URL or base64",
+                    "type": "string"
+                }
+            }
+        },
+        "go-attendance-api_internal_dto.CreateGoalRequest": {
+            "type": "object",
+            "required": [
+                "end_date",
+                "start_date",
+                "target_value",
+                "title",
+                "type",
+                "user_id"
+            ],
+            "properties": {
+                "description": {
+                    "type": "string"
+                },
+                "end_date": {
+                    "type": "string",
+                    "example": "2026-12-31"
+                },
+                "start_date": {
+                    "type": "string",
+                    "example": "2026-01-01"
+                },
+                "target_value": {
+                    "type": "number"
+                },
+                "title": {
+                    "type": "string"
+                },
+                "type": {
+                    "enum": [
+                        "KPI",
+                        "OKR"
+                    ],
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/go-attendance-api_internal_model.GoalType"
+                        }
+                    ]
+                },
+                "unit": {
+                    "type": "string"
+                },
+                "user_id": {
                     "type": "integer"
                 }
             }
         },
-        "handler.UpdateProfilePhotoRequest": {
+        "go-attendance-api_internal_dto.CreateLifecycleTemplateRequest": {
             "type": "object",
             "required": [
-                "media_url"
+                "category",
+                "task_name"
             ],
             "properties": {
-                "media_url": {
+                "category": {
+                    "$ref": "#/definitions/go-attendance-api_internal_model.LifecycleStatus"
+                },
+                "task_name": {
                     "type": "string"
                 }
             }
         },
-        "model.ApproveOvertimeRequest": {
+        "go-attendance-api_internal_dto.CreateSupportMessageRequest": {
+            "type": "object",
+            "required": [
+                "category",
+                "message",
+                "subject"
+            ],
+            "properties": {
+                "category": {
+                    "$ref": "#/definitions/go-attendance-api_internal_model.SupportCategory"
+                },
+                "message": {
+                    "type": "string"
+                },
+                "subject": {
+                    "type": "string"
+                }
+            }
+        },
+        "go-attendance-api_internal_dto.CreateTrialRequestRequest": {
+            "type": "object",
+            "required": [
+                "company_name",
+                "contact_name",
+                "email",
+                "employee_count_range"
+            ],
+            "properties": {
+                "company_name": {
+                    "type": "string"
+                },
+                "contact_name": {
+                    "type": "string"
+                },
+                "email": {
+                    "type": "string"
+                },
+                "employee_count_range": {
+                    "$ref": "#/definitions/go-attendance-api_internal_model.EmployeeCountRange"
+                },
+                "industry": {
+                    "type": "string"
+                },
+                "phone_number": {
+                    "type": "string"
+                }
+            }
+        },
+        "go-attendance-api_internal_dto.Meta": {
+            "type": "object",
+            "properties": {
+                "limit": {
+                    "type": "integer"
+                },
+                "offset": {
+                    "type": "integer"
+                },
+                "total": {
+                    "type": "integer"
+                }
+            }
+        },
+        "go-attendance-api_internal_dto.ProvisioningTicketResponse": {
+            "type": "object",
+            "properties": {
+                "completed_at": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "error_log": {
+                    "type": "string"
+                },
+                "executed_by": {
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "status": {
+                    "$ref": "#/definitions/go-attendance-api_internal_model.ProvisioningTicketStatus"
+                },
+                "trial_request": {
+                    "$ref": "#/definitions/go-attendance-api_internal_dto.TrialRequestResponse"
+                },
+                "trial_request_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "go-attendance-api_internal_dto.QuickInfoResponse": {
+            "type": "object",
+            "properties": {
+                "notifications_count": {
+                    "type": "integer"
+                },
+                "pending_leaves": {
+                    "type": "integer"
+                },
+                "pending_overtimes": {
+                    "type": "integer"
+                }
+            }
+        },
+        "go-attendance-api_internal_dto.RejectExpenseRequest": {
+            "type": "object",
+            "required": [
+                "reason"
+            ],
+            "properties": {
+                "reason": {
+                    "type": "string"
+                }
+            }
+        },
+        "go-attendance-api_internal_dto.RosterAssignment": {
+            "type": "object",
+            "required": [
+                "roster",
+                "user_id"
+            ],
+            "properties": {
+                "roster": {
+                    "description": "day -\u003e shift_id or \"off\"",
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
+                "user_id": {
+                    "type": "integer"
+                }
+            }
+        },
+        "go-attendance-api_internal_dto.SaveRosterRequest": {
+            "type": "object",
+            "required": [
+                "assignments",
+                "start_date"
+            ],
+            "properties": {
+                "assignments": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/go-attendance-api_internal_dto.RosterAssignment"
+                    }
+                },
+                "start_date": {
+                    "description": "YYYY-MM-DD",
+                    "type": "string"
+                }
+            }
+        },
+        "go-attendance-api_internal_dto.SubmitSelfReviewRequest": {
+            "type": "object",
+            "required": [
+                "self_score"
+            ],
+            "properties": {
+                "comments": {
+                    "type": "string"
+                },
+                "self_score": {
+                    "type": "number"
+                }
+            }
+        },
+        "go-attendance-api_internal_dto.SubscriptionItem": {
+            "type": "object",
+            "properties": {
+                "active_employees": {
+                    "type": "integer"
+                },
+                "amount": {
+                    "type": "number"
+                },
+                "billing_cycle": {
+                    "$ref": "#/definitions/go-attendance-api_internal_model.BillingCycle"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "next_billing_date": {
+                    "type": "string"
+                },
+                "plan": {
+                    "type": "string"
+                },
+                "status": {
+                    "$ref": "#/definitions/go-attendance-api_internal_model.SubscriptionStatus"
+                },
+                "tenant_code": {
+                    "type": "string"
+                },
+                "tenant_id": {
+                    "type": "integer"
+                },
+                "tenant_logo": {
+                    "type": "string"
+                },
+                "tenant_name": {
+                    "type": "string"
+                }
+            }
+        },
+        "go-attendance-api_internal_dto.SubscriptionStats": {
+            "type": "object",
+            "properties": {
+                "active_tenants": {
+                    "type": "integer"
+                },
+                "active_tenants_growth": {
+                    "type": "string"
+                },
+                "mrr": {
+                    "type": "number"
+                },
+                "mrr_growth": {
+                    "type": "string"
+                },
+                "past_due_amount": {
+                    "type": "number"
+                },
+                "past_due_growth": {
+                    "type": "string"
+                }
+            }
+        },
+        "go-attendance-api_internal_dto.SubscriptionsDataResponse": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/go-attendance-api_internal_dto.SubscriptionItem"
+                    }
+                },
+                "stats": {
+                    "$ref": "#/definitions/go-attendance-api_internal_dto.SubscriptionStats"
+                },
+                "total": {
+                    "type": "integer"
+                }
+            }
+        },
+        "go-attendance-api_internal_dto.SupportMessageResponse": {
+            "type": "object",
+            "properties": {
+                "category": {
+                    "$ref": "#/definitions/go-attendance-api_internal_model.SupportCategory"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "message": {
+                    "type": "string"
+                },
+                "status": {
+                    "$ref": "#/definitions/go-attendance-api_internal_model.SupportStatus"
+                },
+                "subject": {
+                    "type": "string"
+                },
+                "tenant": {
+                    "$ref": "#/definitions/go-attendance-api_internal_model.TenantResponse"
+                },
+                "tenant_id": {
+                    "type": "integer"
+                },
+                "user": {
+                    "$ref": "#/definitions/go-attendance-api_internal_model.UserResponse"
+                },
+                "user_id": {
+                    "type": "integer"
+                }
+            }
+        },
+        "go-attendance-api_internal_dto.TodayAttendanceResponse": {
+            "type": "object",
+            "properties": {
+                "clock_in_time": {
+                    "type": "string"
+                },
+                "clock_out_time": {
+                    "type": "string"
+                },
+                "date": {
+                    "type": "string"
+                },
+                "duration": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                }
+            }
+        },
+        "go-attendance-api_internal_dto.TrialRequestResponse": {
+            "type": "object",
+            "properties": {
+                "company_name": {
+                    "type": "string"
+                },
+                "contact_name": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "email": {
+                    "type": "string"
+                },
+                "employee_count_range": {
+                    "$ref": "#/definitions/go-attendance-api_internal_model.EmployeeCountRange"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "industry": {
+                    "type": "string"
+                },
+                "phone_number": {
+                    "type": "string"
+                },
+                "status": {
+                    "$ref": "#/definitions/go-attendance-api_internal_model.TrialRequestStatus"
+                }
+            }
+        },
+        "go-attendance-api_internal_dto.UpdateCalendarEventRequest": {
+            "type": "object",
+            "properties": {
+                "category": {
+                    "$ref": "#/definitions/go-attendance-api_internal_model.EventCategory"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "is_all_users": {
+                    "type": "boolean"
+                },
+                "is_paid": {
+                    "type": "boolean"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "user_ids": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                }
+            }
+        },
+        "go-attendance-api_internal_dto.UpdateGoalProgressRequest": {
+            "type": "object",
+            "required": [
+                "current_progress"
+            ],
+            "properties": {
+                "current_progress": {
+                    "type": "number"
+                }
+            }
+        },
+        "go-attendance-api_internal_dto.UpdateLifecycleTaskRequest": {
+            "type": "object",
+            "properties": {
+                "is_completed": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "go-attendance-api_internal_dto.UpdateQuotaRequest": {
+            "type": "object",
+            "required": [
+                "quota"
+            ],
+            "properties": {
+                "quota": {
+                    "type": "number"
+                }
+            }
+        },
+        "go-attendance-api_internal_dto.UpdateSupportMessageStatusRequest": {
+            "type": "object",
+            "required": [
+                "status"
+            ],
+            "properties": {
+                "status": {
+                    "$ref": "#/definitions/go-attendance-api_internal_model.SupportStatus"
+                }
+            }
+        },
+        "go-attendance-api_internal_dto.UpdateTrialRequestStatusRequest": {
+            "type": "object",
+            "required": [
+                "status"
+            ],
+            "properties": {
+                "status": {
+                    "$ref": "#/definitions/go-attendance-api_internal_model.TrialRequestStatus"
+                }
+            }
+        },
+        "go-attendance-api_internal_model.ApproveOvertimeRequest": {
             "type": "object",
             "properties": {
                 "admin_notes": {
@@ -3419,7 +4610,7 @@ const docTemplate = `{
                 }
             }
         },
-        "model.ApproveUserChangeRequest": {
+        "go-attendance-api_internal_model.ApproveUserChangeRequest": {
             "type": "object",
             "properties": {
                 "admin_notes": {
@@ -3427,7 +4618,7 @@ const docTemplate = `{
                 }
             }
         },
-        "model.Attendance": {
+        "go-attendance-api_internal_model.Attendance": {
             "type": "object",
             "properties": {
                 "clockInLatitude": {
@@ -3460,23 +4651,23 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "status": {
-                    "$ref": "#/definitions/model.AttendanceStatus"
+                    "$ref": "#/definitions/go-attendance-api_internal_model.AttendanceStatus"
                 },
                 "tenant": {
-                    "$ref": "#/definitions/model.Tenant"
+                    "$ref": "#/definitions/go-attendance-api_internal_model.Tenant"
                 },
                 "tenantID": {
                     "type": "integer"
                 },
                 "user": {
-                    "$ref": "#/definitions/model.User"
+                    "$ref": "#/definitions/go-attendance-api_internal_model.User"
                 },
                 "userID": {
                     "type": "integer"
                 }
             }
         },
-        "model.AttendanceAction": {
+        "go-attendance-api_internal_model.AttendanceAction": {
             "type": "string",
             "enum": [
                 "clock_in",
@@ -3487,7 +4678,7 @@ const docTemplate = `{
                 "ClockOut"
             ]
         },
-        "model.AttendanceRequest": {
+        "go-attendance-api_internal_model.AttendanceRequest": {
             "type": "object",
             "required": [
                 "action",
@@ -3502,7 +4693,7 @@ const docTemplate = `{
                     ],
                     "allOf": [
                         {
-                            "$ref": "#/definitions/model.AttendanceAction"
+                            "$ref": "#/definitions/go-attendance-api_internal_model.AttendanceAction"
                         }
                     ],
                     "example": "clock_in"
@@ -3521,7 +4712,7 @@ const docTemplate = `{
                 }
             }
         },
-        "model.AttendanceResponse": {
+        "go-attendance-api_internal_model.AttendanceResponse": {
             "type": "object",
             "properties": {
                 "clock_in_latitude": {
@@ -3555,17 +4746,17 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "status": {
-                    "$ref": "#/definitions/model.AttendanceStatus"
+                    "$ref": "#/definitions/go-attendance-api_internal_model.AttendanceStatus"
                 },
                 "user": {
-                    "$ref": "#/definitions/model.UserResponse"
+                    "$ref": "#/definitions/go-attendance-api_internal_model.UserResponse"
                 },
                 "user_id": {
                     "type": "integer"
                 }
             }
         },
-        "model.AttendanceStatus": {
+        "go-attendance-api_internal_model.AttendanceStatus": {
             "type": "string",
             "enum": [
                 "working",
@@ -3578,7 +4769,7 @@ const docTemplate = `{
                 "StatusLate"
             ]
         },
-        "model.AttendanceSummaryResponse": {
+        "go-attendance-api_internal_model.AttendanceSummaryResponse": {
             "type": "object",
             "properties": {
                 "late_summary": {
@@ -3601,10 +4792,12 @@ const docTemplate = `{
                 }
             }
         },
-        "model.BaseRole": {
+        "go-attendance-api_internal_model.BaseRole": {
             "type": "string",
             "enum": [
                 "SUPERADMIN",
+                "SUPPORT",
+                "ENGINEER",
                 "ADMIN",
                 "HR",
                 "FINANCE",
@@ -3612,13 +4805,46 @@ const docTemplate = `{
             ],
             "x-enum-varnames": [
                 "BaseRoleSuperAdmin",
+                "BaseRoleSupport",
+                "BaseRoleEngineer",
                 "BaseRoleAdmin",
                 "BaseRoleHR",
                 "BaseRoleFinance",
                 "BaseRoleEmployee"
             ]
         },
-        "model.CreateCorrectionRequest": {
+        "go-attendance-api_internal_model.BillingCycle": {
+            "type": "string",
+            "enum": [
+                "Monthly",
+                "Yearly"
+            ],
+            "x-enum-varnames": [
+                "BillingCycleMonthly",
+                "BillingCycleYearly"
+            ]
+        },
+        "go-attendance-api_internal_model.ChangePasswordRequest": {
+            "type": "object",
+            "required": [
+                "confirm_password",
+                "new_password",
+                "old_password"
+            ],
+            "properties": {
+                "confirm_password": {
+                    "type": "string"
+                },
+                "new_password": {
+                    "type": "string",
+                    "minLength": 6
+                },
+                "old_password": {
+                    "type": "string"
+                }
+            }
+        },
+        "go-attendance-api_internal_model.CreateCorrectionRequest": {
             "type": "object",
             "required": [
                 "date",
@@ -3645,7 +4871,7 @@ const docTemplate = `{
                 }
             }
         },
-        "model.CreateOvertimeRequest": {
+        "go-attendance-api_internal_model.CreateOvertimeRequest": {
             "type": "object",
             "required": [
                 "date",
@@ -3671,7 +4897,7 @@ const docTemplate = `{
                 }
             }
         },
-        "model.CreateUserChangeRequest": {
+        "go-attendance-api_internal_model.CreateUserChangeRequest": {
             "type": "object",
             "required": [
                 "email",
@@ -3695,12 +4921,11 @@ const docTemplate = `{
                 }
             }
         },
-        "model.CreateUserRequest": {
+        "go-attendance-api_internal_model.CreateUserRequest": {
             "type": "object",
             "required": [
                 "email",
-                "name",
-                "password"
+                "name"
             ],
             "properties": {
                 "address": {
@@ -3723,8 +4948,8 @@ const docTemplate = `{
                     "example": "Budi Santoso"
                 },
                 "password": {
+                    "description": "Optional now",
                     "type": "string",
-                    "minLength": 6,
                     "example": "123456"
                 },
                 "phone_number": {
@@ -3744,7 +4969,7 @@ const docTemplate = `{
                 }
             }
         },
-        "model.EmployeeCountRange": {
+        "go-attendance-api_internal_model.EmployeeCountRange": {
             "type": "string",
             "enum": [
                 "1-10",
@@ -3759,22 +4984,74 @@ const docTemplate = `{
                 "EmployeeCountRange201Plus"
             ]
         },
-        "model.HolidayType": {
+        "go-attendance-api_internal_model.EventCategory": {
+            "type": "string",
+            "enum": [
+                "OFFICE_CLOSED",
+                "INFORMATION"
+            ],
+            "x-enum-varnames": [
+                "EventCategoryOfficeClosed",
+                "EventCategoryInformation"
+            ]
+        },
+        "go-attendance-api_internal_model.EventType": {
             "type": "string",
             "enum": [
                 "National Holiday",
                 "Company Event",
                 "Mandatory Leave",
+                "Meeting",
                 "Other"
             ],
             "x-enum-varnames": [
-                "HolidayTypeNational",
-                "HolidayTypeCompanyEvent",
-                "HolidayTypeMandatoryLeave",
-                "HolidayTypeOther"
+                "EventTypeNationalHoliday",
+                "EventTypeCompanyEvent",
+                "EventTypeMandatoryLeave",
+                "EventTypeMeeting",
+                "EventTypeOther"
             ]
         },
-        "model.ImageMeta": {
+        "go-attendance-api_internal_model.ExpenseCategory": {
+            "type": "string",
+            "enum": [
+                "Travel",
+                "Medical",
+                "Supplies",
+                "Equipment",
+                "Other"
+            ],
+            "x-enum-varnames": [
+                "ExpenseCategoryTravel",
+                "ExpenseCategoryMedical",
+                "ExpenseCategorySupplies",
+                "ExpenseCategoryEquipment",
+                "ExpenseCategoryOther"
+            ]
+        },
+        "go-attendance-api_internal_model.ForgotPasswordRequest": {
+            "type": "object",
+            "required": [
+                "email"
+            ],
+            "properties": {
+                "email": {
+                    "type": "string"
+                }
+            }
+        },
+        "go-attendance-api_internal_model.GoalType": {
+            "type": "string",
+            "enum": [
+                "KPI",
+                "OKR"
+            ],
+            "x-enum-varnames": [
+                "GoalTypeKPI",
+                "GoalTypeOKR"
+            ]
+        },
+        "go-attendance-api_internal_model.ImageMeta": {
             "type": "object",
             "properties": {
                 "extension": {
@@ -3794,7 +5071,7 @@ const docTemplate = `{
                 }
             }
         },
-        "model.LeaveBalance": {
+        "go-attendance-api_internal_model.LeaveBalance": {
             "type": "object",
             "properties": {
                 "balance": {
@@ -3808,7 +5085,7 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "leave_type": {
-                    "$ref": "#/definitions/model.LeaveType"
+                    "$ref": "#/definitions/go-attendance-api_internal_model.LeaveType"
                 },
                 "leave_type_id": {
                     "type": "integer"
@@ -3817,7 +5094,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "user": {
-                    "$ref": "#/definitions/model.User"
+                    "$ref": "#/definitions/go-attendance-api_internal_model.User"
                 },
                 "user_id": {
                     "type": "integer"
@@ -3827,7 +5104,7 @@ const docTemplate = `{
                 }
             }
         },
-        "model.LeaveRequest": {
+        "go-attendance-api_internal_model.LeaveRequest": {
             "type": "object",
             "required": [
                 "end_date",
@@ -3855,7 +5132,7 @@ const docTemplate = `{
                 }
             }
         },
-        "model.LeaveResponse": {
+        "go-attendance-api_internal_model.LeaveResponse": {
             "type": "object",
             "properties": {
                 "created_at": {
@@ -3880,7 +5157,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "status": {
-                    "$ref": "#/definitions/model.LeaveStatus"
+                    "$ref": "#/definitions/go-attendance-api_internal_model.LeaveStatus"
                 },
                 "total_days": {
                     "type": "integer"
@@ -3896,7 +5173,7 @@ const docTemplate = `{
                 }
             }
         },
-        "model.LeaveStatus": {
+        "go-attendance-api_internal_model.LeaveStatus": {
             "type": "string",
             "enum": [
                 "pending",
@@ -3909,7 +5186,7 @@ const docTemplate = `{
                 "LeaveStatusRejected"
             ]
         },
-        "model.LeaveType": {
+        "go-attendance-api_internal_model.LeaveType": {
             "type": "object",
             "properties": {
                 "code": {
@@ -3937,7 +5214,20 @@ const docTemplate = `{
                 }
             }
         },
-        "model.LoginRequest": {
+        "go-attendance-api_internal_model.LifecycleStatus": {
+            "type": "string",
+            "enum": [
+                "ONBOARDING",
+                "ACTIVE",
+                "OFFBOARDING"
+            ],
+            "x-enum-varnames": [
+                "LifecycleStatusOnboarding",
+                "LifecycleStatusActive",
+                "LifecycleStatusOffboarding"
+            ]
+        },
+        "go-attendance-api_internal_model.LoginRequest": {
             "type": "object",
             "required": [
                 "email",
@@ -3954,7 +5244,7 @@ const docTemplate = `{
                 }
             }
         },
-        "model.Media": {
+        "go-attendance-api_internal_model.Media": {
             "type": "object",
             "properties": {
                 "created_at": {
@@ -3967,7 +5257,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "meta": {
-                    "$ref": "#/definitions/model.Meta"
+                    "$ref": "#/definitions/go-attendance-api_internal_model.Meta"
                 },
                 "type": {
                     "type": "string"
@@ -3980,7 +5270,7 @@ const docTemplate = `{
                 }
             }
         },
-        "model.Meta": {
+        "go-attendance-api_internal_model.Meta": {
             "type": "object",
             "properties": {
                 "delete_url": {
@@ -3999,13 +5289,13 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "image": {
-                    "$ref": "#/definitions/model.ImageMeta"
+                    "$ref": "#/definitions/go-attendance-api_internal_model.ImageMeta"
                 },
                 "size": {
                     "type": "integer"
                 },
                 "thumb": {
-                    "$ref": "#/definitions/model.ImageMeta"
+                    "$ref": "#/definitions/go-attendance-api_internal_model.ImageMeta"
                 },
                 "time": {
                     "type": "integer"
@@ -4024,7 +5314,7 @@ const docTemplate = `{
                 }
             }
         },
-        "model.OrgNode": {
+        "go-attendance-api_internal_model.OrgNode": {
             "type": "object",
             "properties": {
                 "avatar": {
@@ -4045,12 +5335,12 @@ const docTemplate = `{
                 "subordinates": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/model.OrgNode"
+                        "$ref": "#/definitions/go-attendance-api_internal_model.OrgNode"
                     }
                 }
             }
         },
-        "model.OvertimeResponse": {
+        "go-attendance-api_internal_model.OvertimeResponse": {
             "type": "object",
             "properties": {
                 "admin_notes": {
@@ -4075,20 +5365,20 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "status": {
-                    "$ref": "#/definitions/model.OvertimeStatus"
+                    "$ref": "#/definitions/go-attendance-api_internal_model.OvertimeStatus"
                 },
                 "updated_at": {
                     "type": "string"
                 },
                 "user": {
-                    "$ref": "#/definitions/model.UserResponse"
+                    "$ref": "#/definitions/go-attendance-api_internal_model.UserResponse"
                 },
                 "user_id": {
                     "type": "integer"
                 }
             }
         },
-        "model.OvertimeStatus": {
+        "go-attendance-api_internal_model.OvertimeStatus": {
             "type": "string",
             "enum": [
                 "pending",
@@ -4101,7 +5391,7 @@ const docTemplate = `{
                 "OvertimeStatusRejected"
             ]
         },
-        "model.Permission": {
+        "go-attendance-api_internal_model.Permission": {
             "type": "object",
             "properties": {
                 "action": {
@@ -4109,6 +5399,9 @@ const docTemplate = `{
                     "example": "view"
                 },
                 "created_at": {
+                    "type": "string"
+                },
+                "description": {
                     "type": "string"
                 },
                 "id": {
@@ -4124,7 +5417,7 @@ const docTemplate = `{
                 }
             }
         },
-        "model.Position": {
+        "go-attendance-api_internal_model.Position": {
             "type": "object",
             "properties": {
                 "created_at": {
@@ -4149,7 +5442,7 @@ const docTemplate = `{
                 }
             }
         },
-        "model.ProvisioningTicketStatus": {
+        "go-attendance-api_internal_model.ProvisioningTicketStatus": {
             "type": "string",
             "enum": [
                 "WAITING",
@@ -4164,7 +5457,7 @@ const docTemplate = `{
                 "ProvisioningTicketStatusFailed"
             ]
         },
-        "model.RecentActivity": {
+        "go-attendance-api_internal_model.RecentActivity": {
             "type": "object",
             "properties": {
                 "action": {
@@ -4187,7 +5480,7 @@ const docTemplate = `{
                 }
             }
         },
-        "model.RecentActivityResponse": {
+        "go-attendance-api_internal_model.RecentActivityResponse": {
             "type": "object",
             "properties": {
                 "action": {
@@ -4207,7 +5500,7 @@ const docTemplate = `{
                 }
             }
         },
-        "model.RegisterRequest": {
+        "go-attendance-api_internal_model.RegisterRequest": {
             "type": "object",
             "required": [
                 "email",
@@ -4251,7 +5544,27 @@ const docTemplate = `{
                 }
             }
         },
-        "model.ReviewCorrectionRequest": {
+        "go-attendance-api_internal_model.ResetPasswordRequest": {
+            "type": "object",
+            "required": [
+                "confirm_password",
+                "new_password",
+                "token"
+            ],
+            "properties": {
+                "confirm_password": {
+                    "type": "string"
+                },
+                "new_password": {
+                    "type": "string",
+                    "minLength": 6
+                },
+                "token": {
+                    "type": "string"
+                }
+            }
+        },
+        "go-attendance-api_internal_model.ReviewCorrectionRequest": {
             "type": "object",
             "properties": {
                 "admin_notes": {
@@ -4259,11 +5572,11 @@ const docTemplate = `{
                 }
             }
         },
-        "model.Role": {
+        "go-attendance-api_internal_model.Role": {
             "type": "object",
             "properties": {
                 "base_role": {
-                    "$ref": "#/definitions/model.BaseRole"
+                    "$ref": "#/definitions/go-attendance-api_internal_model.BaseRole"
                 },
                 "created_at": {
                     "type": "string"
@@ -4273,6 +5586,9 @@ const docTemplate = `{
                 },
                 "id": {
                     "type": "integer"
+                },
+                "is_immutable": {
+                    "type": "boolean"
                 },
                 "is_system": {
                     "type": "boolean"
@@ -4284,7 +5600,7 @@ const docTemplate = `{
                 "permissions": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/model.Permission"
+                        "$ref": "#/definitions/go-attendance-api_internal_model.Permission"
                     }
                 },
                 "tenant_id": {
@@ -4295,17 +5611,20 @@ const docTemplate = `{
                 }
             }
         },
-        "model.RoleResponse": {
+        "go-attendance-api_internal_model.RoleResponse": {
             "type": "object",
             "properties": {
                 "base_role": {
-                    "$ref": "#/definitions/model.BaseRole"
+                    "$ref": "#/definitions/go-attendance-api_internal_model.BaseRole"
                 },
                 "description": {
                     "type": "string"
                 },
                 "id": {
                     "type": "integer"
+                },
+                "is_immutable": {
+                    "type": "boolean"
                 },
                 "is_system": {
                     "type": "boolean"
@@ -4316,12 +5635,12 @@ const docTemplate = `{
                 "permissions": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/model.Permission"
+                        "$ref": "#/definitions/go-attendance-api_internal_model.Permission"
                     }
                 }
             }
         },
-        "model.SessionResponse": {
+        "go-attendance-api_internal_model.SessionResponse": {
             "type": "object",
             "properties": {
                 "device_info": {
@@ -4347,7 +5666,7 @@ const docTemplate = `{
                 }
             }
         },
-        "model.ShiftType": {
+        "go-attendance-api_internal_model.ShiftType": {
             "type": "string",
             "enum": [
                 "Morning",
@@ -4360,7 +5679,22 @@ const docTemplate = `{
                 "ShiftTypeNight"
             ]
         },
-        "model.SupportCategory": {
+        "go-attendance-api_internal_model.SubscriptionStatus": {
+            "type": "string",
+            "enum": [
+                "Active",
+                "Past Due",
+                "Canceled",
+                "Trial"
+            ],
+            "x-enum-varnames": [
+                "SubscriptionStatusActive",
+                "SubscriptionStatusPastDue",
+                "SubscriptionStatusCanceled",
+                "SubscriptionStatusTrial"
+            ]
+        },
+        "go-attendance-api_internal_model.SupportCategory": {
             "type": "string",
             "enum": [
                 "TECHNICAL",
@@ -4375,7 +5709,7 @@ const docTemplate = `{
                 "SupportCategoryOther"
             ]
         },
-        "model.SupportStatus": {
+        "go-attendance-api_internal_model.SupportStatus": {
             "type": "string",
             "enum": [
                 "PENDING",
@@ -4388,17 +5722,20 @@ const docTemplate = `{
                 "SupportStatusResolved"
             ]
         },
-        "model.Tenant": {
+        "go-attendance-api_internal_model.Tenant": {
             "type": "object",
             "properties": {
                 "code": {
                     "type": "string"
                 },
-                "createdAt": {
+                "created_at": {
                     "type": "string"
                 },
                 "id": {
                     "type": "integer"
+                },
+                "is_suspended": {
+                    "type": "boolean"
                 },
                 "name": {
                     "type": "string"
@@ -4407,29 +5744,41 @@ const docTemplate = `{
                     "description": "Basic, Pro, Enterprise",
                     "type": "string"
                 },
-                "tenant_settings": {
-                    "$ref": "#/definitions/model.TenantSetting"
+                "suspended_reason": {
+                    "type": "string"
                 },
-                "updatedAt": {
+                "tenant_settings": {
+                    "$ref": "#/definitions/go-attendance-api_internal_model.TenantSetting"
+                },
+                "updated_at": {
                     "type": "string"
                 }
             }
         },
-        "model.TenantResponse": {
+        "go-attendance-api_internal_model.TenantResponse": {
             "type": "object",
             "properties": {
                 "id": {
                     "type": "integer"
                 },
+                "is_suspended": {
+                    "type": "boolean"
+                },
                 "name": {
                     "type": "string"
                 },
+                "plan": {
+                    "type": "string"
+                },
+                "suspended_reason": {
+                    "type": "string"
+                },
                 "tenant_settings": {
-                    "$ref": "#/definitions/model.TenantSetting"
+                    "$ref": "#/definitions/go-attendance-api_internal_model.TenantSetting"
                 }
             }
         },
-        "model.TenantSetting": {
+        "go-attendance-api_internal_model.TenantSetting": {
             "type": "object",
             "properties": {
                 "allow_multiple_check": {
@@ -4489,7 +5838,7 @@ const docTemplate = `{
                     "example": true
                 },
                 "tenant": {
-                    "$ref": "#/definitions/model.Tenant"
+                    "$ref": "#/definitions/go-attendance-api_internal_model.Tenant"
                 },
                 "tenant_id": {
                     "type": "integer",
@@ -4504,7 +5853,7 @@ const docTemplate = `{
                 }
             }
         },
-        "model.TrialRequestStatus": {
+        "go-attendance-api_internal_model.TrialRequestStatus": {
             "type": "string",
             "enum": [
                 "NEW",
@@ -4519,7 +5868,7 @@ const docTemplate = `{
                 "TrialRequestStatusRejected"
             ]
         },
-        "model.User": {
+        "go-attendance-api_internal_model.User": {
             "type": "object",
             "required": [
                 "email",
@@ -4533,7 +5882,7 @@ const docTemplate = `{
                 "attendances": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/model.Attendance"
+                        "$ref": "#/definitions/go-attendance-api_internal_model.Attendance"
                     }
                 },
                 "base_salary": {
@@ -4544,7 +5893,7 @@ const docTemplate = `{
                     "example": "2026-04-05T12:00:00Z"
                 },
                 "delegate": {
-                    "$ref": "#/definitions/model.User"
+                    "$ref": "#/definitions/go-attendance-api_internal_model.User"
                 },
                 "delegate_id": {
                     "type": "integer",
@@ -4562,12 +5911,21 @@ const docTemplate = `{
                     "type": "string",
                     "example": "FT-001"
                 },
+                "expense_quota": {
+                    "type": "number"
+                },
                 "id": {
                     "type": "integer",
                     "example": 1
                 },
+                "is_active": {
+                    "type": "boolean"
+                },
+                "is_system_created": {
+                    "type": "boolean"
+                },
                 "manager": {
-                    "$ref": "#/definitions/model.User"
+                    "$ref": "#/definitions/go-attendance-api_internal_model.User"
                 },
                 "manager_id": {
                     "type": "integer",
@@ -4576,6 +5934,9 @@ const docTemplate = `{
                 "media_url": {
                     "type": "string",
                     "example": "https://cdn.example.com/profile/budi.jpg"
+                },
+                "must_change_password": {
+                    "type": "boolean"
                 },
                 "name": {
                     "type": "string",
@@ -4588,7 +5949,7 @@ const docTemplate = `{
                     "example": "08123456789"
                 },
                 "position": {
-                    "$ref": "#/definitions/model.Position"
+                    "$ref": "#/definitions/go-attendance-api_internal_model.Position"
                 },
                 "position_id": {
                     "type": "integer",
@@ -4597,18 +5958,18 @@ const docTemplate = `{
                 "recent_activities": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/model.RecentActivity"
+                        "$ref": "#/definitions/go-attendance-api_internal_model.RecentActivity"
                     }
                 },
                 "role": {
-                    "$ref": "#/definitions/model.Role"
+                    "$ref": "#/definitions/go-attendance-api_internal_model.Role"
                 },
                 "role_id": {
                     "type": "integer",
                     "example": 1
                 },
                 "tenant": {
-                    "$ref": "#/definitions/model.Tenant"
+                    "$ref": "#/definitions/go-attendance-api_internal_model.Tenant"
                 },
                 "tenant_id": {
                     "type": "integer",
@@ -4620,7 +5981,7 @@ const docTemplate = `{
                 }
             }
         },
-        "model.UserChangeRequestResponse": {
+        "go-attendance-api_internal_model.UserChangeRequestResponse": {
             "type": "object",
             "properties": {
                 "address": {
@@ -4648,7 +6009,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "status": {
-                    "$ref": "#/definitions/model.UserChangeRequestStatus"
+                    "$ref": "#/definitions/go-attendance-api_internal_model.UserChangeRequestStatus"
                 },
                 "tenant_id": {
                     "type": "integer"
@@ -4657,14 +6018,14 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "user": {
-                    "$ref": "#/definitions/model.UserResponse"
+                    "$ref": "#/definitions/go-attendance-api_internal_model.UserResponse"
                 },
                 "user_id": {
                     "type": "integer"
                 }
             }
         },
-        "model.UserChangeRequestStatus": {
+        "go-attendance-api_internal_model.UserChangeRequestStatus": {
             "type": "string",
             "enum": [
                 "pending",
@@ -4677,7 +6038,7 @@ const docTemplate = `{
                 "StatusRejected"
             ]
         },
-        "model.UserResponse": {
+        "go-attendance-api_internal_model.UserResponse": {
             "type": "object",
             "properties": {
                 "address": {
@@ -4687,11 +6048,11 @@ const docTemplate = `{
                 "attendances": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/model.AttendanceResponse"
+                        "$ref": "#/definitions/go-attendance-api_internal_model.AttendanceResponse"
                     }
                 },
                 "base_role": {
-                    "$ref": "#/definitions/model.BaseRole"
+                    "$ref": "#/definitions/go-attendance-api_internal_model.BaseRole"
                 },
                 "created_at": {
                     "type": "string"
@@ -4711,11 +6072,20 @@ const docTemplate = `{
                     "type": "string",
                     "example": "FT-001"
                 },
+                "expense_quota": {
+                    "type": "number"
+                },
                 "id": {
                     "type": "integer",
                     "example": 1
                 },
+                "is_active": {
+                    "type": "boolean"
+                },
                 "is_owner": {
+                    "type": "boolean"
+                },
+                "is_system_created": {
                     "type": "boolean"
                 },
                 "manager_id": {
@@ -4724,6 +6094,9 @@ const docTemplate = `{
                 "media_url": {
                     "type": "string",
                     "example": "https://cdn.example.com/profile/budi.jpg"
+                },
+                "must_change_password": {
+                    "type": "boolean"
                 },
                 "name": {
                     "type": "string",
@@ -4748,28 +6121,28 @@ const docTemplate = `{
                 "recent_activities": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/model.RecentActivityResponse"
+                        "$ref": "#/definitions/go-attendance-api_internal_model.RecentActivityResponse"
                     }
                 },
                 "role": {
-                    "$ref": "#/definitions/model.RoleResponse"
+                    "$ref": "#/definitions/go-attendance-api_internal_model.RoleResponse"
                 },
                 "shift": {
-                    "$ref": "#/definitions/model.WorkShiftResponse"
+                    "$ref": "#/definitions/go-attendance-api_internal_model.WorkShiftResponse"
                 },
                 "tenant": {
-                    "$ref": "#/definitions/model.TenantResponse"
+                    "$ref": "#/definitions/go-attendance-api_internal_model.TenantResponse"
                 },
                 "tenant_id": {
                     "type": "integer",
                     "example": 1
                 },
                 "tenant_setting": {
-                    "$ref": "#/definitions/model.TenantSetting"
+                    "$ref": "#/definitions/go-attendance-api_internal_model.TenantSetting"
                 }
             }
         },
-        "model.WorkShiftResponse": {
+        "go-attendance-api_internal_model.WorkShiftResponse": {
             "type": "object",
             "properties": {
                 "color": {
@@ -4791,354 +6164,11 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "type": {
-                    "$ref": "#/definitions/model.ShiftType"
+                    "$ref": "#/definitions/go-attendance-api_internal_model.ShiftType"
                 }
             }
         },
-        "modelDto.AttendanceHistoryItem": {
-            "type": "object",
-            "properties": {
-                "clock_in": {
-                    "type": "string"
-                },
-                "clock_out": {
-                    "type": "string"
-                },
-                "date": {
-                    "type": "string"
-                },
-                "employee": {
-                    "type": "object",
-                    "properties": {
-                        "avatar": {
-                            "type": "string"
-                        },
-                        "id": {
-                            "type": "string"
-                        },
-                        "name": {
-                            "type": "string"
-                        }
-                    }
-                },
-                "id": {
-                    "type": "string"
-                },
-                "location": {
-                    "type": "string"
-                },
-                "overtime": {
-                    "type": "string"
-                },
-                "status": {
-                    "type": "string"
-                }
-            }
-        },
-        "modelDto.AttendanceListResponse": {
-            "type": "object",
-            "properties": {
-                "data": {},
-                "meta": {
-                    "$ref": "#/definitions/modelDto.Meta"
-                }
-            }
-        },
-        "modelDto.CreateHolidayRequest": {
-            "type": "object",
-            "required": [
-                "date",
-                "name",
-                "type"
-            ],
-            "properties": {
-                "date": {
-                    "description": "YYYY-MM-DD",
-                    "type": "string"
-                },
-                "is_paid": {
-                    "type": "boolean"
-                },
-                "name": {
-                    "type": "string"
-                },
-                "type": {
-                    "$ref": "#/definitions/model.HolidayType"
-                }
-            }
-        },
-        "modelDto.CreateSupportMessageRequest": {
-            "type": "object",
-            "required": [
-                "category",
-                "message",
-                "subject"
-            ],
-            "properties": {
-                "category": {
-                    "$ref": "#/definitions/model.SupportCategory"
-                },
-                "message": {
-                    "type": "string"
-                },
-                "subject": {
-                    "type": "string"
-                }
-            }
-        },
-        "modelDto.CreateTrialRequestRequest": {
-            "type": "object",
-            "required": [
-                "company_name",
-                "contact_name",
-                "email",
-                "employee_count_range"
-            ],
-            "properties": {
-                "company_name": {
-                    "type": "string"
-                },
-                "contact_name": {
-                    "type": "string"
-                },
-                "email": {
-                    "type": "string"
-                },
-                "employee_count_range": {
-                    "$ref": "#/definitions/model.EmployeeCountRange"
-                },
-                "industry": {
-                    "type": "string"
-                },
-                "phone_number": {
-                    "type": "string"
-                }
-            }
-        },
-        "modelDto.Meta": {
-            "type": "object",
-            "properties": {
-                "limit": {
-                    "type": "integer"
-                },
-                "offset": {
-                    "type": "integer"
-                },
-                "total": {
-                    "type": "integer"
-                }
-            }
-        },
-        "modelDto.ProvisioningTicketResponse": {
-            "type": "object",
-            "properties": {
-                "completed_at": {
-                    "type": "string"
-                },
-                "created_at": {
-                    "type": "string"
-                },
-                "error_log": {
-                    "type": "string"
-                },
-                "executed_by": {
-                    "type": "integer"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "status": {
-                    "$ref": "#/definitions/model.ProvisioningTicketStatus"
-                },
-                "trial_request": {
-                    "$ref": "#/definitions/modelDto.TrialRequestResponse"
-                },
-                "trial_request_id": {
-                    "type": "string"
-                }
-            }
-        },
-        "modelDto.QuickInfoResponse": {
-            "type": "object",
-            "properties": {
-                "notifications_count": {
-                    "type": "integer"
-                },
-                "pending_leaves": {
-                    "type": "integer"
-                },
-                "pending_overtimes": {
-                    "type": "integer"
-                }
-            }
-        },
-        "modelDto.RosterAssignment": {
-            "type": "object",
-            "required": [
-                "roster",
-                "user_id"
-            ],
-            "properties": {
-                "roster": {
-                    "description": "day -\u003e shift_id or \"off\"",
-                    "type": "object",
-                    "additionalProperties": {
-                        "type": "string"
-                    }
-                },
-                "user_id": {
-                    "type": "integer"
-                }
-            }
-        },
-        "modelDto.SaveRosterRequest": {
-            "type": "object",
-            "required": [
-                "assignments",
-                "start_date"
-            ],
-            "properties": {
-                "assignments": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/modelDto.RosterAssignment"
-                    }
-                },
-                "start_date": {
-                    "description": "YYYY-MM-DD",
-                    "type": "string"
-                }
-            }
-        },
-        "modelDto.SupportMessageResponse": {
-            "type": "object",
-            "properties": {
-                "category": {
-                    "$ref": "#/definitions/model.SupportCategory"
-                },
-                "created_at": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "message": {
-                    "type": "string"
-                },
-                "status": {
-                    "$ref": "#/definitions/model.SupportStatus"
-                },
-                "subject": {
-                    "type": "string"
-                },
-                "tenant": {
-                    "$ref": "#/definitions/model.TenantResponse"
-                },
-                "tenant_id": {
-                    "type": "integer"
-                },
-                "user": {
-                    "$ref": "#/definitions/model.UserResponse"
-                },
-                "user_id": {
-                    "type": "integer"
-                }
-            }
-        },
-        "modelDto.TodayAttendanceResponse": {
-            "type": "object",
-            "properties": {
-                "clock_in_time": {
-                    "type": "string"
-                },
-                "clock_out_time": {
-                    "type": "string"
-                },
-                "date": {
-                    "type": "string"
-                },
-                "duration": {
-                    "type": "string"
-                },
-                "status": {
-                    "type": "string"
-                }
-            }
-        },
-        "modelDto.TrialRequestResponse": {
-            "type": "object",
-            "properties": {
-                "company_name": {
-                    "type": "string"
-                },
-                "contact_name": {
-                    "type": "string"
-                },
-                "created_at": {
-                    "type": "string"
-                },
-                "email": {
-                    "type": "string"
-                },
-                "employee_count_range": {
-                    "$ref": "#/definitions/model.EmployeeCountRange"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "industry": {
-                    "type": "string"
-                },
-                "phone_number": {
-                    "type": "string"
-                },
-                "status": {
-                    "$ref": "#/definitions/model.TrialRequestStatus"
-                }
-            }
-        },
-        "modelDto.UpdateHolidayRequest": {
-            "type": "object",
-            "properties": {
-                "is_paid": {
-                    "type": "boolean"
-                },
-                "name": {
-                    "type": "string"
-                }
-            }
-        },
-        "modelDto.UpdateLifecycleTaskRequest": {
-            "type": "object",
-            "properties": {
-                "is_completed": {
-                    "type": "boolean"
-                }
-            }
-        },
-        "modelDto.UpdateSupportMessageStatusRequest": {
-            "type": "object",
-            "required": [
-                "status"
-            ],
-            "properties": {
-                "status": {
-                    "$ref": "#/definitions/model.SupportStatus"
-                }
-            }
-        },
-        "modelDto.UpdateTrialRequestStatusRequest": {
-            "type": "object",
-            "required": [
-                "status"
-            ],
-            "properties": {
-                "status": {
-                    "$ref": "#/definitions/model.TrialRequestStatus"
-                }
-            }
-        },
-        "service.CreateRoleRequest": {
+        "go-attendance-api_internal_service.CreateRoleRequest": {
             "type": "object",
             "required": [
                 "base_role",
@@ -5146,7 +6176,7 @@ const docTemplate = `{
             ],
             "properties": {
                 "base_role": {
-                    "$ref": "#/definitions/model.BaseRole"
+                    "$ref": "#/definitions/go-attendance-api_internal_model.BaseRole"
                 },
                 "description": {
                     "type": "string"
@@ -5162,7 +6192,7 @@ const docTemplate = `{
                 }
             }
         },
-        "service.UpdateRoleRequest": {
+        "go-attendance-api_internal_service.UpdateRoleRequest": {
             "type": "object",
             "properties": {
                 "description": {
@@ -5179,19 +6209,19 @@ const docTemplate = `{
                 }
             }
         },
-        "utils.APIResponse": {
+        "go-attendance-api_internal_utils.APIResponse": {
             "type": "object",
             "properties": {
                 "data": {},
                 "meta": {
-                    "$ref": "#/definitions/utils.Meta"
+                    "$ref": "#/definitions/go-attendance-api_internal_utils.Meta"
                 },
                 "success": {
                     "type": "boolean"
                 }
             }
         },
-        "utils.Meta": {
+        "go-attendance-api_internal_utils.Meta": {
             "type": "object",
             "properties": {
                 "code": {
@@ -5201,14 +6231,14 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "pagination": {
-                    "$ref": "#/definitions/utils.Pagination"
+                    "$ref": "#/definitions/go-attendance-api_internal_utils.Pagination"
                 },
                 "status": {
                     "type": "string"
                 }
             }
         },
-        "utils.Pagination": {
+        "go-attendance-api_internal_utils.Pagination": {
             "type": "object",
             "properties": {
                 "current_page": {
@@ -5222,6 +6252,65 @@ const docTemplate = `{
                 },
                 "total": {
                     "type": "integer"
+                }
+            }
+        },
+        "internal_handler.EmailRequest": {
+            "type": "object",
+            "required": [
+                "html",
+                "subject",
+                "to"
+            ],
+            "properties": {
+                "html": {
+                    "type": "string"
+                },
+                "subject": {
+                    "type": "string"
+                },
+                "to": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "internal_handler.ReviewLeaveRequest": {
+            "type": "object",
+            "properties": {
+                "notes": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_handler.SaveHierarchyRequest": {
+            "type": "object",
+            "required": [
+                "child_role_ids",
+                "parent_role_id"
+            ],
+            "properties": {
+                "child_role_ids": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "parent_role_id": {
+                    "type": "integer"
+                }
+            }
+        },
+        "internal_handler.UpdateProfilePhotoRequest": {
+            "type": "object",
+            "required": [
+                "media_url"
+            ],
+            "properties": {
+                "media_url": {
+                    "type": "string"
                 }
             }
         }

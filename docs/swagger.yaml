@@ -1,55 +1,408 @@
 basePath: /
 definitions:
-  handler.EmailRequest:
+  go-attendance-api_internal_dto.AttendanceHistoryItem:
     properties:
-      html:
+      clock_in:
         type: string
-      subject:
+      clock_out:
         type: string
-      to:
-        items:
-          type: string
-        type: array
-    required:
-    - html
-    - subject
-    - to
+      date:
+        type: string
+      employee:
+        properties:
+          avatar:
+            type: string
+          id:
+            type: string
+          name:
+            type: string
+        type: object
+      id:
+        type: string
+      location:
+        type: string
+      overtime:
+        type: string
+      status:
+        type: string
     type: object
-  handler.ReviewLeaveRequest:
+  go-attendance-api_internal_dto.AttendanceListResponse:
     properties:
-      notes:
-        type: string
+      data: {}
+      meta:
+        $ref: '#/definitions/go-attendance-api_internal_dto.Meta'
     type: object
-  handler.SaveHierarchyRequest:
+  go-attendance-api_internal_dto.CreateCalendarEventRequest:
     properties:
-      child_role_ids:
+      category:
+        $ref: '#/definitions/go-attendance-api_internal_model.EventCategory'
+      date:
+        description: YYYY-MM-DD
+        type: string
+      description:
+        type: string
+      is_all_users:
+        type: boolean
+      is_paid:
+        type: boolean
+      name:
+        type: string
+      type:
+        $ref: '#/definitions/go-attendance-api_internal_model.EventType'
+      user_ids:
         items:
           type: integer
         type: array
-      parent_role_id:
+    required:
+    - date
+    - name
+    - type
+    type: object
+  go-attendance-api_internal_dto.CreateExpenseRequest:
+    properties:
+      amount:
+        type: number
+      category:
+        $ref: '#/definitions/go-attendance-api_internal_model.ExpenseCategory'
+      date:
+        description: YYYY-MM-DD
+        type: string
+      description:
+        type: string
+      receipt:
+        description: URL or base64
+        type: string
+    required:
+    - amount
+    - category
+    - date
+    - description
+    type: object
+  go-attendance-api_internal_dto.CreateGoalRequest:
+    properties:
+      description:
+        type: string
+      end_date:
+        example: "2026-12-31"
+        type: string
+      start_date:
+        example: "2026-01-01"
+        type: string
+      target_value:
+        type: number
+      title:
+        type: string
+      type:
+        allOf:
+        - $ref: '#/definitions/go-attendance-api_internal_model.GoalType'
+        enum:
+        - KPI
+        - OKR
+      unit:
+        type: string
+      user_id:
         type: integer
     required:
-    - child_role_ids
-    - parent_role_id
+    - end_date
+    - start_date
+    - target_value
+    - title
+    - type
+    - user_id
     type: object
-  handler.UpdateProfilePhotoRequest:
+  go-attendance-api_internal_dto.CreateLifecycleTemplateRequest:
     properties:
-      media_url:
+      category:
+        $ref: '#/definitions/go-attendance-api_internal_model.LifecycleStatus'
+      task_name:
         type: string
     required:
-    - media_url
+    - category
+    - task_name
     type: object
-  model.ApproveOvertimeRequest:
+  go-attendance-api_internal_dto.CreateSupportMessageRequest:
+    properties:
+      category:
+        $ref: '#/definitions/go-attendance-api_internal_model.SupportCategory'
+      message:
+        type: string
+      subject:
+        type: string
+    required:
+    - category
+    - message
+    - subject
+    type: object
+  go-attendance-api_internal_dto.CreateTrialRequestRequest:
+    properties:
+      company_name:
+        type: string
+      contact_name:
+        type: string
+      email:
+        type: string
+      employee_count_range:
+        $ref: '#/definitions/go-attendance-api_internal_model.EmployeeCountRange'
+      industry:
+        type: string
+      phone_number:
+        type: string
+    required:
+    - company_name
+    - contact_name
+    - email
+    - employee_count_range
+    type: object
+  go-attendance-api_internal_dto.Meta:
+    properties:
+      limit:
+        type: integer
+      offset:
+        type: integer
+      total:
+        type: integer
+    type: object
+  go-attendance-api_internal_dto.ProvisioningTicketResponse:
+    properties:
+      completed_at:
+        type: string
+      created_at:
+        type: string
+      error_log:
+        type: string
+      executed_by:
+        type: integer
+      id:
+        type: string
+      status:
+        $ref: '#/definitions/go-attendance-api_internal_model.ProvisioningTicketStatus'
+      trial_request:
+        $ref: '#/definitions/go-attendance-api_internal_dto.TrialRequestResponse'
+      trial_request_id:
+        type: string
+    type: object
+  go-attendance-api_internal_dto.QuickInfoResponse:
+    properties:
+      notifications_count:
+        type: integer
+      pending_leaves:
+        type: integer
+      pending_overtimes:
+        type: integer
+    type: object
+  go-attendance-api_internal_dto.RejectExpenseRequest:
+    properties:
+      reason:
+        type: string
+    required:
+    - reason
+    type: object
+  go-attendance-api_internal_dto.RosterAssignment:
+    properties:
+      roster:
+        additionalProperties:
+          type: string
+        description: day -> shift_id or "off"
+        type: object
+      user_id:
+        type: integer
+    required:
+    - roster
+    - user_id
+    type: object
+  go-attendance-api_internal_dto.SaveRosterRequest:
+    properties:
+      assignments:
+        items:
+          $ref: '#/definitions/go-attendance-api_internal_dto.RosterAssignment'
+        type: array
+      start_date:
+        description: YYYY-MM-DD
+        type: string
+    required:
+    - assignments
+    - start_date
+    type: object
+  go-attendance-api_internal_dto.SubmitSelfReviewRequest:
+    properties:
+      comments:
+        type: string
+      self_score:
+        type: number
+    required:
+    - self_score
+    type: object
+  go-attendance-api_internal_dto.SubscriptionItem:
+    properties:
+      active_employees:
+        type: integer
+      amount:
+        type: number
+      billing_cycle:
+        $ref: '#/definitions/go-attendance-api_internal_model.BillingCycle'
+      created_at:
+        type: string
+      id:
+        type: integer
+      next_billing_date:
+        type: string
+      plan:
+        type: string
+      status:
+        $ref: '#/definitions/go-attendance-api_internal_model.SubscriptionStatus'
+      tenant_code:
+        type: string
+      tenant_id:
+        type: integer
+      tenant_logo:
+        type: string
+      tenant_name:
+        type: string
+    type: object
+  go-attendance-api_internal_dto.SubscriptionStats:
+    properties:
+      active_tenants:
+        type: integer
+      active_tenants_growth:
+        type: string
+      mrr:
+        type: number
+      mrr_growth:
+        type: string
+      past_due_amount:
+        type: number
+      past_due_growth:
+        type: string
+    type: object
+  go-attendance-api_internal_dto.SubscriptionsDataResponse:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/go-attendance-api_internal_dto.SubscriptionItem'
+        type: array
+      stats:
+        $ref: '#/definitions/go-attendance-api_internal_dto.SubscriptionStats'
+      total:
+        type: integer
+    type: object
+  go-attendance-api_internal_dto.SupportMessageResponse:
+    properties:
+      category:
+        $ref: '#/definitions/go-attendance-api_internal_model.SupportCategory'
+      created_at:
+        type: string
+      id:
+        type: string
+      message:
+        type: string
+      status:
+        $ref: '#/definitions/go-attendance-api_internal_model.SupportStatus'
+      subject:
+        type: string
+      tenant:
+        $ref: '#/definitions/go-attendance-api_internal_model.TenantResponse'
+      tenant_id:
+        type: integer
+      user:
+        $ref: '#/definitions/go-attendance-api_internal_model.UserResponse'
+      user_id:
+        type: integer
+    type: object
+  go-attendance-api_internal_dto.TodayAttendanceResponse:
+    properties:
+      clock_in_time:
+        type: string
+      clock_out_time:
+        type: string
+      date:
+        type: string
+      duration:
+        type: string
+      status:
+        type: string
+    type: object
+  go-attendance-api_internal_dto.TrialRequestResponse:
+    properties:
+      company_name:
+        type: string
+      contact_name:
+        type: string
+      created_at:
+        type: string
+      email:
+        type: string
+      employee_count_range:
+        $ref: '#/definitions/go-attendance-api_internal_model.EmployeeCountRange'
+      id:
+        type: string
+      industry:
+        type: string
+      phone_number:
+        type: string
+      status:
+        $ref: '#/definitions/go-attendance-api_internal_model.TrialRequestStatus'
+    type: object
+  go-attendance-api_internal_dto.UpdateCalendarEventRequest:
+    properties:
+      category:
+        $ref: '#/definitions/go-attendance-api_internal_model.EventCategory'
+      description:
+        type: string
+      is_all_users:
+        type: boolean
+      is_paid:
+        type: boolean
+      name:
+        type: string
+      user_ids:
+        items:
+          type: integer
+        type: array
+    type: object
+  go-attendance-api_internal_dto.UpdateGoalProgressRequest:
+    properties:
+      current_progress:
+        type: number
+    required:
+    - current_progress
+    type: object
+  go-attendance-api_internal_dto.UpdateLifecycleTaskRequest:
+    properties:
+      is_completed:
+        type: boolean
+    type: object
+  go-attendance-api_internal_dto.UpdateQuotaRequest:
+    properties:
+      quota:
+        type: number
+    required:
+    - quota
+    type: object
+  go-attendance-api_internal_dto.UpdateSupportMessageStatusRequest:
+    properties:
+      status:
+        $ref: '#/definitions/go-attendance-api_internal_model.SupportStatus'
+    required:
+    - status
+    type: object
+  go-attendance-api_internal_dto.UpdateTrialRequestStatusRequest:
+    properties:
+      status:
+        $ref: '#/definitions/go-attendance-api_internal_model.TrialRequestStatus'
+    required:
+    - status
+    type: object
+  go-attendance-api_internal_model.ApproveOvertimeRequest:
     properties:
       admin_notes:
         type: string
     type: object
-  model.ApproveUserChangeRequest:
+  go-attendance-api_internal_model.ApproveUserChangeRequest:
     properties:
       admin_notes:
         type: string
     type: object
-  model.Attendance:
+  go-attendance-api_internal_model.Attendance:
     properties:
       clockInLatitude:
         type: number
@@ -72,17 +425,17 @@ definitions:
       id:
         type: string
       status:
-        $ref: '#/definitions/model.AttendanceStatus'
+        $ref: '#/definitions/go-attendance-api_internal_model.AttendanceStatus'
       tenant:
-        $ref: '#/definitions/model.Tenant'
+        $ref: '#/definitions/go-attendance-api_internal_model.Tenant'
       tenantID:
         type: integer
       user:
-        $ref: '#/definitions/model.User'
+        $ref: '#/definitions/go-attendance-api_internal_model.User'
       userID:
         type: integer
     type: object
-  model.AttendanceAction:
+  go-attendance-api_internal_model.AttendanceAction:
     enum:
     - clock_in
     - clock_out
@@ -90,11 +443,11 @@ definitions:
     x-enum-varnames:
     - ClockIn
     - ClockOut
-  model.AttendanceRequest:
+  go-attendance-api_internal_model.AttendanceRequest:
     properties:
       action:
         allOf:
-        - $ref: '#/definitions/model.AttendanceAction'
+        - $ref: '#/definitions/go-attendance-api_internal_model.AttendanceAction'
         enum:
         - clock_in
         - clock_out
@@ -113,7 +466,7 @@ definitions:
     - latitude
     - longitude
     type: object
-  model.AttendanceResponse:
+  go-attendance-api_internal_model.AttendanceResponse:
     properties:
       clock_in_latitude:
         type: number
@@ -136,13 +489,13 @@ definitions:
       id:
         type: string
       status:
-        $ref: '#/definitions/model.AttendanceStatus'
+        $ref: '#/definitions/go-attendance-api_internal_model.AttendanceStatus'
       user:
-        $ref: '#/definitions/model.UserResponse'
+        $ref: '#/definitions/go-attendance-api_internal_model.UserResponse'
       user_id:
         type: integer
     type: object
-  model.AttendanceStatus:
+  go-attendance-api_internal_model.AttendanceStatus:
     enum:
     - working
     - done
@@ -152,7 +505,7 @@ definitions:
     - StatusWorking
     - StatusDone
     - StatusLate
-  model.AttendanceSummaryResponse:
+  go-attendance-api_internal_model.AttendanceSummaryResponse:
     properties:
       late_summary:
         type: integer
@@ -167,9 +520,11 @@ definitions:
       total_record_diff:
         type: number
     type: object
-  model.BaseRole:
+  go-attendance-api_internal_model.BaseRole:
     enum:
     - SUPERADMIN
+    - SUPPORT
+    - ENGINEER
     - ADMIN
     - HR
     - FINANCE
@@ -177,11 +532,35 @@ definitions:
     type: string
     x-enum-varnames:
     - BaseRoleSuperAdmin
+    - BaseRoleSupport
+    - BaseRoleEngineer
     - BaseRoleAdmin
     - BaseRoleHR
     - BaseRoleFinance
     - BaseRoleEmployee
-  model.CreateCorrectionRequest:
+  go-attendance-api_internal_model.BillingCycle:
+    enum:
+    - Monthly
+    - Yearly
+    type: string
+    x-enum-varnames:
+    - BillingCycleMonthly
+    - BillingCycleYearly
+  go-attendance-api_internal_model.ChangePasswordRequest:
+    properties:
+      confirm_password:
+        type: string
+      new_password:
+        minLength: 6
+        type: string
+      old_password:
+        type: string
+    required:
+    - confirm_password
+    - new_password
+    - old_password
+    type: object
+  go-attendance-api_internal_model.CreateCorrectionRequest:
     properties:
       attendance_id:
         type: string
@@ -200,7 +579,7 @@ definitions:
     - date
     - reason
     type: object
-  model.CreateOvertimeRequest:
+  go-attendance-api_internal_model.CreateOvertimeRequest:
     properties:
       date:
         example: "2026-04-08"
@@ -219,7 +598,7 @@ definitions:
     - reason
     - start_time
     type: object
-  model.CreateUserChangeRequest:
+  go-attendance-api_internal_model.CreateUserChangeRequest:
     properties:
       address:
         type: string
@@ -235,7 +614,7 @@ definitions:
     - email
     - name
     type: object
-  model.CreateUserRequest:
+  go-attendance-api_internal_model.CreateUserRequest:
     properties:
       address:
         example: Jl. Sudirman No. 1
@@ -252,8 +631,8 @@ definitions:
         example: Budi Santoso
         type: string
       password:
+        description: Optional now
         example: "123456"
-        minLength: 6
         type: string
       phone_number:
         example: "08123456789"
@@ -269,9 +648,8 @@ definitions:
     required:
     - email
     - name
-    - password
     type: object
-  model.EmployeeCountRange:
+  go-attendance-api_internal_model.EmployeeCountRange:
     enum:
     - 1-10
     - 11-50
@@ -283,19 +661,58 @@ definitions:
     - EmployeeCountRange11To50
     - EmployeeCountRange51To200
     - EmployeeCountRange201Plus
-  model.HolidayType:
+  go-attendance-api_internal_model.EventCategory:
+    enum:
+    - OFFICE_CLOSED
+    - INFORMATION
+    type: string
+    x-enum-varnames:
+    - EventCategoryOfficeClosed
+    - EventCategoryInformation
+  go-attendance-api_internal_model.EventType:
     enum:
     - National Holiday
     - Company Event
     - Mandatory Leave
+    - Meeting
     - Other
     type: string
     x-enum-varnames:
-    - HolidayTypeNational
-    - HolidayTypeCompanyEvent
-    - HolidayTypeMandatoryLeave
-    - HolidayTypeOther
-  model.ImageMeta:
+    - EventTypeNationalHoliday
+    - EventTypeCompanyEvent
+    - EventTypeMandatoryLeave
+    - EventTypeMeeting
+    - EventTypeOther
+  go-attendance-api_internal_model.ExpenseCategory:
+    enum:
+    - Travel
+    - Medical
+    - Supplies
+    - Equipment
+    - Other
+    type: string
+    x-enum-varnames:
+    - ExpenseCategoryTravel
+    - ExpenseCategoryMedical
+    - ExpenseCategorySupplies
+    - ExpenseCategoryEquipment
+    - ExpenseCategoryOther
+  go-attendance-api_internal_model.ForgotPasswordRequest:
+    properties:
+      email:
+        type: string
+    required:
+    - email
+    type: object
+  go-attendance-api_internal_model.GoalType:
+    enum:
+    - KPI
+    - OKR
+    type: string
+    x-enum-varnames:
+    - GoalTypeKPI
+    - GoalTypeOKR
+  go-attendance-api_internal_model.ImageMeta:
     properties:
       extension:
         type: string
@@ -308,7 +725,7 @@ definitions:
       url:
         type: string
     type: object
-  model.LeaveBalance:
+  go-attendance-api_internal_model.LeaveBalance:
     properties:
       balance:
         description: Remaining days
@@ -318,19 +735,19 @@ definitions:
       id:
         type: integer
       leave_type:
-        $ref: '#/definitions/model.LeaveType'
+        $ref: '#/definitions/go-attendance-api_internal_model.LeaveType'
       leave_type_id:
         type: integer
       updated_at:
         type: string
       user:
-        $ref: '#/definitions/model.User'
+        $ref: '#/definitions/go-attendance-api_internal_model.User'
       user_id:
         type: integer
       year:
         type: integer
     type: object
-  model.LeaveRequest:
+  go-attendance-api_internal_model.LeaveRequest:
     properties:
       delegate_id:
         type: integer
@@ -350,7 +767,7 @@ definitions:
     - reason
     - start_date
     type: object
-  model.LeaveResponse:
+  go-attendance-api_internal_model.LeaveResponse:
     properties:
       created_at:
         type: string
@@ -367,7 +784,7 @@ definitions:
       start_date:
         type: string
       status:
-        $ref: '#/definitions/model.LeaveStatus'
+        $ref: '#/definitions/go-attendance-api_internal_model.LeaveStatus'
       total_days:
         type: integer
       user_avatar:
@@ -377,7 +794,7 @@ definitions:
       user_name:
         type: string
     type: object
-  model.LeaveStatus:
+  go-attendance-api_internal_model.LeaveStatus:
     enum:
     - pending
     - approved
@@ -387,7 +804,7 @@ definitions:
     - LeaveStatusPending
     - LeaveStatusApproved
     - LeaveStatusRejected
-  model.LeaveType:
+  go-attendance-api_internal_model.LeaveType:
     properties:
       code:
         description: e.g., ANNUAL, SICK
@@ -406,7 +823,17 @@ definitions:
       updated_at:
         type: string
     type: object
-  model.LoginRequest:
+  go-attendance-api_internal_model.LifecycleStatus:
+    enum:
+    - ONBOARDING
+    - ACTIVE
+    - OFFBOARDING
+    type: string
+    x-enum-varnames:
+    - LifecycleStatusOnboarding
+    - LifecycleStatusActive
+    - LifecycleStatusOffboarding
+  go-attendance-api_internal_model.LoginRequest:
     properties:
       email:
         example: admin@yopmail.com
@@ -418,7 +845,7 @@ definitions:
     - email
     - password
     type: object
-  model.Media:
+  go-attendance-api_internal_model.Media:
     properties:
       created_at:
         type: string
@@ -427,7 +854,7 @@ definitions:
       imgbb_id:
         type: string
       meta:
-        $ref: '#/definitions/model.Meta'
+        $ref: '#/definitions/go-attendance-api_internal_model.Meta'
       type:
         type: string
       updated_at:
@@ -435,7 +862,7 @@ definitions:
       url:
         type: string
     type: object
-  model.Meta:
+  go-attendance-api_internal_model.Meta:
     properties:
       delete_url:
         type: string
@@ -448,11 +875,11 @@ definitions:
       id:
         type: string
       image:
-        $ref: '#/definitions/model.ImageMeta'
+        $ref: '#/definitions/go-attendance-api_internal_model.ImageMeta'
       size:
         type: integer
       thumb:
-        $ref: '#/definitions/model.ImageMeta'
+        $ref: '#/definitions/go-attendance-api_internal_model.ImageMeta'
       time:
         type: integer
       title:
@@ -464,7 +891,7 @@ definitions:
       width:
         type: integer
     type: object
-  model.OrgNode:
+  go-attendance-api_internal_model.OrgNode:
     properties:
       avatar:
         type: string
@@ -478,10 +905,10 @@ definitions:
         type: string
       subordinates:
         items:
-          $ref: '#/definitions/model.OrgNode'
+          $ref: '#/definitions/go-attendance-api_internal_model.OrgNode'
         type: array
     type: object
-  model.OvertimeResponse:
+  go-attendance-api_internal_model.OvertimeResponse:
     properties:
       admin_notes:
         type: string
@@ -498,15 +925,15 @@ definitions:
       start_time:
         type: string
       status:
-        $ref: '#/definitions/model.OvertimeStatus'
+        $ref: '#/definitions/go-attendance-api_internal_model.OvertimeStatus'
       updated_at:
         type: string
       user:
-        $ref: '#/definitions/model.UserResponse'
+        $ref: '#/definitions/go-attendance-api_internal_model.UserResponse'
       user_id:
         type: integer
     type: object
-  model.OvertimeStatus:
+  go-attendance-api_internal_model.OvertimeStatus:
     enum:
     - pending
     - approved
@@ -516,12 +943,14 @@ definitions:
     - OvertimeStatusPending
     - OvertimeStatusApproved
     - OvertimeStatusRejected
-  model.Permission:
+  go-attendance-api_internal_model.Permission:
     properties:
       action:
         example: view
         type: string
       created_at:
+        type: string
+      description:
         type: string
       id:
         example: attendance.view
@@ -532,7 +961,7 @@ definitions:
       updated_at:
         type: string
     type: object
-  model.Position:
+  go-attendance-api_internal_model.Position:
     properties:
       created_at:
         type: string
@@ -549,7 +978,7 @@ definitions:
       updated_at:
         type: string
     type: object
-  model.ProvisioningTicketStatus:
+  go-attendance-api_internal_model.ProvisioningTicketStatus:
     enum:
     - WAITING
     - EXECUTING
@@ -561,7 +990,7 @@ definitions:
     - ProvisioningTicketStatusExecuting
     - ProvisioningTicketStatusCompleted
     - ProvisioningTicketStatusFailed
-  model.RecentActivity:
+  go-attendance-api_internal_model.RecentActivity:
     properties:
       action:
         type: string
@@ -576,7 +1005,7 @@ definitions:
       user_id:
         type: integer
     type: object
-  model.RecentActivityResponse:
+  go-attendance-api_internal_model.RecentActivityResponse:
     properties:
       action:
         type: string
@@ -589,7 +1018,7 @@ definitions:
       title:
         type: string
     type: object
-  model.RegisterRequest:
+  go-attendance-api_internal_model.RegisterRequest:
     properties:
       address:
         example: Jl. Sudirman No. 1
@@ -622,21 +1051,37 @@ definitions:
     - password
     - tenant_id
     type: object
-  model.ReviewCorrectionRequest:
+  go-attendance-api_internal_model.ResetPasswordRequest:
+    properties:
+      confirm_password:
+        type: string
+      new_password:
+        minLength: 6
+        type: string
+      token:
+        type: string
+    required:
+    - confirm_password
+    - new_password
+    - token
+    type: object
+  go-attendance-api_internal_model.ReviewCorrectionRequest:
     properties:
       admin_notes:
         type: string
     type: object
-  model.Role:
+  go-attendance-api_internal_model.Role:
     properties:
       base_role:
-        $ref: '#/definitions/model.BaseRole'
+        $ref: '#/definitions/go-attendance-api_internal_model.BaseRole'
       created_at:
         type: string
       description:
         type: string
       id:
         type: integer
+      is_immutable:
+        type: boolean
       is_system:
         type: boolean
       name:
@@ -644,31 +1089,33 @@ definitions:
         type: string
       permissions:
         items:
-          $ref: '#/definitions/model.Permission'
+          $ref: '#/definitions/go-attendance-api_internal_model.Permission'
         type: array
       tenant_id:
         type: integer
       updated_at:
         type: string
     type: object
-  model.RoleResponse:
+  go-attendance-api_internal_model.RoleResponse:
     properties:
       base_role:
-        $ref: '#/definitions/model.BaseRole'
+        $ref: '#/definitions/go-attendance-api_internal_model.BaseRole'
       description:
         type: string
       id:
         type: integer
+      is_immutable:
+        type: boolean
       is_system:
         type: boolean
       name:
         type: string
       permissions:
         items:
-          $ref: '#/definitions/model.Permission'
+          $ref: '#/definitions/go-attendance-api_internal_model.Permission'
         type: array
     type: object
-  model.SessionResponse:
+  go-attendance-api_internal_model.SessionResponse:
     properties:
       device_info:
         type: string
@@ -685,7 +1132,7 @@ definitions:
       user_agent:
         type: string
     type: object
-  model.ShiftType:
+  go-attendance-api_internal_model.ShiftType:
     enum:
     - Morning
     - Afternoon
@@ -695,7 +1142,19 @@ definitions:
     - ShiftTypeMorning
     - ShiftTypeAfternoon
     - ShiftTypeNight
-  model.SupportCategory:
+  go-attendance-api_internal_model.SubscriptionStatus:
+    enum:
+    - Active
+    - Past Due
+    - Canceled
+    - Trial
+    type: string
+    x-enum-varnames:
+    - SubscriptionStatusActive
+    - SubscriptionStatusPastDue
+    - SubscriptionStatusCanceled
+    - SubscriptionStatusTrial
+  go-attendance-api_internal_model.SupportCategory:
     enum:
     - TECHNICAL
     - BILLING
@@ -707,7 +1166,7 @@ definitions:
     - SupportCategoryBilling
     - SupportCategoryFeature
     - SupportCategoryOther
-  model.SupportStatus:
+  go-attendance-api_internal_model.SupportStatus:
     enum:
     - PENDING
     - IN_PROGRESS
@@ -717,34 +1176,44 @@ definitions:
     - SupportStatusPending
     - SupportStatusInProgress
     - SupportStatusResolved
-  model.Tenant:
+  go-attendance-api_internal_model.Tenant:
     properties:
       code:
         type: string
-      createdAt:
+      created_at:
         type: string
       id:
         type: integer
+      is_suspended:
+        type: boolean
       name:
         type: string
       plan:
         description: Basic, Pro, Enterprise
         type: string
+      suspended_reason:
+        type: string
       tenant_settings:
-        $ref: '#/definitions/model.TenantSetting'
-      updatedAt:
+        $ref: '#/definitions/go-attendance-api_internal_model.TenantSetting'
+      updated_at:
         type: string
     type: object
-  model.TenantResponse:
+  go-attendance-api_internal_model.TenantResponse:
     properties:
       id:
         type: integer
+      is_suspended:
+        type: boolean
       name:
         type: string
+      plan:
+        type: string
+      suspended_reason:
+        type: string
       tenant_settings:
-        $ref: '#/definitions/model.TenantSetting'
+        $ref: '#/definitions/go-attendance-api_internal_model.TenantSetting'
     type: object
-  model.TenantSetting:
+  go-attendance-api_internal_model.TenantSetting:
     properties:
       allow_multiple_check:
         example: false
@@ -789,7 +1258,7 @@ definitions:
         example: true
         type: boolean
       tenant:
-        $ref: '#/definitions/model.Tenant'
+        $ref: '#/definitions/go-attendance-api_internal_model.Tenant'
       tenant_id:
         example: 1
         type: integer
@@ -799,7 +1268,7 @@ definitions:
         example: "2026-04-07T13:21:24Z"
         type: string
     type: object
-  model.TrialRequestStatus:
+  go-attendance-api_internal_model.TrialRequestStatus:
     enum:
     - NEW
     - QUALIFIED
@@ -811,14 +1280,14 @@ definitions:
     - TrialRequestStatusQualified
     - TrialRequestStatusApproved
     - TrialRequestStatusRejected
-  model.User:
+  go-attendance-api_internal_model.User:
     properties:
       address:
         example: Jl. Sudirman No. 1
         type: string
       attendances:
         items:
-          $ref: '#/definitions/model.Attendance'
+          $ref: '#/definitions/go-attendance-api_internal_model.Attendance'
         type: array
       base_salary:
         type: number
@@ -826,7 +1295,7 @@ definitions:
         example: "2026-04-05T12:00:00Z"
         type: string
       delegate:
-        $ref: '#/definitions/model.User'
+        $ref: '#/definitions/go-attendance-api_internal_model.User'
       delegate_id:
         example: 2
         type: integer
@@ -839,17 +1308,25 @@ definitions:
       employee_id:
         example: FT-001
         type: string
+      expense_quota:
+        type: number
       id:
         example: 1
         type: integer
+      is_active:
+        type: boolean
+      is_system_created:
+        type: boolean
       manager:
-        $ref: '#/definitions/model.User'
+        $ref: '#/definitions/go-attendance-api_internal_model.User'
       manager_id:
         example: 1
         type: integer
       media_url:
         example: https://cdn.example.com/profile/budi.jpg
         type: string
+      must_change_password:
+        type: boolean
       name:
         example: Budi Santoso
         maxLength: 100
@@ -859,21 +1336,21 @@ definitions:
         example: "08123456789"
         type: string
       position:
-        $ref: '#/definitions/model.Position'
+        $ref: '#/definitions/go-attendance-api_internal_model.Position'
       position_id:
         example: 1
         type: integer
       recent_activities:
         items:
-          $ref: '#/definitions/model.RecentActivity'
+          $ref: '#/definitions/go-attendance-api_internal_model.RecentActivity'
         type: array
       role:
-        $ref: '#/definitions/model.Role'
+        $ref: '#/definitions/go-attendance-api_internal_model.Role'
       role_id:
         example: 1
         type: integer
       tenant:
-        $ref: '#/definitions/model.Tenant'
+        $ref: '#/definitions/go-attendance-api_internal_model.Tenant'
       tenant_id:
         example: 1
         type: integer
@@ -884,7 +1361,7 @@ definitions:
     - email
     - name
     type: object
-  model.UserChangeRequestResponse:
+  go-attendance-api_internal_model.UserChangeRequestResponse:
     properties:
       address:
         type: string
@@ -903,17 +1380,17 @@ definitions:
       phone_number:
         type: string
       status:
-        $ref: '#/definitions/model.UserChangeRequestStatus'
+        $ref: '#/definitions/go-attendance-api_internal_model.UserChangeRequestStatus'
       tenant_id:
         type: integer
       updated_at:
         type: string
       user:
-        $ref: '#/definitions/model.UserResponse'
+        $ref: '#/definitions/go-attendance-api_internal_model.UserResponse'
       user_id:
         type: integer
     type: object
-  model.UserChangeRequestStatus:
+  go-attendance-api_internal_model.UserChangeRequestStatus:
     enum:
     - pending
     - approved
@@ -923,17 +1400,17 @@ definitions:
     - StatusPending
     - StatusApproved
     - StatusRejected
-  model.UserResponse:
+  go-attendance-api_internal_model.UserResponse:
     properties:
       address:
         example: Jl. Sudirman No. 1
         type: string
       attendances:
         items:
-          $ref: '#/definitions/model.AttendanceResponse'
+          $ref: '#/definitions/go-attendance-api_internal_model.AttendanceResponse'
         type: array
       base_role:
-        $ref: '#/definitions/model.BaseRole'
+        $ref: '#/definitions/go-attendance-api_internal_model.BaseRole'
       created_at:
         type: string
       delegate_id:
@@ -947,16 +1424,24 @@ definitions:
       employee_id:
         example: FT-001
         type: string
+      expense_quota:
+        type: number
       id:
         example: 1
         type: integer
+      is_active:
+        type: boolean
       is_owner:
+        type: boolean
+      is_system_created:
         type: boolean
       manager_id:
         type: integer
       media_url:
         example: https://cdn.example.com/profile/budi.jpg
         type: string
+      must_change_password:
+        type: boolean
       name:
         example: Budi Santoso
         type: string
@@ -973,21 +1458,21 @@ definitions:
         type: string
       recent_activities:
         items:
-          $ref: '#/definitions/model.RecentActivityResponse'
+          $ref: '#/definitions/go-attendance-api_internal_model.RecentActivityResponse'
         type: array
       role:
-        $ref: '#/definitions/model.RoleResponse'
+        $ref: '#/definitions/go-attendance-api_internal_model.RoleResponse'
       shift:
-        $ref: '#/definitions/model.WorkShiftResponse'
+        $ref: '#/definitions/go-attendance-api_internal_model.WorkShiftResponse'
       tenant:
-        $ref: '#/definitions/model.TenantResponse'
+        $ref: '#/definitions/go-attendance-api_internal_model.TenantResponse'
       tenant_id:
         example: 1
         type: integer
       tenant_setting:
-        $ref: '#/definitions/model.TenantSetting'
+        $ref: '#/definitions/go-attendance-api_internal_model.TenantSetting'
     type: object
-  model.WorkShiftResponse:
+  go-attendance-api_internal_model.WorkShiftResponse:
     properties:
       color:
         type: string
@@ -1002,239 +1487,12 @@ definitions:
       startTime:
         type: string
       type:
-        $ref: '#/definitions/model.ShiftType'
+        $ref: '#/definitions/go-attendance-api_internal_model.ShiftType'
     type: object
-  modelDto.AttendanceHistoryItem:
-    properties:
-      clock_in:
-        type: string
-      clock_out:
-        type: string
-      date:
-        type: string
-      employee:
-        properties:
-          avatar:
-            type: string
-          id:
-            type: string
-          name:
-            type: string
-        type: object
-      id:
-        type: string
-      location:
-        type: string
-      overtime:
-        type: string
-      status:
-        type: string
-    type: object
-  modelDto.AttendanceListResponse:
-    properties:
-      data: {}
-      meta:
-        $ref: '#/definitions/modelDto.Meta'
-    type: object
-  modelDto.CreateHolidayRequest:
-    properties:
-      date:
-        description: YYYY-MM-DD
-        type: string
-      is_paid:
-        type: boolean
-      name:
-        type: string
-      type:
-        $ref: '#/definitions/model.HolidayType'
-    required:
-    - date
-    - name
-    - type
-    type: object
-  modelDto.CreateSupportMessageRequest:
-    properties:
-      category:
-        $ref: '#/definitions/model.SupportCategory'
-      message:
-        type: string
-      subject:
-        type: string
-    required:
-    - category
-    - message
-    - subject
-    type: object
-  modelDto.CreateTrialRequestRequest:
-    properties:
-      company_name:
-        type: string
-      contact_name:
-        type: string
-      email:
-        type: string
-      employee_count_range:
-        $ref: '#/definitions/model.EmployeeCountRange'
-      industry:
-        type: string
-      phone_number:
-        type: string
-    required:
-    - company_name
-    - contact_name
-    - email
-    - employee_count_range
-    type: object
-  modelDto.Meta:
-    properties:
-      limit:
-        type: integer
-      offset:
-        type: integer
-      total:
-        type: integer
-    type: object
-  modelDto.ProvisioningTicketResponse:
-    properties:
-      completed_at:
-        type: string
-      created_at:
-        type: string
-      error_log:
-        type: string
-      executed_by:
-        type: integer
-      id:
-        type: string
-      status:
-        $ref: '#/definitions/model.ProvisioningTicketStatus'
-      trial_request:
-        $ref: '#/definitions/modelDto.TrialRequestResponse'
-      trial_request_id:
-        type: string
-    type: object
-  modelDto.QuickInfoResponse:
-    properties:
-      notifications_count:
-        type: integer
-      pending_leaves:
-        type: integer
-      pending_overtimes:
-        type: integer
-    type: object
-  modelDto.RosterAssignment:
-    properties:
-      roster:
-        additionalProperties:
-          type: string
-        description: day -> shift_id or "off"
-        type: object
-      user_id:
-        type: integer
-    required:
-    - roster
-    - user_id
-    type: object
-  modelDto.SaveRosterRequest:
-    properties:
-      assignments:
-        items:
-          $ref: '#/definitions/modelDto.RosterAssignment'
-        type: array
-      start_date:
-        description: YYYY-MM-DD
-        type: string
-    required:
-    - assignments
-    - start_date
-    type: object
-  modelDto.SupportMessageResponse:
-    properties:
-      category:
-        $ref: '#/definitions/model.SupportCategory'
-      created_at:
-        type: string
-      id:
-        type: string
-      message:
-        type: string
-      status:
-        $ref: '#/definitions/model.SupportStatus'
-      subject:
-        type: string
-      tenant:
-        $ref: '#/definitions/model.TenantResponse'
-      tenant_id:
-        type: integer
-      user:
-        $ref: '#/definitions/model.UserResponse'
-      user_id:
-        type: integer
-    type: object
-  modelDto.TodayAttendanceResponse:
-    properties:
-      clock_in_time:
-        type: string
-      clock_out_time:
-        type: string
-      date:
-        type: string
-      duration:
-        type: string
-      status:
-        type: string
-    type: object
-  modelDto.TrialRequestResponse:
-    properties:
-      company_name:
-        type: string
-      contact_name:
-        type: string
-      created_at:
-        type: string
-      email:
-        type: string
-      employee_count_range:
-        $ref: '#/definitions/model.EmployeeCountRange'
-      id:
-        type: string
-      industry:
-        type: string
-      phone_number:
-        type: string
-      status:
-        $ref: '#/definitions/model.TrialRequestStatus'
-    type: object
-  modelDto.UpdateHolidayRequest:
-    properties:
-      is_paid:
-        type: boolean
-      name:
-        type: string
-    type: object
-  modelDto.UpdateLifecycleTaskRequest:
-    properties:
-      is_completed:
-        type: boolean
-    type: object
-  modelDto.UpdateSupportMessageStatusRequest:
-    properties:
-      status:
-        $ref: '#/definitions/model.SupportStatus'
-    required:
-    - status
-    type: object
-  modelDto.UpdateTrialRequestStatusRequest:
-    properties:
-      status:
-        $ref: '#/definitions/model.TrialRequestStatus'
-    required:
-    - status
-    type: object
-  service.CreateRoleRequest:
+  go-attendance-api_internal_service.CreateRoleRequest:
     properties:
       base_role:
-        $ref: '#/definitions/model.BaseRole'
+        $ref: '#/definitions/go-attendance-api_internal_model.BaseRole'
       description:
         type: string
       name:
@@ -1247,7 +1505,7 @@ definitions:
     - base_role
     - name
     type: object
-  service.UpdateRoleRequest:
+  go-attendance-api_internal_service.UpdateRoleRequest:
     properties:
       description:
         type: string
@@ -1258,26 +1516,26 @@ definitions:
           type: string
         type: array
     type: object
-  utils.APIResponse:
+  go-attendance-api_internal_utils.APIResponse:
     properties:
       data: {}
       meta:
-        $ref: '#/definitions/utils.Meta'
+        $ref: '#/definitions/go-attendance-api_internal_utils.Meta'
       success:
         type: boolean
     type: object
-  utils.Meta:
+  go-attendance-api_internal_utils.Meta:
     properties:
       code:
         type: integer
       message:
         type: string
       pagination:
-        $ref: '#/definitions/utils.Pagination'
+        $ref: '#/definitions/go-attendance-api_internal_utils.Pagination'
       status:
         type: string
     type: object
-  utils.Pagination:
+  go-attendance-api_internal_utils.Pagination:
     properties:
       current_page:
         type: integer
@@ -1287,6 +1545,45 @@ definitions:
         type: integer
       total:
         type: integer
+    type: object
+  internal_handler.EmailRequest:
+    properties:
+      html:
+        type: string
+      subject:
+        type: string
+      to:
+        items:
+          type: string
+        type: array
+    required:
+    - html
+    - subject
+    - to
+    type: object
+  internal_handler.ReviewLeaveRequest:
+    properties:
+      notes:
+        type: string
+    type: object
+  internal_handler.SaveHierarchyRequest:
+    properties:
+      child_role_ids:
+        items:
+          type: integer
+        type: array
+      parent_role_id:
+        type: integer
+    required:
+    - child_role_ids
+    - parent_role_id
+    type: object
+  internal_handler.UpdateProfilePhotoRequest:
+    properties:
+      media_url:
+        type: string
+    required:
+    - media_url
     type: object
 host: localhost:8080
 info:
@@ -1314,7 +1611,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/modelDto.QuickInfoResponse'
+            $ref: '#/definitions/go-attendance-api_internal_dto.QuickInfoResponse'
       security:
       - BearerAuth: []
       - CookieAuth: []
@@ -1331,11 +1628,11 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/utils.APIResponse'
+            - $ref: '#/definitions/go-attendance-api_internal_utils.APIResponse'
             - properties:
                 data:
                   items:
-                    $ref: '#/definitions/model.RecentActivityResponse'
+                    $ref: '#/definitions/go-attendance-api_internal_model.RecentActivityResponse'
                   type: array
               type: object
       security:
@@ -1383,15 +1680,15 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/utils.APIResponse'
+            - $ref: '#/definitions/go-attendance-api_internal_utils.APIResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/modelDto.AttendanceListResponse'
+                  $ref: '#/definitions/go-attendance-api_internal_dto.AttendanceListResponse'
               type: object
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/utils.APIResponse'
+            $ref: '#/definitions/go-attendance-api_internal_utils.APIResponse'
       security:
       - BearerAuth: []
       - CookieAuth: []
@@ -1408,7 +1705,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/model.AttendanceRequest'
+          $ref: '#/definitions/go-attendance-api_internal_model.AttendanceRequest'
       produces:
       - application/json
       responses:
@@ -1416,19 +1713,19 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/utils.APIResponse'
+            - $ref: '#/definitions/go-attendance-api_internal_utils.APIResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/model.AttendanceResponse'
+                  $ref: '#/definitions/go-attendance-api_internal_model.AttendanceResponse'
               type: object
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/utils.APIResponse'
+            $ref: '#/definitions/go-attendance-api_internal_utils.APIResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/utils.APIResponse'
+            $ref: '#/definitions/go-attendance-api_internal_utils.APIResponse'
       security:
       - BearerAuth: []
       - CookieAuth: []
@@ -1469,7 +1766,7 @@ paths:
         name: body
         required: true
         schema:
-          $ref: '#/definitions/model.CreateCorrectionRequest'
+          $ref: '#/definitions/go-attendance-api_internal_model.CreateCorrectionRequest'
       produces:
       - application/json
       responses: {}
@@ -1494,7 +1791,7 @@ paths:
         name: body
         required: true
         schema:
-          $ref: '#/definitions/model.ReviewCorrectionRequest'
+          $ref: '#/definitions/go-attendance-api_internal_model.ReviewCorrectionRequest'
       produces:
       - application/json
       responses: {}
@@ -1519,7 +1816,7 @@ paths:
         name: body
         required: true
         schema:
-          $ref: '#/definitions/model.ReviewCorrectionRequest'
+          $ref: '#/definitions/go-attendance-api_internal_model.ReviewCorrectionRequest'
       produces:
       - application/json
       responses: {}
@@ -1551,11 +1848,11 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/utils.APIResponse'
+            - $ref: '#/definitions/go-attendance-api_internal_utils.APIResponse'
             - properties:
                 data:
                   items:
-                    $ref: '#/definitions/modelDto.AttendanceHistoryItem'
+                    $ref: '#/definitions/go-attendance-api_internal_dto.AttendanceHistoryItem'
                   type: array
               type: object
       security:
@@ -1574,15 +1871,15 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/utils.APIResponse'
+            - $ref: '#/definitions/go-attendance-api_internal_utils.APIResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/model.AttendanceSummaryResponse'
+                  $ref: '#/definitions/go-attendance-api_internal_model.AttendanceSummaryResponse'
               type: object
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/utils.APIResponse'
+            $ref: '#/definitions/go-attendance-api_internal_utils.APIResponse'
       security:
       - BearerAuth: []
       - CookieAuth: []
@@ -1598,17 +1895,64 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/modelDto.TodayAttendanceResponse'
+            $ref: '#/definitions/go-attendance-api_internal_dto.TodayAttendanceResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/utils.APIResponse'
+            $ref: '#/definitions/go-attendance-api_internal_utils.APIResponse'
       security:
       - BearerAuth: []
       - CookieAuth: []
       summary: Get Today Attendance
       tags:
       - Attendance
+  /api/v1/auth/change-password:
+    post:
+      consumes:
+      - application/json
+      description: Change current user password
+      parameters:
+      - description: Change Password Data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/go-attendance-api_internal_model.ChangePasswordRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/go-attendance-api_internal_utils.APIResponse'
+      security:
+      - BearerAuth: []
+      - CookieAuth: []
+      summary: Change Password
+      tags:
+      - Auth
+  /api/v1/auth/forgot-password:
+    post:
+      consumes:
+      - application/json
+      description: Request password reset link
+      parameters:
+      - description: Forgot Password Data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/go-attendance-api_internal_model.ForgotPasswordRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/go-attendance-api_internal_utils.APIResponse'
+      summary: Forgot Password
+      tags:
+      - Auth
   /api/v1/auth/login:
     post:
       consumes:
@@ -1620,7 +1964,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/model.LoginRequest'
+          $ref: '#/definitions/go-attendance-api_internal_model.LoginRequest'
       produces:
       - application/json
       responses:
@@ -1628,19 +1972,19 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/utils.APIResponse'
+            - $ref: '#/definitions/go-attendance-api_internal_utils.APIResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/model.UserResponse'
+                  $ref: '#/definitions/go-attendance-api_internal_model.UserResponse'
               type: object
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/utils.APIResponse'
+            $ref: '#/definitions/go-attendance-api_internal_utils.APIResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/utils.APIResponse'
+            $ref: '#/definitions/go-attendance-api_internal_utils.APIResponse'
       summary: Login employee
       tags:
       - Auth
@@ -1653,7 +1997,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/utils.APIResponse'
+            $ref: '#/definitions/go-attendance-api_internal_utils.APIResponse'
       security:
       - BearerAuth: []
       - CookieAuth: []
@@ -1671,7 +2015,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/model.RegisterRequest'
+          $ref: '#/definitions/go-attendance-api_internal_model.RegisterRequest'
       produces:
       - application/json
       responses:
@@ -1679,16 +2023,38 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/utils.APIResponse'
+            - $ref: '#/definitions/go-attendance-api_internal_utils.APIResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/model.User'
+                  $ref: '#/definitions/go-attendance-api_internal_model.User'
               type: object
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/utils.APIResponse'
+            $ref: '#/definitions/go-attendance-api_internal_utils.APIResponse'
       summary: Register new employee
+      tags:
+      - Auth
+  /api/v1/auth/reset-password:
+    post:
+      consumes:
+      - application/json
+      description: Reset password using token
+      parameters:
+      - description: Reset Password Data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/go-attendance-api_internal_model.ResetPasswordRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/go-attendance-api_internal_utils.APIResponse'
+      summary: Reset Password
       tags:
       - Auth
   /api/v1/auth/sessions:
@@ -1701,11 +2067,11 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/utils.APIResponse'
+            - $ref: '#/definitions/go-attendance-api_internal_utils.APIResponse'
             - properties:
                 data:
                   items:
-                    $ref: '#/definitions/model.SessionResponse'
+                    $ref: '#/definitions/go-attendance-api_internal_model.SessionResponse'
                   type: array
               type: object
       security:
@@ -1800,25 +2166,134 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/handler.EmailRequest'
+          $ref: '#/definitions/internal_handler.EmailRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/utils.APIResponse'
+            $ref: '#/definitions/go-attendance-api_internal_utils.APIResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/utils.APIResponse'
+            $ref: '#/definitions/go-attendance-api_internal_utils.APIResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/utils.APIResponse'
+            $ref: '#/definitions/go-attendance-api_internal_utils.APIResponse'
       summary: Send Test Email
       tags:
       - Email
+  /api/v1/finance/expenses:
+    get:
+      parameters:
+      - description: Pending, Approved, Rejected
+        in: query
+        name: status
+        type: string
+      - description: ID or Name
+        in: query
+        name: search
+        type: string
+      - description: Page number
+        in: query
+        name: page
+        type: integer
+      - description: Limit per page
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses: {}
+      security:
+      - BearerAuth: []
+      summary: Get All Expenses
+      tags:
+      - Finance
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Expense Payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/go-attendance-api_internal_dto.CreateExpenseRequest'
+      produces:
+      - application/json
+      responses: {}
+      security:
+      - BearerAuth: []
+      summary: Create Expense Claim
+      tags:
+      - Finance
+  /api/v1/finance/expenses/{id}/approve:
+    patch:
+      parameters:
+      - description: Expense ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses: {}
+      security:
+      - BearerAuth: []
+      summary: Approve Expense Claim
+      tags:
+      - Finance
+  /api/v1/finance/expenses/{id}/reject:
+    patch:
+      parameters:
+      - description: Expense ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Reject Payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/go-attendance-api_internal_dto.RejectExpenseRequest'
+      responses: {}
+      security:
+      - BearerAuth: []
+      summary: Reject Expense Claim
+      tags:
+      - Finance
+  /api/v1/finance/expenses/summary:
+    get:
+      produces:
+      - application/json
+      responses: {}
+      security:
+      - BearerAuth: []
+      summary: Get Expense Summary
+      tags:
+      - Finance
+  /api/v1/finance/quotas/{id}:
+    patch:
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Quota Payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/go-attendance-api_internal_dto.UpdateQuotaRequest'
+      responses: {}
+      security:
+      - BearerAuth: []
+      summary: Update User Expense Quota
+      tags:
+      - Finance
   /api/v1/hr/calendar:
     get:
       parameters:
@@ -1831,31 +2306,31 @@ paths:
       responses: {}
       security:
       - BearerAuth: []
-      summary: Get Calendar/Holidays
+      summary: Get Calendar Events (Holidays, Meetings, etc)
       tags:
       - HR Ops
     post:
       consumes:
       - application/json
       parameters:
-      - description: Holiday Payload
+      - description: Event Payload
         in: body
         name: body
         required: true
         schema:
-          $ref: '#/definitions/modelDto.CreateHolidayRequest'
+          $ref: '#/definitions/go-attendance-api_internal_dto.CreateCalendarEventRequest'
       produces:
       - application/json
       responses: {}
       security:
       - BearerAuth: []
-      summary: Create Holiday
+      summary: Create Calendar Event
       tags:
       - HR Ops
   /api/v1/hr/calendar/{id}:
     delete:
       parameters:
-      - description: Holiday UUID
+      - description: Event UUID
         in: path
         name: id
         required: true
@@ -1863,30 +2338,30 @@ paths:
       responses: {}
       security:
       - BearerAuth: []
-      summary: Delete Holiday
+      summary: Delete Calendar Event
       tags:
       - HR Ops
     put:
       consumes:
       - application/json
       parameters:
-      - description: Holiday UUID
+      - description: Event UUID
         in: path
         name: id
         required: true
         type: string
-      - description: Holiday Payload
+      - description: Event Payload
         in: body
         name: body
         required: true
         schema:
-          $ref: '#/definitions/modelDto.UpdateHolidayRequest'
+          $ref: '#/definitions/go-attendance-api_internal_dto.UpdateCalendarEventRequest'
       produces:
       - application/json
       responses: {}
       security:
       - BearerAuth: []
-      summary: Update Holiday
+      summary: Update Calendar Event
       tags:
       - HR Ops
   /api/v1/hr/employees/{id}/lifecycle:
@@ -1923,11 +2398,58 @@ paths:
         name: body
         required: true
         schema:
-          $ref: '#/definitions/modelDto.UpdateLifecycleTaskRequest'
+          $ref: '#/definitions/go-attendance-api_internal_dto.UpdateLifecycleTaskRequest'
       responses: {}
       security:
       - BearerAuth: []
       summary: Update Lifecycle Task
+      tags:
+      - HR Ops
+  /api/v1/hr/lifecycle-templates:
+    get:
+      parameters:
+      - description: Category
+        in: query
+        name: category
+        type: string
+      produces:
+      - application/json
+      responses: {}
+      security:
+      - BearerAuth: []
+      summary: Get Lifecycle Templates
+      tags:
+      - HR Ops
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Template Payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/go-attendance-api_internal_dto.CreateLifecycleTemplateRequest'
+      produces:
+      - application/json
+      responses: {}
+      security:
+      - BearerAuth: []
+      summary: Create Lifecycle Template
+      tags:
+      - HR Ops
+  /api/v1/hr/lifecycle-templates/{id}:
+    delete:
+      parameters:
+      - description: Template UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      responses: {}
+      security:
+      - BearerAuth: []
+      summary: Delete Lifecycle Template
       tags:
       - HR Ops
   /api/v1/hr/roster:
@@ -1965,7 +2487,7 @@ paths:
         name: body
         required: true
         schema:
-          $ref: '#/definitions/modelDto.SaveRosterRequest'
+          $ref: '#/definitions/go-attendance-api_internal_dto.SaveRosterRequest'
       produces:
       - application/json
       responses: {}
@@ -1993,7 +2515,7 @@ paths:
         name: body
         required: true
         schema:
-          $ref: '#/definitions/model.WorkShiftResponse'
+          $ref: '#/definitions/go-attendance-api_internal_model.WorkShiftResponse'
       produces:
       - application/json
       responses: {}
@@ -2025,11 +2547,11 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/utils.APIResponse'
+            - $ref: '#/definitions/go-attendance-api_internal_utils.APIResponse'
             - properties:
                 data:
                   items:
-                    $ref: '#/definitions/model.LeaveResponse'
+                    $ref: '#/definitions/go-attendance-api_internal_model.LeaveResponse'
                   type: array
               type: object
       security:
@@ -2053,7 +2575,7 @@ paths:
         in: body
         name: body
         schema:
-          $ref: '#/definitions/handler.ReviewLeaveRequest'
+          $ref: '#/definitions/internal_handler.ReviewLeaveRequest'
       produces:
       - application/json
       responses: {}
@@ -2073,11 +2595,11 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/utils.APIResponse'
+            - $ref: '#/definitions/go-attendance-api_internal_utils.APIResponse'
             - properties:
                 data:
                   items:
-                    $ref: '#/definitions/model.LeaveBalance'
+                    $ref: '#/definitions/go-attendance-api_internal_model.LeaveBalance'
                   type: array
               type: object
       security:
@@ -2101,7 +2623,7 @@ paths:
         in: body
         name: body
         schema:
-          $ref: '#/definitions/handler.ReviewLeaveRequest'
+          $ref: '#/definitions/internal_handler.ReviewLeaveRequest'
       produces:
       - application/json
       responses: {}
@@ -2122,7 +2644,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/model.LeaveRequest'
+          $ref: '#/definitions/go-attendance-api_internal_model.LeaveRequest'
       produces:
       - application/json
       responses:
@@ -2130,15 +2652,15 @@ paths:
           description: Created
           schema:
             allOf:
-            - $ref: '#/definitions/utils.APIResponse'
+            - $ref: '#/definitions/go-attendance-api_internal_utils.APIResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/model.LeaveResponse'
+                  $ref: '#/definitions/go-attendance-api_internal_model.LeaveResponse'
               type: object
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/utils.APIResponse'
+            $ref: '#/definitions/go-attendance-api_internal_utils.APIResponse'
       security:
       - BearerAuth: []
       - CookieAuth: []
@@ -2170,19 +2692,19 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/utils.APIResponse'
+            - $ref: '#/definitions/go-attendance-api_internal_utils.APIResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/model.Media'
+                  $ref: '#/definitions/go-attendance-api_internal_model.Media'
               type: object
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/utils.APIResponse'
+            $ref: '#/definitions/go-attendance-api_internal_utils.APIResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/utils.APIResponse'
+            $ref: '#/definitions/go-attendance-api_internal_utils.APIResponse'
       security:
       - BearerAuth: []
       - CookieAuth: []
@@ -2199,11 +2721,11 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/utils.APIResponse'
+            - $ref: '#/definitions/go-attendance-api_internal_utils.APIResponse'
             - properties:
                 data:
                   items:
-                    $ref: '#/definitions/model.OrgNode'
+                    $ref: '#/definitions/go-attendance-api_internal_model.OrgNode'
                   type: array
               type: object
       security:
@@ -2233,7 +2755,7 @@ paths:
         name: body
         required: true
         schema:
-          $ref: '#/definitions/model.Position'
+          $ref: '#/definitions/go-attendance-api_internal_model.Position'
       produces:
       - application/json
       responses: {}
@@ -2278,15 +2800,17 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/utils.APIResponse'
+            - $ref: '#/definitions/go-attendance-api_internal_utils.APIResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/modelDto.AttendanceListResponse'
+                  items:
+                    $ref: '#/definitions/go-attendance-api_internal_model.OvertimeResponse'
+                  type: array
               type: object
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/utils.APIResponse'
+            $ref: '#/definitions/go-attendance-api_internal_utils.APIResponse'
       security:
       - BearerAuth: []
       - CookieAuth: []
@@ -2303,7 +2827,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/model.CreateOvertimeRequest'
+          $ref: '#/definitions/go-attendance-api_internal_model.CreateOvertimeRequest'
       produces:
       - application/json
       responses:
@@ -2311,15 +2835,15 @@ paths:
           description: Created
           schema:
             allOf:
-            - $ref: '#/definitions/utils.APIResponse'
+            - $ref: '#/definitions/go-attendance-api_internal_utils.APIResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/model.OvertimeResponse'
+                  $ref: '#/definitions/go-attendance-api_internal_model.OvertimeResponse'
               type: object
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/utils.APIResponse'
+            $ref: '#/definitions/go-attendance-api_internal_utils.APIResponse'
       security:
       - BearerAuth: []
       - CookieAuth: []
@@ -2341,15 +2865,15 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/utils.APIResponse'
+            - $ref: '#/definitions/go-attendance-api_internal_utils.APIResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/model.OvertimeResponse'
+                  $ref: '#/definitions/go-attendance-api_internal_model.OvertimeResponse'
               type: object
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/utils.APIResponse'
+            $ref: '#/definitions/go-attendance-api_internal_utils.APIResponse'
       security:
       - BearerAuth: []
       - CookieAuth: []
@@ -2372,7 +2896,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/model.ApproveOvertimeRequest'
+          $ref: '#/definitions/go-attendance-api_internal_model.ApproveOvertimeRequest'
       produces:
       - application/json
       responses:
@@ -2380,15 +2904,15 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/utils.APIResponse'
+            - $ref: '#/definitions/go-attendance-api_internal_utils.APIResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/model.OvertimeResponse'
+                  $ref: '#/definitions/go-attendance-api_internal_model.OvertimeResponse'
               type: object
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/utils.APIResponse'
+            $ref: '#/definitions/go-attendance-api_internal_utils.APIResponse'
       security:
       - BearerAuth: []
       - CookieAuth: []
@@ -2411,7 +2935,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/model.ApproveOvertimeRequest'
+          $ref: '#/definitions/go-attendance-api_internal_model.ApproveOvertimeRequest'
       produces:
       - application/json
       responses:
@@ -2419,21 +2943,126 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/utils.APIResponse'
+            - $ref: '#/definitions/go-attendance-api_internal_utils.APIResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/model.OvertimeResponse'
+                  $ref: '#/definitions/go-attendance-api_internal_model.OvertimeResponse'
               type: object
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/utils.APIResponse'
+            $ref: '#/definitions/go-attendance-api_internal_utils.APIResponse'
       security:
       - BearerAuth: []
       - CookieAuth: []
       summary: Reject Overtime Request
       tags:
       - Overtime
+  /api/v1/performance/appraisals/{id}/self-review:
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: Appraisal ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Review Payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/go-attendance-api_internal_dto.SubmitSelfReviewRequest'
+      responses: {}
+      security:
+      - BearerAuth: []
+      summary: Submit Self Review
+      tags:
+      - Performance
+  /api/v1/performance/appraisals/cycle/{cycleId}:
+    get:
+      parameters:
+      - description: Cycle ID
+        in: path
+        name: cycleId
+        required: true
+        type: integer
+      responses: {}
+      security:
+      - BearerAuth: []
+      summary: Get Appraisals by Cycle
+      tags:
+      - Performance
+  /api/v1/performance/cycles:
+    get:
+      responses: {}
+      security:
+      - BearerAuth: []
+      summary: Get All Cycles
+      tags:
+      - Performance
+  /api/v1/performance/goals:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Goal Payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/go-attendance-api_internal_dto.CreateGoalRequest'
+      responses: {}
+      security:
+      - BearerAuth: []
+      summary: Create Goal
+      tags:
+      - Performance
+  /api/v1/performance/goals/{id}/progress:
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: Goal ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Progress Payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/go-attendance-api_internal_dto.UpdateGoalProgressRequest'
+      responses: {}
+      security:
+      - BearerAuth: []
+      summary: Update Goal Progress
+      tags:
+      - Performance
+  /api/v1/performance/goals/me:
+    get:
+      responses: {}
+      security:
+      - BearerAuth: []
+      summary: Get My Goals
+      tags:
+      - Performance
+  /api/v1/performance/goals/user/{userId}:
+    get:
+      parameters:
+      - description: User ID
+        in: path
+        name: userId
+        required: true
+        type: integer
+      responses: {}
+      security:
+      - BearerAuth: []
+      summary: Get User Goals
+      tags:
+      - Performance
   /api/v1/ping:
     get:
       description: Check API status
@@ -2442,6 +3071,76 @@ paths:
       responses: {}
       tags:
       - Health
+  /api/v1/superadmin/subscriptions:
+    get:
+      description: Get all subscriptions with statistics (Superadmin only)
+      parameters:
+      - description: Page number
+        in: query
+        name: page
+        type: integer
+      - description: Limit per page
+        in: query
+        name: limit
+        type: integer
+      - description: Filter by status
+        in: query
+        name: status
+        type: string
+      - description: Search by tenant name/code
+        in: query
+        name: search
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/go-attendance-api_internal_utils.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/go-attendance-api_internal_dto.SubscriptionsDataResponse'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Get Subscriptions
+      tags:
+      - Subscription
+  /api/v1/superadmin/tenants/{id}:
+    put:
+      consumes:
+      - application/json
+      description: Update tenant details (SuperAdmin only)
+      parameters:
+      - description: Tenant ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Tenant Data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/go-attendance-api_internal_model.Tenant'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/go-attendance-api_internal_utils.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/go-attendance-api_internal_model.Tenant'
+              type: object
+      security:
+      - BearerAuth: []
+      - CookieAuth: []
+      summary: Update Tenant
+      tags:
+      - SuperAdmin
   /api/v1/tenant-roles:
     get:
       produces:
@@ -2462,7 +3161,7 @@ paths:
         name: body
         required: true
         schema:
-          $ref: '#/definitions/service.CreateRoleRequest'
+          $ref: '#/definitions/go-attendance-api_internal_service.CreateRoleRequest'
       produces:
       - application/json
       responses: {}
@@ -2495,7 +3194,7 @@ paths:
         name: body
         required: true
         schema:
-          $ref: '#/definitions/service.UpdateRoleRequest'
+          $ref: '#/definitions/go-attendance-api_internal_service.UpdateRoleRequest'
       produces:
       - application/json
       responses: {}
@@ -2530,7 +3229,7 @@ paths:
         name: body
         required: true
         schema:
-          $ref: '#/definitions/handler.SaveHierarchyRequest'
+          $ref: '#/definitions/internal_handler.SaveHierarchyRequest'
       produces:
       - application/json
       responses: {}
@@ -2550,15 +3249,15 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/utils.APIResponse'
+            - $ref: '#/definitions/go-attendance-api_internal_utils.APIResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/model.TenantSetting'
+                  $ref: '#/definitions/go-attendance-api_internal_model.TenantSetting'
               type: object
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/utils.APIResponse'
+            $ref: '#/definitions/go-attendance-api_internal_utils.APIResponse'
       security:
       - BearerAuth: []
       - CookieAuth: []
@@ -2575,7 +3274,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/model.TenantSetting'
+          $ref: '#/definitions/go-attendance-api_internal_model.TenantSetting'
       produces:
       - application/json
       responses:
@@ -2583,15 +3282,15 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/utils.APIResponse'
+            - $ref: '#/definitions/go-attendance-api_internal_utils.APIResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/model.TenantSetting'
+                  $ref: '#/definitions/go-attendance-api_internal_model.TenantSetting'
               type: object
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/utils.APIResponse'
+            $ref: '#/definitions/go-attendance-api_internal_utils.APIResponse'
       security:
       - BearerAuth: []
       - CookieAuth: []
@@ -2608,17 +3307,17 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/utils.APIResponse'
+            - $ref: '#/definitions/go-attendance-api_internal_utils.APIResponse'
             - properties:
                 data:
                   items:
-                    $ref: '#/definitions/model.Tenant'
+                    $ref: '#/definitions/go-attendance-api_internal_model.Tenant'
                   type: array
               type: object
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/utils.APIResponse'
+            $ref: '#/definitions/go-attendance-api_internal_utils.APIResponse'
       security:
       - BearerAuth: []
       - CookieAuth: []
@@ -2635,7 +3334,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/model.Tenant'
+          $ref: '#/definitions/go-attendance-api_internal_model.Tenant'
       produces:
       - application/json
       responses:
@@ -2643,15 +3342,15 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/utils.APIResponse'
+            - $ref: '#/definitions/go-attendance-api_internal_utils.APIResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/model.Tenant'
+                  $ref: '#/definitions/go-attendance-api_internal_model.Tenant'
               type: object
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/utils.APIResponse'
+            $ref: '#/definitions/go-attendance-api_internal_utils.APIResponse'
       security:
       - BearerAuth: []
       - CookieAuth: []
@@ -2674,23 +3373,23 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/utils.APIResponse'
+            - $ref: '#/definitions/go-attendance-api_internal_utils.APIResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/model.Tenant'
+                  $ref: '#/definitions/go-attendance-api_internal_model.Tenant'
               type: object
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/utils.APIResponse'
+            $ref: '#/definitions/go-attendance-api_internal_utils.APIResponse'
         "403":
           description: Forbidden
           schema:
-            $ref: '#/definitions/utils.APIResponse'
+            $ref: '#/definitions/go-attendance-api_internal_utils.APIResponse'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/utils.APIResponse'
+            $ref: '#/definitions/go-attendance-api_internal_utils.APIResponse'
       security:
       - BearerAuth: []
       - CookieAuth: []
@@ -2741,17 +3440,17 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/utils.APIResponse'
+            - $ref: '#/definitions/go-attendance-api_internal_utils.APIResponse'
             - properties:
                 data:
                   items:
-                    $ref: '#/definitions/model.UserResponse'
+                    $ref: '#/definitions/go-attendance-api_internal_model.UserResponse'
                   type: array
               type: object
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/utils.APIResponse'
+            $ref: '#/definitions/go-attendance-api_internal_utils.APIResponse'
       security:
       - BearerAuth: []
       - CookieAuth: []
@@ -2769,7 +3468,7 @@ paths:
         name: body
         required: true
         schema:
-          $ref: '#/definitions/model.CreateUserRequest'
+          $ref: '#/definitions/go-attendance-api_internal_model.CreateUserRequest'
       produces:
       - application/json
       responses:
@@ -2777,15 +3476,15 @@ paths:
           description: Created
           schema:
             allOf:
-            - $ref: '#/definitions/utils.APIResponse'
+            - $ref: '#/definitions/go-attendance-api_internal_utils.APIResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/model.UserResponse'
+                  $ref: '#/definitions/go-attendance-api_internal_model.UserResponse'
               type: object
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/utils.APIResponse'
+            $ref: '#/definitions/go-attendance-api_internal_utils.APIResponse'
       security:
       - BearerAuth: []
       - CookieAuth: []
@@ -2812,19 +3511,19 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/utils.APIResponse'
+            - $ref: '#/definitions/go-attendance-api_internal_utils.APIResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/model.UserResponse'
+                  $ref: '#/definitions/go-attendance-api_internal_model.UserResponse'
               type: object
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/utils.APIResponse'
+            $ref: '#/definitions/go-attendance-api_internal_utils.APIResponse'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/utils.APIResponse'
+            $ref: '#/definitions/go-attendance-api_internal_utils.APIResponse'
       security:
       - BearerAuth: []
       - CookieAuth: []
@@ -2846,11 +3545,11 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/utils.APIResponse'
+            $ref: '#/definitions/go-attendance-api_internal_utils.APIResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/utils.APIResponse'
+            $ref: '#/definitions/go-attendance-api_internal_utils.APIResponse'
       security:
       - BearerAuth: []
       - CookieAuth: []
@@ -2872,19 +3571,19 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/utils.APIResponse'
+            - $ref: '#/definitions/go-attendance-api_internal_utils.APIResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/model.UserResponse'
+                  $ref: '#/definitions/go-attendance-api_internal_model.UserResponse'
               type: object
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/utils.APIResponse'
+            $ref: '#/definitions/go-attendance-api_internal_utils.APIResponse'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/utils.APIResponse'
+            $ref: '#/definitions/go-attendance-api_internal_utils.APIResponse'
       security:
       - BearerAuth: []
       - CookieAuth: []
@@ -2901,21 +3600,21 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/utils.APIResponse'
+            - $ref: '#/definitions/go-attendance-api_internal_utils.APIResponse'
             - properties:
                 data:
                   items:
-                    $ref: '#/definitions/model.RecentActivityResponse'
+                    $ref: '#/definitions/go-attendance-api_internal_model.RecentActivityResponse'
                   type: array
               type: object
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/utils.APIResponse'
+            $ref: '#/definitions/go-attendance-api_internal_utils.APIResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/utils.APIResponse'
+            $ref: '#/definitions/go-attendance-api_internal_utils.APIResponse'
       security:
       - BearerAuth: []
       - CookieAuth: []
@@ -2932,17 +3631,17 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/utils.APIResponse'
+            - $ref: '#/definitions/go-attendance-api_internal_utils.APIResponse'
             - properties:
                 data:
                   items:
-                    $ref: '#/definitions/model.UserChangeRequestResponse'
+                    $ref: '#/definitions/go-attendance-api_internal_model.UserChangeRequestResponse'
                   type: array
               type: object
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/utils.APIResponse'
+            $ref: '#/definitions/go-attendance-api_internal_utils.APIResponse'
       security:
       - BearerAuth: []
       - CookieAuth: []
@@ -2960,26 +3659,26 @@ paths:
         name: body
         required: true
         schema:
-          $ref: '#/definitions/handler.UpdateProfilePhotoRequest'
+          $ref: '#/definitions/internal_handler.UpdateProfilePhotoRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/utils.APIResponse'
+            $ref: '#/definitions/go-attendance-api_internal_utils.APIResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/utils.APIResponse'
+            $ref: '#/definitions/go-attendance-api_internal_utils.APIResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/utils.APIResponse'
+            $ref: '#/definitions/go-attendance-api_internal_utils.APIResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/utils.APIResponse'
+            $ref: '#/definitions/go-attendance-api_internal_utils.APIResponse'
       security:
       - BearerAuth: []
       - CookieAuth: []
@@ -3002,18 +3701,18 @@ paths:
         name: body
         required: true
         schema:
-          $ref: '#/definitions/model.ApproveUserChangeRequest'
+          $ref: '#/definitions/go-attendance-api_internal_model.ApproveUserChangeRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/utils.APIResponse'
+            $ref: '#/definitions/go-attendance-api_internal_utils.APIResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/utils.APIResponse'
+            $ref: '#/definitions/go-attendance-api_internal_utils.APIResponse'
       security:
       - BearerAuth: []
       - CookieAuth: []
@@ -3031,7 +3730,7 @@ paths:
         name: body
         required: true
         schema:
-          $ref: '#/definitions/model.CreateUserChangeRequest'
+          $ref: '#/definitions/go-attendance-api_internal_model.CreateUserChangeRequest'
       produces:
       - application/json
       responses:
@@ -3039,19 +3738,19 @@ paths:
           description: Created
           schema:
             allOf:
-            - $ref: '#/definitions/utils.APIResponse'
+            - $ref: '#/definitions/go-attendance-api_internal_utils.APIResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/model.UserChangeRequestResponse'
+                  $ref: '#/definitions/go-attendance-api_internal_model.UserChangeRequestResponse'
               type: object
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/utils.APIResponse'
+            $ref: '#/definitions/go-attendance-api_internal_utils.APIResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/utils.APIResponse'
+            $ref: '#/definitions/go-attendance-api_internal_utils.APIResponse'
       security:
       - BearerAuth: []
       - CookieAuth: []
@@ -3068,11 +3767,11 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/utils.APIResponse'
+            - $ref: '#/definitions/go-attendance-api_internal_utils.APIResponse'
             - properties:
                 data:
                   items:
-                    $ref: '#/definitions/modelDto.SupportMessageResponse'
+                    $ref: '#/definitions/go-attendance-api_internal_dto.SupportMessageResponse'
                   type: array
               type: object
       security:
@@ -3096,14 +3795,14 @@ paths:
         name: body
         required: true
         schema:
-          $ref: '#/definitions/modelDto.UpdateSupportMessageStatusRequest'
+          $ref: '#/definitions/go-attendance-api_internal_dto.UpdateSupportMessageStatusRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/utils.APIResponse'
+            $ref: '#/definitions/go-attendance-api_internal_utils.APIResponse'
       security:
       - BearerAuth: []
       summary: Update Support Status
@@ -3119,11 +3818,11 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/utils.APIResponse'
+            - $ref: '#/definitions/go-attendance-api_internal_utils.APIResponse'
             - properties:
                 data:
                   items:
-                    $ref: '#/definitions/modelDto.ProvisioningTicketResponse'
+                    $ref: '#/definitions/go-attendance-api_internal_dto.ProvisioningTicketResponse'
                   type: array
               type: object
       security:
@@ -3146,7 +3845,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/utils.APIResponse'
+            $ref: '#/definitions/go-attendance-api_internal_utils.APIResponse'
       security:
       - BearerAuth: []
       summary: Execute Provisioning
@@ -3162,11 +3861,11 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/utils.APIResponse'
+            - $ref: '#/definitions/go-attendance-api_internal_utils.APIResponse'
             - properties:
                 data:
                   items:
-                    $ref: '#/definitions/modelDto.TrialRequestResponse'
+                    $ref: '#/definitions/go-attendance-api_internal_dto.TrialRequestResponse'
                   type: array
               type: object
       security:
@@ -3190,14 +3889,14 @@ paths:
         name: body
         required: true
         schema:
-          $ref: '#/definitions/modelDto.UpdateTrialRequestStatusRequest'
+          $ref: '#/definitions/go-attendance-api_internal_dto.UpdateTrialRequestStatusRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/utils.APIResponse'
+            $ref: '#/definitions/go-attendance-api_internal_utils.APIResponse'
       security:
       - BearerAuth: []
       summary: Update Trial Status
@@ -3214,7 +3913,7 @@ paths:
         name: body
         required: true
         schema:
-          $ref: '#/definitions/modelDto.CreateTrialRequestRequest'
+          $ref: '#/definitions/go-attendance-api_internal_dto.CreateTrialRequestRequest'
       produces:
       - application/json
       responses:
@@ -3222,10 +3921,10 @@ paths:
           description: Created
           schema:
             allOf:
-            - $ref: '#/definitions/utils.APIResponse'
+            - $ref: '#/definitions/go-attendance-api_internal_utils.APIResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/modelDto.TrialRequestResponse'
+                  $ref: '#/definitions/go-attendance-api_internal_dto.TrialRequestResponse'
               type: object
       summary: Create Trial Request
       tags:
@@ -3241,7 +3940,7 @@ paths:
         name: body
         required: true
         schema:
-          $ref: '#/definitions/modelDto.CreateSupportMessageRequest'
+          $ref: '#/definitions/go-attendance-api_internal_dto.CreateSupportMessageRequest'
       produces:
       - application/json
       responses:
@@ -3249,10 +3948,10 @@ paths:
           description: Created
           schema:
             allOf:
-            - $ref: '#/definitions/utils.APIResponse'
+            - $ref: '#/definitions/go-attendance-api_internal_utils.APIResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/modelDto.SupportMessageResponse'
+                  $ref: '#/definitions/go-attendance-api_internal_dto.SupportMessageResponse'
               type: object
       security:
       - BearerAuth: []

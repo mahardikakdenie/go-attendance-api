@@ -1,6 +1,7 @@
 package handler
 
 import (
+	modelDto "go-attendance-api/internal/dto"
 	"go-attendance-api/internal/model"
 	"go-attendance-api/internal/service"
 	"go-attendance-api/internal/utils"
@@ -128,7 +129,7 @@ func (h *overtimeHandler) RejectRequest(c *gin.Context) {
 // @Param offset query int false "Offset"
 // @Security BearerAuth
 // @Security CookieAuth
-// @Success 200 {object} utils.APIResponse{data=modelDto.AttendanceListResponse}
+// @Success 200 {object} utils.APIResponse{data=[]model.OvertimeResponse}
 // @Failure 500 {object} utils.APIResponse
 // @Router /api/v1/overtime [get]
 func (h *overtimeHandler) GetAll(c *gin.Context) {
