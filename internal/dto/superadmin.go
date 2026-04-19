@@ -25,3 +25,17 @@ type CreateSystemRoleRequest struct {
 	BaseRole      string   `json:"base_role"`
 	PermissionIDs []string `json:"permission_ids"`
 }
+
+type PermissionModule struct {
+	Name        string               `json:"name"`
+	Key         string               `json:"key"`
+	Permissions []PermissionResponse `json:"permissions"`
+}
+
+type PermissionResponse struct {
+	ID          string `json:"id"`
+	Module      string `json:"module"`
+	Action      string `json:"action"`
+	Description string `json:"description"`
+}
+

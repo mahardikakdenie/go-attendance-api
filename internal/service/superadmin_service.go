@@ -21,7 +21,7 @@ type SuperadminService interface {
 
 	// System Role Management
 	ListSystemRoles(ctx context.Context) ([]model.Role, error)
-	ListAllPermissions(ctx context.Context) ([]model.Permission, error)
+	ListAllPermissions(ctx context.Context) ([]modelDto.PermissionModule, error)
 	CreateSystemRole(ctx context.Context, req modelDto.CreateSystemRoleRequest, performerID uint) (model.Role, error)
 	UpdateSystemRole(ctx context.Context, id uint, req modelDto.CreateSystemRoleRequest, performerID uint) (model.Role, error)
 	DeleteSystemRole(ctx context.Context, id uint, performerID uint) error
@@ -204,8 +204,58 @@ func (s *superadminService) ListSystemRoles(ctx context.Context) ([]model.Role, 
 	return s.roleRepo.FindSystemRoles(ctx)
 }
 
-func (s *superadminService) ListAllPermissions(ctx context.Context) ([]model.Permission, error) {
-	return s.permissionRepo.FindAll(ctx)
+func (s *superadminService) ListAllPermissions(ctx context.Context) ([]modelDto.PermissionModule, error) {
+	permissions, err := s.permissionRepo.FindAll(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	// Module name mapping for better UI display
+	moduleNames := map[string]string{
+		"attendance":   "Attendance & Monitoring",
+		"leave":        "Leave Management",
+		"overtime":     "Overtime & Extra Hours",
+		"payroll":      "Payroll & Finance",
+		"user":         "User Management",
+		"tenant":       "Organization & SaaS",
+		"subscription": "Plans & Billing",
+		"role":         "Roles & Permissions",
+		"support":      "Support & Helpdesk",
+		"project":      "Project Management",
+		"timesheet":    "Time Tracking",
+		"finance":      "Finance Operations",
+		"performance":  "Performance & Goals",
+	}
+
+	// Group permissions by module
+	modulesMap := make(map[string][]modelDto.PermissionResponse)
+	for _, p := range permissions {
+		resp := modelDto.PermissionResponse{
+			ID:          p.ID,
+			Module:      p.Module,
+			Action:      p.Action,
+			Description: p.Description,
+		}
+		modulesMap[p.Module] = append(modulesMap[p.Module], resp)
+	}
+
+	// Convert map to slice of PermissionModule
+	var result []modelDto.PermissionModule
+	// We can iterate over a fixed order if we want consistency, but for now simple iteration
+	for moduleKey, perms := range modulesMap {
+		name := moduleNames[moduleKey]
+		if name == "" {
+			name = moduleKey // Fallback to raw key if not mapped
+		}
+
+		result = append(result, modelDto.PermissionModule{
+			Name:        name,
+			Key:         moduleKey,
+			Permissions: perms,
+		})
+	}
+
+	return result, nil
 }
 
 func (s *superadminService) CreateSystemRole(ctx context.Context, req modelDto.CreateSystemRoleRequest, performerID uint) (model.Role, error) {
