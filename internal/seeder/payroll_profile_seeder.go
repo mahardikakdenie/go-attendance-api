@@ -26,15 +26,16 @@ func SeedUserPayrollProfiles(db *gorm.DB) {
 				BasicSalary:       user.BaseSalary,
 				FixedAllowance:    0,
 			}
-			
+
 			// Custom values for specific seed users
-			if user.Email == "admin@friendship.com" {
+			switch user.Email {
+			case "admin@friendship.com":
 				profile.PtkpStatus = model.PtkpK1
 				profile.FixedAllowance = 5000000
-			} else if user.Email == "hr@friendship.com" {
+			case "hr@friendship.com":
 				profile.PtkpStatus = model.PtkpK0
 				profile.FixedAllowance = 2000000
-			} else if user.Email == "finance@friendship.com" {
+			case "finance@friendship.com":
 				profile.PtkpStatus = model.PtkpK0
 				profile.FixedAllowance = 1500000
 			}
