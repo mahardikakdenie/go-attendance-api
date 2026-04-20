@@ -428,13 +428,11 @@ func (s *userService) CreateUser(ctx context.Context, adminID uint, req model.Cr
 			return err
 		}
 
-		// 🆕 Automatic creation of Payroll Profile baseline
+		// 🆕 Automatic creation of Payroll Profile baseline using transactional repo
 		profile := &model.UserPayrollProfile{
 			UserID: user.ID,
 		}
-		// We use s.profileRepo.Upsert or similar if we have it, 
-		// but since it's a new user, a simple Create or Upsert is fine.
-		if err := s.profileRepo.Upsert(ctx, profile); err != nil {
+		if err := txRepo.PayrollProfileRepo().Upsert(ctx, profile); err != nil {
 			return fmt.Errorf("failed to create user payroll profile: %v", err)
 		}
 
@@ -444,17 +442,7 @@ func (s *userService) CreateUser(ctx context.Context, adminID uint, req model.Cr
 			Action: fmt.Sprintf("Created new user: %s (%s)", user.Name, user.EmployeeID),
 			Status: "success",
 		}
-		_ = s.activityRepo.Create(ctx, &activity)
-
-		// 5. Send Branded Welcome Email
-		emailHtml := utils.GetWelcomeEmailTemplate(user.Name, user.Email, password, companyName, logoURL)
-		subject := fmt.Sprintf("Welcome to %s - Your Account Details", companyName)
-
-		go func() {
-			emailCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-			defer cancel()
-			_ = utils.SendEmail(emailCtx, []string{user.Email}, subject, emailHtml)
-		}()
+		_ = txRepo.RecentActivityRepo().Create(ctx, &activity)
 
 		return nil
 	})
@@ -462,6 +450,16 @@ func (s *userService) CreateUser(ctx context.Context, adminID uint, req model.Cr
 	if err != nil {
 		return model.UserResponse{}, err
 	}
+
+	// 5. Send Branded Welcome Email (After transaction success)
+	emailHtml := utils.GetWelcomeEmailTemplate(user.Name, user.Email, password, companyName, logoURL)
+	subject := fmt.Sprintf("Welcome to %s - Your Account Details", companyName)
+
+	go func() {
+		emailCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
+		_ = utils.SendEmail(emailCtx, []string{user.Email}, subject, emailHtml)
+	}()
 
 	createdUser, _ := s.repo.FindByID(ctx, user.ID, []string{"role"})
 	return mapToUserResponse(createdUser, []string{"role"}, nil), nil

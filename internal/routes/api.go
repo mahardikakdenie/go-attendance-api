@@ -41,7 +41,7 @@ func SetupRoutes(r *gin.Engine, db *gorm.DB, rdb *redis.Client) service.Calendar
 		RegisterDashboardRoutes(protected, handlers.Dashboard)
 		RegisterLeaveRoutes(protected, handlers.Leave)
 		RegisterMiscRoutes(protected, handlers.Activity)
-		RegisterOrgRoutes(protected, handlers.Org, handlers.TenantRole)
+		RegisterOrgRoutes(protected, handlers.Org, handlers.TenantRole, handlers.Superadmin)
 		RegisterHrOpsRoutes(protected, handlers.HrOps)
 		RegisterSupportRoutes(protected, handlers.Support)
 		RegisterSubscriptionRoutes(protected, handlers.Subscription)

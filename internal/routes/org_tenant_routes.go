@@ -6,7 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func RegisterOrgRoutes(rg *gin.RouterGroup, orgH handler.OrganizationHandler, tenantRoleH handler.TenantRoleHandler) {
+func RegisterOrgRoutes(rg *gin.RouterGroup, orgH handler.OrganizationHandler, tenantRoleH handler.TenantRoleHandler, superadminH handler.SuperadminHandler) {
 	org := rg.Group("/organization")
 	{
 		org.GET("/chart", orgH.GetOrgTree)
@@ -22,6 +22,7 @@ func RegisterOrgRoutes(rg *gin.RouterGroup, orgH handler.OrganizationHandler, te
 		tenantRoles.DELETE("/:id", middleware.RequireRole("superadmin", "admin"), tenantRoleH.DeleteRole)
 		tenantRoles.GET("/:id/hierarchy", middleware.RequireRole("superadmin", "admin"), tenantRoleH.GetHierarchy)
 		tenantRoles.POST("/hierarchy", middleware.RequireRole("superadmin", "admin"), tenantRoleH.SaveHierarchy)
+		tenantRoles.GET("/permissions", middleware.RequireRole("superadmin", "admin"), superadminH.ListAllPermissions)
 	}
 }
 

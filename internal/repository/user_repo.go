@@ -23,6 +23,8 @@ type UserRepository interface {
 	UpdateQuota(ctx context.Context, userID uint, quota float64) error
 	DecreaseQuota(ctx context.Context, userID uint, amount float64) error
 	Transaction(ctx context.Context, fn func(repo UserRepository) error) error
+	PayrollProfileRepo() UserPayrollProfileRepository
+	RecentActivityRepo() RecentActivityRepository
 }
 
 type userRepository struct {
@@ -39,6 +41,14 @@ func (r *userRepository) Transaction(ctx context.Context, fn func(repo UserRepos
 	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		return fn(NewUserRepository(tx))
 	})
+}
+
+func (r *userRepository) PayrollProfileRepo() UserPayrollProfileRepository {
+	return NewUserPayrollProfileRepository(r.db)
+}
+
+func (r *userRepository) RecentActivityRepo() RecentActivityRepository {
+	return NewRecentActivityRepository(r.db)
 }
 
 var userPreloadMap = map[string]string{
