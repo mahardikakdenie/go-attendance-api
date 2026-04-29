@@ -789,6 +789,53 @@ definitions:
     - ShiftTypeMorning
     - ShiftTypeAfternoon
     - ShiftTypeNight
+  model.Subscription:
+    properties:
+      amount:
+        type: number
+      billing_cycle:
+        $ref: '#/definitions/model.BillingCycle'
+      created_at:
+        type: string
+      id:
+        type: integer
+      next_billing_date:
+        type: string
+      plan:
+        $ref: '#/definitions/model.SubscriptionPlan'
+      plan_id:
+        type: integer
+      status:
+        $ref: '#/definitions/model.SubscriptionStatus'
+      tenant:
+        $ref: '#/definitions/model.Tenant'
+      tenant_id:
+        type: integer
+      updated_at:
+        type: string
+    type: object
+  model.SubscriptionPlan:
+    properties:
+      created_at:
+        type: string
+      features:
+        description: List of allowed modules
+        items:
+          type: string
+        type: array
+      id:
+        type: integer
+      is_active:
+        type: boolean
+      max_employees:
+        description: 0 means unlimited
+        type: integer
+      name:
+        description: Trial, Starter, Business, Enterprise
+        type: string
+      updated_at:
+        type: string
+    type: object
   model.SubscriptionStatus:
     enum:
     - Active
@@ -1099,6 +1146,10 @@ definitions:
       phone_number:
         example: "08123456789"
         type: string
+      plan_features:
+        items:
+          type: string
+        type: array
       position_id:
         type: integer
       position_name:
@@ -1255,6 +1306,20 @@ definitions:
     required:
     - category
     - task_name
+    type: object
+  modelDto.CreatePlanRequest:
+    properties:
+      features:
+        items:
+          type: string
+        type: array
+      max_employees:
+        type: integer
+      name:
+        type: string
+    required:
+    - features
+    - name
     type: object
   modelDto.CreateSupportMessageRequest:
     properties:
@@ -1444,6 +1509,13 @@ definitions:
       user_id:
         type: integer
     type: object
+  modelDto.SuspendRequest:
+    properties:
+      reason:
+        type: string
+    required:
+    - reason
+    type: object
   modelDto.TodayAttendanceResponse:
     properties:
       clock_in_time:
@@ -1507,6 +1579,19 @@ definitions:
       is_completed:
         type: boolean
     type: object
+  modelDto.UpdatePlanRequest:
+    properties:
+      features:
+        items:
+          type: string
+        type: array
+      is_active:
+        type: boolean
+      max_employees:
+        type: integer
+      name:
+        type: string
+    type: object
   modelDto.UpdateQuotaRequest:
     properties:
       quota:
@@ -1521,12 +1606,31 @@ definitions:
     required:
     - status
     type: object
+  modelDto.UpdateTenantSubscriptionRequest:
+    properties:
+      amount:
+        type: number
+      next_billing_date:
+        type: string
+      plan_id:
+        type: integer
+      status:
+        description: Active, Past Due, Canceled, Trial
+        type: string
+    type: object
   modelDto.UpdateTrialRequestStatusRequest:
     properties:
       status:
         $ref: '#/definitions/model.TrialRequestStatus'
     required:
     - status
+    type: object
+  modelDto.UpgradeRequest:
+    properties:
+      plan:
+        type: string
+    required:
+    - plan
     type: object
   service.CreateRoleRequest:
     properties:
@@ -3089,6 +3193,159 @@ paths:
       responses: {}
       tags:
       - Health
+  /api/v1/subscriptions/me:
+    get:
+      description: Get current tenant subscription details
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.Subscription'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Get My Subscription
+      tags:
+      - Subscription
+  /api/v1/subscriptions/upgrade:
+    post:
+      description: Upgrade current tenant plan
+      parameters:
+      - description: Target Plan
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/modelDto.UpgradeRequest'
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/utils.APIResponse'
+      security:
+      - BearerAuth: []
+      summary: Upgrade Subscription
+      tags:
+      - Subscription
+  /api/v1/superadmin/plans:
+    get:
+      description: Get all global subscription plans (Superadmin only)
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.APIResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/model.SubscriptionPlan'
+                  type: array
+              type: object
+      security:
+      - BearerAuth: []
+      summary: List Plans
+      tags:
+      - Plan
+    post:
+      description: Create a new global subscription plan
+      parameters:
+      - description: Plan Details
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/modelDto.CreatePlanRequest'
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.SubscriptionPlan'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Create Plan
+      tags:
+      - Plan
+  /api/v1/superadmin/plans/{id}:
+    delete:
+      description: Delete a subscription plan
+      parameters:
+      - description: Plan ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/utils.APIResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete Plan
+      tags:
+      - Plan
+    get:
+      description: Get details of a subscription plan
+      parameters:
+      - description: Plan ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.SubscriptionPlan'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Get Plan by ID
+      tags:
+      - Plan
+    put:
+      description: Update an existing subscription plan
+      parameters:
+      - description: Plan ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Updated Plan Details
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/modelDto.UpdatePlanRequest'
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.SubscriptionPlan'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Update Plan
+      tags:
+      - Plan
   /api/v1/superadmin/subscriptions:
     get:
       description: Get all subscriptions with statistics (Superadmin only)
@@ -3122,6 +3379,80 @@ paths:
       security:
       - BearerAuth: []
       summary: Get Subscriptions
+      tags:
+      - Subscription
+  /api/v1/superadmin/subscriptions/{id}:
+    put:
+      description: Manually update a tenant's subscription (Superadmin override)
+      parameters:
+      - description: Subscription ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Update Details
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/modelDto.UpdateTenantSubscriptionRequest'
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.Subscription'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Update Tenant Subscription
+      tags:
+      - Subscription
+  /api/v1/superadmin/subscriptions/{id}/remind:
+    post:
+      description: Send payment reminder to tenant owner
+      parameters:
+      - description: Subscription ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/utils.APIResponse'
+      security:
+      - BearerAuth: []
+      summary: Send Reminder
+      tags:
+      - Subscription
+  /api/v1/superadmin/subscriptions/{id}/suspend:
+    post:
+      description: Suspend tenant access
+      parameters:
+      - description: Subscription ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Suspension Reason
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/modelDto.SuspendRequest'
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/utils.APIResponse'
+      security:
+      - BearerAuth: []
+      summary: Suspend Tenant
       tags:
       - Subscription
   /api/v1/superadmin/tenants/{id}:

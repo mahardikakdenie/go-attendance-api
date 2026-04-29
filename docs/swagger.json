@@ -2511,6 +2511,275 @@
                 "responses": {}
             }
         },
+        "/api/v1/subscriptions/me": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Get current tenant subscription details",
+                "tags": [
+                    "Subscription"
+                ],
+                "summary": "Get My Subscription",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/utils.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/model.Subscription"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/subscriptions/upgrade": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Upgrade current tenant plan",
+                "tags": [
+                    "Subscription"
+                ],
+                "summary": "Upgrade Subscription",
+                "parameters": [
+                    {
+                        "description": "Target Plan",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/modelDto.UpgradeRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/utils.APIResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/superadmin/plans": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Get all global subscription plans (Superadmin only)",
+                "tags": [
+                    "Plan"
+                ],
+                "summary": "List Plans",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/utils.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/model.SubscriptionPlan"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Create a new global subscription plan",
+                "tags": [
+                    "Plan"
+                ],
+                "summary": "Create Plan",
+                "parameters": [
+                    {
+                        "description": "Plan Details",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/modelDto.CreatePlanRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/utils.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/model.SubscriptionPlan"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/superadmin/plans/{id}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Get details of a subscription plan",
+                "tags": [
+                    "Plan"
+                ],
+                "summary": "Get Plan by ID",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Plan ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/utils.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/model.SubscriptionPlan"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Update an existing subscription plan",
+                "tags": [
+                    "Plan"
+                ],
+                "summary": "Update Plan",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Plan ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Updated Plan Details",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/modelDto.UpdatePlanRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/utils.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/model.SubscriptionPlan"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Delete a subscription plan",
+                "tags": [
+                    "Plan"
+                ],
+                "summary": "Delete Plan",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Plan ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/utils.APIResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/superadmin/subscriptions": {
             "get": {
                 "security": [
@@ -2566,6 +2835,129 @@
                                     }
                                 }
                             ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/superadmin/subscriptions/{id}": {
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Manually update a tenant's subscription (Superadmin override)",
+                "tags": [
+                    "Subscription"
+                ],
+                "summary": "Update Tenant Subscription",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Subscription ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Update Details",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/modelDto.UpdateTenantSubscriptionRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/utils.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/model.Subscription"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/superadmin/subscriptions/{id}/remind": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Send payment reminder to tenant owner",
+                "tags": [
+                    "Subscription"
+                ],
+                "summary": "Send Reminder",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Subscription ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/utils.APIResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/superadmin/subscriptions/{id}/suspend": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Suspend tenant access",
+                "tags": [
+                    "Subscription"
+                ],
+                "summary": "Suspend Tenant",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Subscription ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Suspension Reason",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/modelDto.SuspendRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/utils.APIResponse"
                         }
                     }
                 }
@@ -5171,6 +5563,76 @@
                 "ShiftTypeNight"
             ]
         },
+        "model.Subscription": {
+            "type": "object",
+            "properties": {
+                "amount": {
+                    "type": "number"
+                },
+                "billing_cycle": {
+                    "$ref": "#/definitions/model.BillingCycle"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "next_billing_date": {
+                    "type": "string"
+                },
+                "plan": {
+                    "$ref": "#/definitions/model.SubscriptionPlan"
+                },
+                "plan_id": {
+                    "type": "integer"
+                },
+                "status": {
+                    "$ref": "#/definitions/model.SubscriptionStatus"
+                },
+                "tenant": {
+                    "$ref": "#/definitions/model.Tenant"
+                },
+                "tenant_id": {
+                    "type": "integer"
+                },
+                "updated_at": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.SubscriptionPlan": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "features": {
+                    "description": "List of allowed modules",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "is_active": {
+                    "type": "boolean"
+                },
+                "max_employees": {
+                    "description": "0 means unlimited",
+                    "type": "integer"
+                },
+                "name": {
+                    "description": "Trial, Starter, Business, Enterprise",
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                }
+            }
+        },
         "model.SubscriptionStatus": {
             "type": "string",
             "enum": [
@@ -5604,6 +6066,12 @@
                     "type": "string",
                     "example": "08123456789"
                 },
+                "plan_features": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
                 "position_id": {
                     "type": "integer"
                 },
@@ -5833,6 +6301,27 @@
                     "$ref": "#/definitions/model.LifecycleStatus"
                 },
                 "task_name": {
+                    "type": "string"
+                }
+            }
+        },
+        "modelDto.CreatePlanRequest": {
+            "type": "object",
+            "required": [
+                "features",
+                "name"
+            ],
+            "properties": {
+                "features": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "max_employees": {
+                    "type": "integer"
+                },
+                "name": {
                     "type": "string"
                 }
             }
@@ -6121,6 +6610,17 @@
                 }
             }
         },
+        "modelDto.SuspendRequest": {
+            "type": "object",
+            "required": [
+                "reason"
+            ],
+            "properties": {
+                "reason": {
+                    "type": "string"
+                }
+            }
+        },
         "modelDto.TodayAttendanceResponse": {
             "type": "object",
             "properties": {
@@ -6218,6 +6718,26 @@
                 }
             }
         },
+        "modelDto.UpdatePlanRequest": {
+            "type": "object",
+            "properties": {
+                "features": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "is_active": {
+                    "type": "boolean"
+                },
+                "max_employees": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
         "modelDto.UpdateQuotaRequest": {
             "type": "object",
             "required": [
@@ -6240,6 +6760,24 @@
                 }
             }
         },
+        "modelDto.UpdateTenantSubscriptionRequest": {
+            "type": "object",
+            "properties": {
+                "amount": {
+                    "type": "number"
+                },
+                "next_billing_date": {
+                    "type": "string"
+                },
+                "plan_id": {
+                    "type": "integer"
+                },
+                "status": {
+                    "description": "Active, Past Due, Canceled, Trial",
+                    "type": "string"
+                }
+            }
+        },
         "modelDto.UpdateTrialRequestStatusRequest": {
             "type": "object",
             "required": [
@@ -6248,6 +6786,17 @@
             "properties": {
                 "status": {
                     "$ref": "#/definitions/model.TrialRequestStatus"
+                }
+            }
+        },
+        "modelDto.UpgradeRequest": {
+            "type": "object",
+            "required": [
+                "plan"
+            ],
+            "properties": {
+                "plan": {
+                    "type": "string"
                 }
             }
         },
