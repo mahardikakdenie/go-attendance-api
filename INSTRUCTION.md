@@ -46,7 +46,21 @@ Project ini menggunakan **Data Isolation** menggunakan `TenantPlugin` (`internal
 2. **Automatic Filtering**: GORM secara otomatis akan menambahkan `WHERE tenant_id = ?` pada setiap query jika model memiliki field tersebut.
 3. **Context Mandatory**: Pastikan context yang dikirim ke repository membawa nilai `tenant_id`. Ini biasanya ditangani otomatis oleh `JWT Middleware`.
 
----
+## 💎 Plan & Subscription Rules (Benefit Management)
+
+Sistem ini menerapkan pembatasan fitur dan kapasitas berdasarkan paket langganan (Plan).
+
+1. **Trial Automation**: Setiap tenant baru hasil dari `TrialRequest` akan otomatis mendapatkan paket **Trial** dengan durasi **14 hari**.
+2. **Capacity Enforcement**:
+   - Sebelum melakukan penambahan data (terutama User), Service **WAJIB** memvalidasi kuota terhadap `plan.max_employees`.
+   - Contoh: `Trial` dibatasi maksimal **3 Karyawan**.
+3. **Feature Access Control**:
+   - Akses ke modul (Attendance, Payroll, Finance, dll) divalidasi tidak hanya lewat `Permission`, tapi juga lewat `Plan.Features`.
+   - Jika paket tenant tidak mencakup modul tersebut, API harus mengembalikan error `403`.
+4. **Superadmin Authority**:
+   - Hanya Superadmin (Tenant 1) yang berhak mengubah `Plan` dari seorang Tenant atau memodifikasi benefit global di tabel `plans`.
+   - Superadmin memiliki akses ke endpoint manajemen: `/api/v1/superadmin/plans` dan `/api/v1/superadmin/subscriptions`.
+   - Modifikasi plan secara global akan berdampak instan pada semua tenant yang menggunakan plan tersebut (termasuk batasan karyawan dan fitur).
 
 ## 📝 Coding Standards & Conventions
 
