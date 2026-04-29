@@ -410,6 +410,98 @@ func (h *attendanceHandler) GetAttendanceHistory(c *gin.Context) {
 	))
 }
 
+// @Summary Get Group Attendance
+// @Description Get attendance list for the requester's tenant with hierarchical scoping
+// @Tags Attendance
+// @Produce json
+// @Param status query string false "Status"
+// @Param date_from query string false "Start date (YYYY-MM-DD)"
+// @Param date_to query string false "End date (YYYY-MM-DD)"
+// @Param page query int false "Page number (default: 1)"
+// @Param limit query int false "Items per page (default: 10)"
+// @Param include query string false "Relations: user,tenant,setting"
+// @Security BearerAuth
+// @Security CookieAuth
+// @Success 200 {object} utils.APIResponse{data=modelDto.AttendanceListResponse}
+// @Failure 500 {object} utils.APIResponse
+// @Router /api/v1/attendance/group [get]
+func (h *attendanceHandler) GetGroupAttendance(c *gin.Context) {
+	var filter model.AttendanceFilter
+
+	ctx := c.Request.Context()
+
+	// Enforce Tenant ID from context
+	tenantIDVal, _ := c.Get("tenant_id")
+	if tenantIDVal != nil {
+		filter.TenantID = tenantIDVal.(uint)
+	}
+
+	if status := c.Query("status"); status != "" {
+		filter.Status = model.AttendanceStatus(status)
+	}
+
+	if search := c.Query("search"); search != "" {
+		filter.Search = search
+	}
+
+	if dateFrom := c.Query("date_from"); dateFrom != "" {
+		if t, err := time.Parse("2006-01-02", dateFrom); err == nil {
+			filter.DateFrom = &t
+		}
+	}
+
+	if dateTo := c.Query("date_to"); dateTo != "" {
+		if t, err := time.Parse("2006-01-02", dateTo); err == nil {
+			filter.DateTo = &t
+		}
+	}
+
+	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "10"))
+
+	if page < 1 {
+		page = 1
+	}
+	if limit < 1 {
+		limit = 10
+	}
+	offset := (page - 1) * limit
+
+	var includes []string
+	if inc := c.Query("include"); inc != "" {
+		includes = strings.Split(inc, ",")
+	}
+
+	requesterID := c.MustGet("user_id").(uint)
+
+	data, total, err := h.service.GetAllData(ctx, requesterID, filter, includes, limit, offset)
+	if err != nil {
+		response := utils.BuildErrorResponse("Failed to fetch attendance data", http.StatusInternalServerError, "error", err.Error())
+		c.JSON(http.StatusInternalServerError, response)
+		return
+	}
+
+	pagination := utils.Pagination{
+		Total:       total,
+		PerPage:     limit,
+		CurrentPage: (offset / limit) + 1,
+		LastPage:    int(math.Ceil(float64(total) / float64(limit))),
+	}
+	if pagination.LastPage == 0 {
+		pagination.LastPage = 1
+	}
+
+	response := utils.BuildResponseWithPagination(
+		"Group attendance data fetched successfully",
+		http.StatusOK,
+		"success",
+		data,
+		pagination,
+	)
+
+	c.JSON(http.StatusOK, response)
+}
+
 // @Summary Health Check
 
 // @Description Check API status

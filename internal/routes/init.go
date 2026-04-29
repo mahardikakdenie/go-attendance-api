@@ -11,28 +11,28 @@ import (
 )
 
 type Handlers struct {
-	Auth         handler.AuthHandler
-	User         handler.UserHandler
-	Tenant       handler.TenantHandler
+	Auth          handler.AuthHandler
+	User          handler.UserHandler
+	Tenant        handler.TenantHandler
 	TenantSetting handler.TenantSettingHandler
-	Media        *handler.MediaHandler
-	Attendance   handler.AttendanceHandler
-	Org          handler.OrganizationHandler
-	Leave        handler.LeaveHandler
-	Overtime     handler.OvertimeHandler
-	UCR          handler.UserChangeRequestHandler
-	Payroll      handler.PayrollHandler
-	Dashboard    handler.DashboardHandler
-	Activity     handler.ActivityHandler
-	TenantRole   handler.TenantRoleHandler
-	Support      handler.SupportHandler
-	Correction   handler.AttendanceCorrectionHandler
-	Finance      handler.FinanceHandler
-	Superadmin   handler.SuperadminHandler
-	Subscription handler.SubscriptionHandler
-	Timesheet    handler.TimesheetHandler
-	HrOps        handler.HrOpsHandler
-	Performance  handler.PerformanceHandler
+	Media         *handler.MediaHandler
+	Attendance    handler.AttendanceHandler
+	Org           handler.OrganizationHandler
+	Leave         handler.LeaveHandler
+	Overtime      handler.OvertimeHandler
+	UCR           handler.UserChangeRequestHandler
+	Payroll       handler.PayrollHandler
+	Dashboard     handler.DashboardHandler
+	Activity      handler.ActivityHandler
+	TenantRole    handler.TenantRoleHandler
+	Support       handler.SupportHandler
+	Correction    handler.AttendanceCorrectionHandler
+	Finance       handler.FinanceHandler
+	Superadmin    handler.SuperadminHandler
+	Subscription  handler.SubscriptionHandler
+	Timesheet     handler.TimesheetHandler
+	HrOps         handler.HrOpsHandler
+	Performance   handler.PerformanceHandler
 }
 
 func initHandlers(db *gorm.DB, rdb *redis.Client) (*Handlers, service.CalendarCronService, service.AuthService) {
@@ -74,7 +74,7 @@ func initHandlers(db *gorm.DB, rdb *redis.Client) (*Handlers, service.CalendarCr
 	leaveService := service.NewLeaveService(leaveRepo, activityRepo, userRepo, orgService, userService, rdb)
 	overtimeService := service.NewOvertimeService(overtimeRepo, userService)
 	ucrService := service.NewUserChangeRequestService(ucrRepo, userRepo)
-	payrollService := service.NewPayrollService(payrollRepo, userRepo, tenantRepo, tenantSettingRepo, attendanceRepo, leaveRepo, userPayrollProfileRepo)
+	payrollService := service.NewPayrollService(payrollRepo, userRepo, tenantRepo, tenantSettingRepo, attendanceRepo, leaveRepo, userPayrollProfileRepo, overtimeRepo, hrOpsRepo)
 	dashboardService := service.NewDashboardService(tenantRepo, userRepo, attendanceRepo, leaveRepo, overtimeRepo, timesheetRepo, rdb)
 	tenantRoleService := service.NewTenantRoleService(roleRepo, permissionRepo, hierarchyRepo)
 	supportService := service.NewSupportService(supportRepo, tenantRepo, userRepo, roleRepo, subscriptionRepo, tenantSettingRepo, userPayrollProfileRepo)
@@ -89,28 +89,28 @@ func initHandlers(db *gorm.DB, rdb *redis.Client) (*Handlers, service.CalendarCr
 
 	// Handlers
 	handlers := &Handlers{
-		Auth:         handler.NewAuthHandler(authService),
-		User:         handler.NewUserHandler(userService),
-		Tenant:       handler.NewTenantHandler(tenantService),
+		Auth:          handler.NewAuthHandler(authService),
+		User:          handler.NewUserHandler(userService),
+		Tenant:        handler.NewTenantHandler(tenantService),
 		TenantSetting: handler.NewTenantSettingHandler(tenantSettingService),
-		Media:        handler.NewMediaHandler(mediaService),
-		Attendance:   handler.NewAttendanceHandler(attendanceService),
-		Org:          handler.NewOrganizationHandler(orgService),
-		Leave:        handler.NewLeaveHandler(leaveService),
-		Overtime:     handler.NewOvertimeHandler(overtimeService),
-		UCR:          handler.NewUserChangeRequestHandler(ucrService),
-		Payroll:      handler.NewPayrollHandler(payrollService),
-		Dashboard:    handler.NewDashboardHandler(dashboardService),
-		Activity:     handler.NewActivityHandler(userService, leaveService, overtimeService),
-		TenantRole:   handler.NewTenantRoleHandler(tenantRoleService),
-		Support:      handler.NewSupportHandler(supportService),
-		Correction:   handler.NewAttendanceCorrectionHandler(correctionService),
-		Finance:      handler.NewFinanceHandler(expenseService),
-		Superadmin:   handler.NewSuperadminHandler(superadminService),
-		Subscription: handler.NewSubscriptionHandler(subscriptionService),
-		Timesheet:    handler.NewTimesheetHandler(timesheetService),
-		HrOps:        handler.NewHrOpsHandler(hrOpsService),
-		Performance:  handler.NewPerformanceHandler(performanceService),
+		Media:         handler.NewMediaHandler(mediaService),
+		Attendance:    handler.NewAttendanceHandler(attendanceService),
+		Org:           handler.NewOrganizationHandler(orgService),
+		Leave:         handler.NewLeaveHandler(leaveService),
+		Overtime:      handler.NewOvertimeHandler(overtimeService),
+		UCR:           handler.NewUserChangeRequestHandler(ucrService),
+		Payroll:       handler.NewPayrollHandler(payrollService),
+		Dashboard:     handler.NewDashboardHandler(dashboardService),
+		Activity:      handler.NewActivityHandler(userService, leaveService, overtimeService),
+		TenantRole:    handler.NewTenantRoleHandler(tenantRoleService),
+		Support:       handler.NewSupportHandler(supportService),
+		Correction:    handler.NewAttendanceCorrectionHandler(correctionService),
+		Finance:       handler.NewFinanceHandler(expenseService),
+		Superadmin:    handler.NewSuperadminHandler(superadminService),
+		Subscription:  handler.NewSubscriptionHandler(subscriptionService),
+		Timesheet:     handler.NewTimesheetHandler(timesheetService),
+		HrOps:         handler.NewHrOpsHandler(hrOpsService),
+		Performance:   handler.NewPerformanceHandler(performanceService),
 	}
 
 	return handlers, calendarCronService, authService

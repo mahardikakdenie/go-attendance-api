@@ -7,11 +7,12 @@ import (
 	"go-attendance-api/internal/repository"
 	"math"
 	"strings"
+	"time"
 )
 
 type PayrollService interface {
 	Calculate(ctx context.Context, req PayrollRequest) (PayrollResponse, error)
-	GeneratePayroll(ctx context.Context, tenantID uint, period string) error
+	GeneratePayroll(ctx context.Context, tenantID uint, period string, runType model.PayrollRunType, method model.CalculationMethod) error
 	GetAllPayroll(ctx context.Context, tenantID uint, period string, search string, limit, offset int) ([]PayrollResponse, int64, error)
 	GetSummary(ctx context.Context, tenantID uint, period string) (model.PayrollSummary, error)
 	PublishPayroll(ctx context.Context, tenantID uint, id uint) error
@@ -30,22 +31,28 @@ type PayrollService interface {
 }
 
 type PayrollRequest struct {
-	UserID                  uint    `json:"userId"`
-	BasicSalary             float64 `json:"basicSalary"`
-	FixedAllowances         float64 `json:"fixedAllowances"`
-	DailyMealAllowance      float64 `json:"dailyMealAllowance"`
-	DailyTransportAllowance float64 `json:"dailyTransportAllowance"`
-	Incentives              float64 `json:"incentives"`
-	Bonus                   float64 `json:"bonus"`
-	AttendanceDays          int     `json:"attendanceDays"`
-	WorkingDaysInMonth      int     `json:"workingDaysInMonth"`
-	OvertimeHours           float64 `json:"overtimeHours"`
-	UnpaidLeaveDays         int     `json:"unpaidLeaveDays"`
-	PTKPStatus              string  `json:"ptkpStatus"`
+	UserID                  uint                    `json:"userId"`
+	RunType                 model.PayrollRunType    `json:"runType"`
+	Method                  model.CalculationMethod `json:"method"`
+	BasicSalary             float64                 `json:"basicSalary"`
+	FixedAllowances         float64                 `json:"fixedAllowances"`
+	DailyMealAllowance      float64                 `json:"dailyMealAllowance"`
+	DailyTransportAllowance float64                 `json:"dailyTransportAllowance"`
+	Incentives              float64                 `json:"incentives"`
+	Bonus                   float64                 `json:"bonus"`
+	THR                     float64                 `json:"thr"`
+	CalculateTHR            bool                    `json:"calculateThr"`
+	AttendanceDays          int                     `json:"attendanceDays"`
+	WorkingDaysInMonth      int                     `json:"workingDaysInMonth"`
+	OvertimeHours           float64                 `json:"overtimeHours"`
+	UnpaidLeaveDays         int                     `json:"unpaidLeaveDays"`
+	PTKPStatus              string                  `json:"ptkpStatus"`
 }
 
 type PayrollResponse struct {
 	ID                   uint                     `json:"id"`
+	RunType              model.PayrollRunType     `json:"run_type"`
+	Method               model.CalculationMethod  `json:"method"`
 	CompanyContext       CompanyContext           `json:"company_context"`
 	User                 EmployeeContext          `json:"user"`
 	Breakdown            DetailedPayrollBreakdown `json:"breakdown"`
@@ -82,6 +89,9 @@ type DetailedPayrollBreakdown struct {
 		OvertimePay        float64 `json:"overtime_pay"`
 		Incentives         float64 `json:"incentives"`
 		Bonus              float64 `json:"bonus"`
+		THR                float64 `json:"thr"`
+		TaxAllowance       float64 `json:"tax_allowance,omitempty"`  // For Net/Gross-up
+		BpjsAllowance      float64 `json:"bpjs_allowance,omitempty"` // For Net/Gross-up
 		GrossIncome        float64 `json:"gross_income"`
 	} `json:"earnings"`
 	Deductions struct {
@@ -120,19 +130,22 @@ type AttendanceSyncResponse struct {
 }
 
 type SaveIndividualPayrollRequest struct {
-	Period                  string              `json:"period" binding:"required"`
-	BasicSalary             float64             `json:"basic_salary"`
-	FixedAllowances         float64             `json:"fixed_allowances"`
-	DailyMealAllowance      float64             `json:"daily_meal_allowance"`
-	DailyTransportAllowance float64             `json:"daily_transport_allowance"`
-	Incentives              float64             `json:"incentives"`
-	Bonus                   float64             `json:"bonus"`
-	AttendanceDays          int                 `json:"attendance_days"`
-	WorkingDaysInMonth      int                 `json:"working_days_in_month"`
-	OvertimeHours           float64             `json:"overtime_hours"`
-	UnpaidLeaveDays         int                 `json:"unpaid_leave_days"`
-	PTKPStatus              string              `json:"ptkp_status"`
-	Status                  model.PayrollStatus `json:"status"`
+	Period                  string                  `json:"period" binding:"required"`
+	RunType                 model.PayrollRunType    `json:"run_type"`
+	Method                  model.CalculationMethod `json:"method"`
+	BasicSalary             float64                 `json:"basic_salary"`
+	FixedAllowances         float64                 `json:"fixed_allowances"`
+	DailyMealAllowance      float64                 `json:"daily_meal_allowance"`
+	DailyTransportAllowance float64                 `json:"daily_transport_allowance"`
+	Incentives              float64                 `json:"incentives"`
+	Bonus                   float64                 `json:"bonus"`
+	THR                     float64                 `json:"thr"`
+	AttendanceDays          int                     `json:"attendance_days"`
+	WorkingDaysInMonth      int                     `json:"working_days_in_month"`
+	OvertimeHours           float64                 `json:"overtime_hours"`
+	UnpaidLeaveDays         int                     `json:"unpaid_leave_days"`
+	PTKPStatus              string                  `json:"ptkp_status"`
+	Status                  model.PayrollStatus     `json:"status"`
 }
 
 type UpdateUserPayrollProfileRequest struct {
@@ -157,6 +170,8 @@ type payrollService struct {
 	attendanceRepo repository.AttendanceRepository
 	leaveRepo      repository.LeaveRepository
 	profileRepo    repository.UserPayrollProfileRepository
+	overtimeRepo   repository.OvertimeRepository
+	hrOpsRepo      repository.HrOpsRepository
 }
 
 func NewPayrollService(
@@ -167,6 +182,8 @@ func NewPayrollService(
 	attendanceRepo repository.AttendanceRepository,
 	leaveRepo repository.LeaveRepository,
 	profileRepo repository.UserPayrollProfileRepository,
+	overtimeRepo repository.OvertimeRepository,
+	hrOpsRepo repository.HrOpsRepository,
 ) PayrollService {
 	return &payrollService{
 		repo:           repo,
@@ -176,16 +193,42 @@ func NewPayrollService(
 		attendanceRepo: attendanceRepo,
 		leaveRepo:      leaveRepo,
 		profileRepo:    profileRepo,
+		overtimeRepo:   overtimeRepo,
+		hrOpsRepo:      hrOpsRepo,
 	}
 }
 
-// Indonesian constants
+// Indonesian Payroll Constants
 const (
 	MaxHealthBasis = 12000000.0
 	MaxJPBasis     = 10042300.0 // 2024 approximation
+
+	// Overtime constants
+	OvertimeHourlyDivider = 173.0
+	OvertimeRate          = 1.5 // Simplified standard
+
+	// BPJS Employee Rates
+	BpjsHealthEmployeeRate = 0.01
+	BpjsJhtEmployeeRate    = 0.02
+	BpjsJpEmployeeRate     = 0.01
+
+	// BPJS Employer Rates
+	BpjsHealthCompanyRate = 0.04
+	BpjsJhtCompanyRate    = 0.037
+	BpjsJpCompanyRate     = 0.02
+	BpjsJkkRate           = 0.0024
+	BpjsJkmRate           = 0.003
 )
 
 func (s *payrollService) Calculate(ctx context.Context, req PayrollRequest) (PayrollResponse, error) {
+	// Set defaults
+	if req.RunType == "" {
+		req.RunType = model.RunTypeRegular
+	}
+	if req.Method == "" {
+		req.Method = model.MethodGross
+	}
+
 	// If profile exists, use it as baseline
 	if req.UserID != 0 {
 		profile, _ := s.profileRepo.FindByUserID(ctx, req.UserID)
@@ -214,56 +257,93 @@ func (s *payrollService) Calculate(ctx context.Context, req PayrollRequest) (Pay
 		}
 	}
 
-	// 1. Prorate Calculation (Based on Attendance vs Working Days)
-	proratedBasic := req.BasicSalary
-	proratedFixedAllowance := req.FixedAllowances
+	// 1. Determine base components based on RunType
+	var baseSalary, fixedAllowance, meal, transport, overtime, incentives, bonus, thr float64
+
+	switch req.RunType {
+	case model.RunTypeRegular:
+		baseSalary = req.BasicSalary
+		fixedAllowance = req.FixedAllowances
+		meal = req.DailyMealAllowance
+		transport = req.DailyTransportAllowance
+		overtime = req.OvertimeHours
+		incentives = req.Incentives
+	case model.RunTypeTHR:
+		if req.CalculateTHR && req.THR == 0 {
+			thr = req.BasicSalary + req.FixedAllowances
+		} else {
+			thr = req.THR
+		}
+	case model.RunTypeBonus:
+		bonus = req.Bonus
+	case model.RunTypeAll:
+		baseSalary = req.BasicSalary
+		fixedAllowance = req.FixedAllowances
+		meal = req.DailyMealAllowance
+		transport = req.DailyTransportAllowance
+		overtime = req.OvertimeHours
+		incentives = req.Incentives
+		bonus = req.Bonus
+		if req.CalculateTHR && req.THR == 0 {
+			thr = req.BasicSalary + req.FixedAllowances
+		} else {
+			thr = req.THR
+		}
+	}
+
+	// 2. Prorate Calculation
+	proratedBasic := baseSalary
+	proratedFixedAllowance := fixedAllowance
 	unpaidLeaveDeduction := 0.0
 
-	if req.WorkingDaysInMonth > 0 {
+	if req.WorkingDaysInMonth > 0 && req.RunType != model.RunTypeTHR && req.RunType != model.RunTypeBonus {
 		attendanceRatio := float64(req.AttendanceDays) / float64(req.WorkingDaysInMonth)
-		proratedBasic = req.BasicSalary * attendanceRatio
-		proratedFixedAllowance = req.FixedAllowances * attendanceRatio
+		proratedBasic = baseSalary * attendanceRatio
+		proratedFixedAllowance = fixedAllowance * attendanceRatio
 
 		if req.UnpaidLeaveDays > 0 {
-			oneDayBasis := (req.BasicSalary + req.FixedAllowances) / float64(req.WorkingDaysInMonth)
+			oneDayBasis := (baseSalary + fixedAllowance) / float64(req.WorkingDaysInMonth)
 			unpaidLeaveDeduction = float64(req.UnpaidLeaveDays) * oneDayBasis
 		}
 	}
 
-	// 2. Variable Allowances (Based on Attendance)
-	variableAllowances := (req.DailyMealAllowance + req.DailyTransportAllowance) * float64(req.AttendanceDays)
+	// 3. Variable Allowances (Based on Attendance)
+	variableAllowances := (meal + transport) * float64(req.AttendanceDays)
 
-	// 3. Overtime (Basis: Basic + Fixed Allowances)
-	hourlyRate := (req.BasicSalary + req.FixedAllowances) / 173.0
-	overtimePay := req.OvertimeHours * hourlyRate * 1.5
+	// 4. Overtime (Basis: Basic + Fixed Allowances)
+	hourlyRate := (baseSalary + fixedAllowance) / OvertimeHourlyDivider
+	overtimePay := overtime * hourlyRate * OvertimeRate
 
-	// 4. BPJS Calculation (Basis: Prorated Basic + Prorated Fixed)
+	// 5. BPJS Calculation (Only for Regular components)
 	bpjsBasis := proratedBasic + proratedFixedAllowance
 	healthBasis := math.Min(bpjsBasis, MaxHealthBasis)
 	jpBasis := math.Min(bpjsBasis, MaxJPBasis)
 
-	res := PayrollResponse{}
+	res := PayrollResponse{
+		RunType: req.RunType,
+		Method:  req.Method,
+	}
 	res.Breakdown.Earnings.BasicSalary = proratedBasic
 	res.Breakdown.Earnings.FixedAllowances = proratedFixedAllowance
 	res.Breakdown.Earnings.VariableAllowances = variableAllowances
 	res.Breakdown.Earnings.OvertimePay = overtimePay
-	res.Breakdown.Earnings.Incentives = req.Incentives
-	res.Breakdown.Earnings.Bonus = req.Bonus
+	res.Breakdown.Earnings.Incentives = incentives
+	res.Breakdown.Earnings.Bonus = bonus
+	res.Breakdown.Earnings.THR = thr
 
-	grossIncome := proratedBasic + proratedFixedAllowance + variableAllowances + overtimePay + req.Incentives + req.Bonus
-	res.Breakdown.Earnings.GrossIncome = grossIncome
+	grossIncome := proratedBasic + proratedFixedAllowance + variableAllowances + overtimePay + incentives + bonus + thr
 
 	// BPJS Breakdown
 	res.Breakdown.Deductions.UnpaidLeaveDeduction = unpaidLeaveDeduction
-	res.Breakdown.Deductions.BpjsHealthEmployee = healthBasis * 0.01
-	res.Breakdown.Deductions.BpjsJhtEmployee = bpjsBasis * 0.02
-	res.Breakdown.Deductions.BpjsJpEmployee = jpBasis * 0.01
+	res.Breakdown.Deductions.BpjsHealthEmployee = healthBasis * BpjsHealthEmployeeRate
+	res.Breakdown.Deductions.BpjsJhtEmployee = bpjsBasis * BpjsJhtEmployeeRate
+	res.Breakdown.Deductions.BpjsJpEmployee = jpBasis * BpjsJpEmployeeRate
 
-	res.Breakdown.EmployerContributions.BpjsHealthCompany = healthBasis * 0.04
-	res.Breakdown.EmployerContributions.BpjsJhtCompany = bpjsBasis * 0.037
-	res.Breakdown.EmployerContributions.BpjsJpCompany = jpBasis * 0.02
-	res.Breakdown.EmployerContributions.BpjsJkk = bpjsBasis * 0.0024
-	res.Breakdown.EmployerContributions.BpjsJkm = bpjsBasis * 0.003
+	res.Breakdown.EmployerContributions.BpjsHealthCompany = healthBasis * BpjsHealthCompanyRate
+	res.Breakdown.EmployerContributions.BpjsJhtCompany = bpjsBasis * BpjsJhtCompanyRate
+	res.Breakdown.EmployerContributions.BpjsJpCompany = jpBasis * BpjsJpCompanyRate
+	res.Breakdown.EmployerContributions.BpjsJkk = bpjsBasis * BpjsJkkRate
+	res.Breakdown.EmployerContributions.BpjsJkm = bpjsBasis * BpjsJkmRate
 	res.Breakdown.EmployerContributions.TotalEmployerCost =
 		res.Breakdown.EmployerContributions.BpjsHealthCompany +
 			res.Breakdown.EmployerContributions.BpjsJhtCompany +
@@ -271,13 +351,42 @@ func (s *payrollService) Calculate(ctx context.Context, req PayrollRequest) (Pay
 			res.Breakdown.EmployerContributions.BpjsJkk +
 			res.Breakdown.EmployerContributions.BpjsJkm
 
-	// 5. PPh 21 TER 2024
+	// 6. Tax Calculation (PPh 21)
 	taxBruto := grossIncome +
 		res.Breakdown.EmployerContributions.BpjsHealthCompany +
 		res.Breakdown.EmployerContributions.BpjsJkk +
 		res.Breakdown.EmployerContributions.BpjsJkm
 
-	res.Breakdown.Deductions.Pph21Amount = s.calculatePPh21TER(req.PTKPStatus, taxBruto)
+	pph21 := s.calculatePPh21TER(req.PTKPStatus, taxBruto)
+
+	// 7. Handle NET (Gross Up) Method
+	if req.Method == model.MethodNet {
+		// A. BPJS Gross-up: Add allowance to cover employee BPJS shares
+		bpjsEmployeeTotal := res.Breakdown.Deductions.BpjsHealthEmployee +
+			res.Breakdown.Deductions.BpjsJhtEmployee +
+			res.Breakdown.Deductions.BpjsJpEmployee
+
+		res.Breakdown.Earnings.BpjsAllowance = bpjsEmployeeTotal
+		grossIncome += bpjsEmployeeTotal
+		taxBruto += bpjsEmployeeTotal // BPJS Allowance increases taxable income
+
+		// B. Tax Gross-up: Iterate to find tax allowance that covers the tax
+		taxAllowance := pph21
+		for i := 0; i < 5; i++ {
+			newPph21 := s.calculatePPh21TER(req.PTKPStatus, taxBruto+taxAllowance)
+			if math.Abs(newPph21-taxAllowance) < 1.0 {
+				taxAllowance = newPph21
+				break
+			}
+			taxAllowance = newPph21
+		}
+		res.Breakdown.Earnings.TaxAllowance = taxAllowance
+		grossIncome += taxAllowance
+		pph21 = taxAllowance
+	}
+
+	res.Breakdown.Earnings.GrossIncome = grossIncome
+	res.Breakdown.Deductions.Pph21Amount = pph21
 
 	res.Breakdown.Deductions.TotalDeductions =
 		res.Breakdown.Deductions.Pph21Amount +
@@ -384,7 +493,7 @@ func (s *payrollService) calculatePPh21TER(ptkp string, bruto float64) float64 {
 	return bruto * rate
 }
 
-func (s *payrollService) GeneratePayroll(ctx context.Context, tenantID uint, period string) error {
+func (s *payrollService) GeneratePayroll(ctx context.Context, tenantID uint, period string, runType model.PayrollRunType, method model.CalculationMethod) error {
 	users, _, err := s.userRepo.FindAll(ctx, model.UserFilter{TenantID: tenantID}, []string{"position", "tenant"})
 	if err != nil {
 		return err
@@ -394,14 +503,14 @@ func (s *payrollService) GeneratePayroll(ctx context.Context, tenantID uint, per
 
 	for _, user := range users {
 		sync, _ := s.SyncEmployeeAttendance(ctx, user.ID, period)
-		
+
 		profile, _ := s.profileRepo.FindByUserID(ctx, user.ID)
 		ptkp := "TK/0"
 		basic := user.BaseSalary
 		fixed := 0.0
 		meal := 0.0
 		transport := 0.0
-		
+
 		if profile != nil {
 			ptkp = string(profile.PtkpStatus)
 			basic = profile.BasicSalary
@@ -412,6 +521,8 @@ func (s *payrollService) GeneratePayroll(ctx context.Context, tenantID uint, per
 
 		calcRes, _ := s.Calculate(ctx, PayrollRequest{
 			UserID:                  user.ID,
+			RunType:                 runType,
+			Method:                  method,
 			BasicSalary:             basic,
 			FixedAllowances:         fixed,
 			DailyMealAllowance:      meal,
@@ -421,12 +532,15 @@ func (s *payrollService) GeneratePayroll(ctx context.Context, tenantID uint, per
 			UnpaidLeaveDays:         sync.UnpaidLeaveDays,
 			OvertimeHours:           sync.OvertimeHours,
 			PTKPStatus:              ptkp,
+			THR:                     0,
 		})
 
 		payroll := &model.Payroll{
 			TenantID:             tenantID,
 			UserID:               user.ID,
 			Period:               period,
+			RunType:              runType,
+			Method:               method,
 			EmployeeFullName:     user.Name,
 			EmployeeID:           user.EmployeeID,
 			EmployeePosition:     user.Position.Name,
@@ -437,6 +551,7 @@ func (s *payrollService) GeneratePayroll(ctx context.Context, tenantID uint, per
 			VariableAllowances:   calcRes.Breakdown.Earnings.VariableAllowances,
 			Incentives:           0,
 			Bonus:                0,
+			THR:                  0,
 			GrossIncome:          calcRes.Breakdown.Earnings.GrossIncome,
 			Pph21Amount:          calcRes.Breakdown.Deductions.Pph21Amount,
 			BpjsHealthEmployee:   calcRes.Breakdown.Deductions.BpjsHealthEmployee,
@@ -484,6 +599,8 @@ func (s *payrollService) GetAllPayroll(ctx context.Context, tenantID uint, perio
 func (s *payrollService) mapModelToResponse(p *model.Payroll, tenant *model.Tenant, setting *model.TenantSetting) PayrollResponse {
 	res := PayrollResponse{
 		ID:         p.ID,
+		RunType:    p.RunType,
+		Method:     p.Method,
 		NetSalary:  p.NetSalary,
 		PeriodText: p.Period,
 		Status:     p.Status,
@@ -503,7 +620,7 @@ func (s *payrollService) mapModelToResponse(p *model.Payroll, tenant *model.Tena
 		Department: p.EmployeeDepartment,
 		PTKPStatus: p.EmployeePtkpStatus,
 	}
-	
+
 	// Add profile info if available
 	profile, _ := s.profileRepo.FindByUserID(context.Background(), p.UserID)
 	if profile != nil {
@@ -516,6 +633,7 @@ func (s *payrollService) mapModelToResponse(p *model.Payroll, tenant *model.Tena
 	res.Breakdown.Earnings.VariableAllowances = p.VariableAllowances
 	res.Breakdown.Earnings.Incentives = p.Incentives
 	res.Breakdown.Earnings.Bonus = p.Bonus
+	res.Breakdown.Earnings.THR = p.THR
 	res.Breakdown.Earnings.OvertimePay = p.OvertimePay
 	res.Breakdown.Earnings.GrossIncome = p.GrossIncome
 
@@ -608,12 +726,110 @@ func (s *payrollService) GetEmployeeBaseline(ctx context.Context, userID uint) (
 }
 
 func (s *payrollService) SyncEmployeeAttendance(ctx context.Context, userID uint, period string) (AttendanceSyncResponse, error) {
+	// 1. Parse Period (YYYY-MM)
+	parsedTime, err := time.Parse("2006-01", period)
+	if err != nil {
+		return AttendanceSyncResponse{}, errors.New("invalid period format, use YYYY-MM")
+	}
+
+	startOfMonth := time.Date(parsedTime.Year(), parsedTime.Month(), 1, 0, 0, 0, 0, time.UTC)
+	endOfMonth := startOfMonth.AddDate(0, 1, 0).Add(-time.Second)
+
+	// 2. Get User Info
+	user, err := s.userRepo.FindByID(ctx, userID, []string{})
+	if err != nil {
+		return AttendanceSyncResponse{}, err
+	}
+
+	// 3. Calculate Working Days In Month
+	workingDays := 0
+	holidays, _ := s.hrOpsRepo.FindEvents(ctx, user.TenantID, startOfMonth.Year())
+	holidayMap := make(map[string]bool)
+	for _, h := range holidays {
+		if h.Category == model.EventCategoryOfficeClosed {
+			holidayMap[h.Date.Format("2006-01-02")] = true
+		}
+	}
+
+	for d := startOfMonth; !d.After(endOfMonth); d = d.AddDate(0, 0, 1) {
+		// Standard: Exclude weekends
+		if d.Weekday() == time.Saturday || d.Weekday() == time.Sunday {
+			continue
+		}
+		// Exclude Holidays
+		if holidayMap[d.Format("2006-01-02")] {
+			continue
+		}
+		workingDays++
+	}
+
+	// 4. Get Attendance Days
+	counts, _ := s.attendanceRepo.GetSummaryCounts(ctx, model.AttendanceFilter{
+		UserID:   userID,
+		DateFrom: &startOfMonth,
+		DateTo:   &endOfMonth,
+	})
+	attendanceDays := int(counts[model.StatusDone] + counts[model.StatusLate])
+
+	// 5. Get Unpaid Leave Days
+	leaves, _, _ := s.leaveRepo.FindAll(ctx, model.LeaveFilter{
+		UserID:   userID,
+		DateFrom: &startOfMonth,
+		DateTo:   &endOfMonth,
+		Status:   model.LeaveStatusApproved,
+	}, 0, 0)
+
+	unpaidLeaveDays := 0
+	for _, l := range leaves {
+		// Check if it's unpaid leave (Code: UNPAID or Name contains "Unpaid")
+		if l.LeaveType != nil && (strings.ToUpper(l.LeaveType.Code) == "UNPAID" || strings.Contains(strings.ToLower(l.LeaveType.Name), "unpaid")) {
+			// Calculate days within this month
+			sDate := l.StartDate
+			if sDate.Before(startOfMonth) {
+				sDate = startOfMonth
+			}
+			eDate := l.EndDate
+			if eDate.After(endOfMonth) {
+				eDate = endOfMonth
+			}
+
+			// Add days
+			for d := sDate; !d.After(eDate); d = d.AddDate(0, 0, 1) {
+				if d.Weekday() != time.Saturday && d.Weekday() != time.Sunday {
+					unpaidLeaveDays++
+				}
+			}
+		}
+	}
+
+	// 6. Get Overtime Hours
+	overtimes, _, _ := s.overtimeRepo.FindAll(ctx, model.OvertimeFilter{
+		UserID:   userID,
+		DateFrom: &startOfMonth,
+		DateTo:   &endOfMonth,
+		Status:   model.OvertimeStatusApproved,
+	})
+
+	totalOTHours := 0.0
+	for _, ot := range overtimes {
+		// Parse StartTime and EndTime (HH:mm)
+		start, err1 := time.Parse("15:04", ot.StartTime)
+		end, err2 := time.Parse("15:04", ot.EndTime)
+		if err1 == nil && err2 == nil {
+			duration := end.Sub(start).Hours()
+			if duration < 0 {
+				duration += 24 // Handle overnight
+			}
+			totalOTHours += duration
+		}
+	}
+
 	return AttendanceSyncResponse{
 		Period:             period,
-		WorkingDaysInMonth: 22,
-		AttendanceDays:     20,
-		UnpaidLeaveDays:    2,
-		OvertimeHours:      5.5,
+		WorkingDaysInMonth: workingDays,
+		AttendanceDays:     attendanceDays,
+		UnpaidLeaveDays:    unpaidLeaveDays,
+		OvertimeHours:      totalOTHours,
 	}, nil
 }
 
@@ -622,12 +838,15 @@ func (s *payrollService) SaveIndividualPayroll(ctx context.Context, tenantID uin
 
 	calcRes, err := s.Calculate(ctx, PayrollRequest{
 		UserID:                  userID,
+		RunType:                 req.RunType,
+		Method:                  req.Method,
 		BasicSalary:             req.BasicSalary,
 		FixedAllowances:         req.FixedAllowances,
 		DailyMealAllowance:      req.DailyMealAllowance,
 		DailyTransportAllowance: req.DailyTransportAllowance,
 		Incentives:              req.Incentives,
 		Bonus:                   req.Bonus,
+		THR:                     req.THR,
 		AttendanceDays:          req.AttendanceDays,
 		WorkingDaysInMonth:      req.WorkingDaysInMonth,
 		OvertimeHours:           req.OvertimeHours,
@@ -644,6 +863,8 @@ func (s *payrollService) SaveIndividualPayroll(ctx context.Context, tenantID uin
 		TenantID:             tenantID,
 		UserID:               userID,
 		Period:               req.Period,
+		RunType:              req.RunType,
+		Method:               req.Method,
 		EmployeeFullName:     user.Name,
 		EmployeeID:           user.EmployeeID,
 		EmployeePosition:     user.Position.Name,
@@ -654,6 +875,7 @@ func (s *payrollService) SaveIndividualPayroll(ctx context.Context, tenantID uin
 		VariableAllowances:   calcRes.Breakdown.Earnings.VariableAllowances,
 		Incentives:           req.Incentives,
 		Bonus:                req.Bonus,
+		THR:                  req.THR,
 		GrossIncome:          calcRes.Breakdown.Earnings.GrossIncome,
 		Pph21Amount:          calcRes.Breakdown.Deductions.Pph21Amount,
 		BpjsHealthEmployee:   calcRes.Breakdown.Deductions.BpjsHealthEmployee,

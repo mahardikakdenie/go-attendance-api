@@ -219,11 +219,11 @@ func (s *attendanceService) RecordAttendance(
 		clockInStart = activeShift.StartTime
 		// For shifts, we might want to be more flexible with end times
 		// or use shift times + buffer. Let's use shift start as reference for lateness.
-		
+
 		// Parse shift start to minutes for lateness
 		sTime, _ := time.Parse("15:04", activeShift.StartTime)
 		lateMinutes = sTime.Hour()*60 + sTime.Minute()
-		
+
 		// Adjust clock in/out ranges based on shift (simple logic for now)
 		// Assuming clock out is allowed after shift ends
 		clockOutStart = activeShift.EndTime
@@ -393,8 +393,18 @@ func (s *attendanceService) GetAllData(
 ) ([]model.AttendanceResponse, int64, error) {
 	includes = filterAttendanceIncludes(includes)
 
-	// Apply Hierarchical Scoping
+	// Apply Hierarchical Scoping & Tenant Isolation
 	if requesterID != 0 {
+		// Fetch requester details to enforce TenantID isolation
+		user, err := s.userRepo.FindByID(ctx, requesterID, []string{})
+		if err != nil {
+			return nil, 0, errors.New("requester not found")
+		}
+
+		// Enforce TenantID from the requester to isolate data per tenant.
+		// This prevents cross-tenant data access even for superadmins when calling tenant-scoped endpoints.
+		filter.TenantID = user.TenantID
+
 		allowedRoleIDs, _ := s.userService.GetAllowedRoleIDs(ctx, requesterID)
 		filter.AllowedRoleIDs = allowedRoleIDs
 	}

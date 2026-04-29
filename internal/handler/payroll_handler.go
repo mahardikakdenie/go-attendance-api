@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"go-attendance-api/internal/model"
 	"go-attendance-api/internal/service"
 	"go-attendance-api/internal/utils"
 	"net/http"
@@ -57,15 +58,24 @@ func (h *payrollHandler) Calculate(c *gin.Context) {
 // @Summary Generate Payroll for Period
 func (h *payrollHandler) Generate(c *gin.Context) {
 	var req struct {
-		Period string `json:"period" binding:"required"`
+		Period  string                  `json:"period" binding:"required"`
+		RunType model.PayrollRunType    `json:"run_type"`
+		Method  model.CalculationMethod `json:"method"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, utils.BuildErrorResponse("Period is required", 400, "error", err.Error()))
+		c.JSON(http.StatusBadRequest, utils.BuildErrorResponse("Invalid request", 400, "error", err.Error()))
 		return
 	}
 
+	if req.RunType == "" {
+		req.RunType = "Regular"
+	}
+	if req.Method == "" {
+		req.Method = "Gross"
+	}
+
 	tenantID := c.MustGet("tenant_id").(uint)
-	err := h.service.GeneratePayroll(c.Request.Context(), tenantID, req.Period)
+	err := h.service.GeneratePayroll(c.Request.Context(), tenantID, req.Period, req.RunType, req.Method)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, utils.BuildErrorResponse("Generation failed", 500, "error", err.Error()))
 		return
