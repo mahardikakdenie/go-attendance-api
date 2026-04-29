@@ -25,6 +25,7 @@ type UserRepository interface {
 	Transaction(ctx context.Context, fn func(repo UserRepository) error) error
 	PayrollProfileRepo() UserPayrollProfileRepository
 	RecentActivityRepo() RecentActivityRepository
+	GetTenantSubscription(ctx context.Context, tenantID uint) (*model.Subscription, error)
 }
 
 type userRepository struct {
@@ -52,17 +53,17 @@ func (r *userRepository) RecentActivityRepo() RecentActivityRepository {
 }
 
 var userPreloadMap = map[string]string{
-	"tenant":                  "Tenant",
+	"tenant":                 "Tenant",
 	"tenant.tenant_settings": "Tenant.TenantSettings",
-	"tenant_setting":          "Tenant.TenantSettings",
-	"attendances":             "Attendances",
-	"attendances.user":        "Attendances.User",
-	"role":                    "Role",
-	"role.permissions":        "Role.Permissions",
-	"position":                "Position",
-	"recent_activities":       "RecentActivities",
-	"manager":                 "Manager",
-	"delegate":                "Delegate",
+	"tenant_setting":         "Tenant.TenantSettings",
+	"attendances":            "Attendances",
+	"attendances.user":       "Attendances.User",
+	"role":                   "Role",
+	"role.permissions":       "Role.Permissions",
+	"position":               "Position",
+	"recent_activities":      "RecentActivities",
+	"manager":                "Manager",
+	"delegate":               "Delegate",
 }
 
 func (r *userRepository) FindByID(ctx context.Context, id uint, includes []string) (*model.User, error) {
@@ -231,4 +232,16 @@ func (r *userRepository) DecreaseQuota(ctx context.Context, userID uint, amount 
 	return r.db.WithContext(ctx).Model(&model.User{}).
 		Where("id = ?", userID).
 		Update("expense_quota", gorm.Expr("expense_quota - ?", amount)).Error
+}
+
+func (r *userRepository) GetTenantSubscription(ctx context.Context, tenantID uint) (*model.Subscription, error) {
+	var sub model.Subscription
+	err := r.db.WithContext(ctx).
+		Preload("Plan").
+		Where("tenant_id = ?", tenantID).
+		First(&sub).Error
+	if err != nil {
+		return nil, err
+	}
+	return &sub, nil
 }

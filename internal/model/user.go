@@ -37,7 +37,7 @@ type User struct {
 	DelegateID *uint `gorm:"index" json:"delegate_id" example:"2"`
 	Delegate   *User `gorm:"foreignKey:DelegateID" json:"delegate,omitempty"`
 
-	BaseSalary float64 `gorm:"type:decimal(15,2);default:0" json:"base_salary"`
+	BaseSalary   float64 `gorm:"type:decimal(15,2);default:0" json:"base_salary"`
 	ExpenseQuota float64 `gorm:"type:decimal(15,2);default:0" json:"expense_quota"`
 
 	IsSystemCreated    bool `gorm:"default:false" json:"is_system_created"`
@@ -106,9 +106,10 @@ type UserResponse struct {
 	MustChangePassword bool `json:"must_change_password"`
 	IsActive           bool `json:"is_active"`
 
-	BaseRole    BaseRole `json:"base_role"`
-	Permissions []string `json:"permissions,omitempty"`
-	IsOwner     bool     `json:"is_owner"`
+	BaseRole     BaseRole `json:"base_role"`
+	Permissions  []string `json:"permissions,omitempty"`
+	IsOwner      bool     `json:"is_owner"`
+	PlanFeatures []string `json:"plan_features,omitempty"`
 
 	Tenant           *TenantResponse          `json:"tenant,omitempty"`
 	TenantSetting    *TenantSetting           `json:"tenant_setting,omitempty"`

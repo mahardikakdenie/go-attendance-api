@@ -150,6 +150,12 @@ func (s *authService) Login(req model.LoginRequest, ip, ua, device string) (stri
 		Status: "success",
 	})
 
+	var planFeatures []string
+	sub, err := s.repo.GetTenantSubscription(user.TenantID)
+	if err == nil && sub != nil && sub.Plan != nil {
+		planFeatures = sub.Plan.Features
+	}
+
 	userResponse := model.UserResponse{
 		ID:                 user.ID,
 		Name:               user.Name,
@@ -163,6 +169,7 @@ func (s *authService) Login(req model.LoginRequest, ip, ua, device string) (stri
 		CreatedAt:          user.CreatedAt,
 		IsSystemCreated:    user.IsSystemCreated,
 		MustChangePassword: user.MustChangePassword,
+		PlanFeatures:       planFeatures,
 	}
 
 	if user.Role != nil {
@@ -173,7 +180,7 @@ func (s *authService) Login(req model.LoginRequest, ip, ua, device string) (stri
 			BaseRole:    user.Role.BaseRole,
 			IsSystem:    user.Role.IsSystem,
 		}
-		
+
 		permissions := make([]string, len(user.Role.Permissions))
 		for i, p := range user.Role.Permissions {
 			permissions[i] = p.ID
@@ -252,6 +259,7 @@ func (s *authService) GetMe(token string) (model.UserResponse, error) {
 	}
 
 	var tenantResponse *model.TenantResponse
+	var planFeatures []string
 	if user.Tenant != nil {
 		tenantResponse = &model.TenantResponse{
 			ID:              user.Tenant.ID,
@@ -259,6 +267,12 @@ func (s *authService) GetMe(token string) (model.UserResponse, error) {
 			Plan:            user.Tenant.Plan,
 			IsSuspended:     user.Tenant.IsSuspended,
 			SuspendedReason: user.Tenant.SuspendedReason,
+		}
+
+		// 🆕 Fetch Plan Features
+		sub, err := s.repo.GetTenantSubscription(user.TenantID)
+		if err == nil && sub != nil && sub.Plan != nil {
+			planFeatures = sub.Plan.Features
 		}
 	}
 
@@ -276,6 +290,7 @@ func (s *authService) GetMe(token string) (model.UserResponse, error) {
 		CreatedAt:          user.CreatedAt,
 		IsSystemCreated:    user.IsSystemCreated,
 		MustChangePassword: user.MustChangePassword,
+		PlanFeatures:       planFeatures,
 	}
 
 	if user.Role != nil {

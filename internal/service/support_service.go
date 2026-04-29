@@ -113,7 +113,7 @@ func (s *supportService) UpdateTrialStatus(ctx context.Context, id uuid.UUID, st
 
 	// Normalisasi status ke Uppercase agar cocok dengan konstanta
 	statusUpper := model.TrialRequestStatus(strings.ToUpper(string(status)))
-	
+
 	oldStatus := trial.Status
 	trial.Status = statusUpper
 
@@ -246,13 +246,18 @@ func (s *supportService) ExecuteProvisioning(ctx context.Context, ticketID uuid.
 		}
 
 		// 4. Create Default Subscription (Trial)
+		trialPlan, err := s.subscriptionRepo.FindPlanByName(ctx, "Trial")
+		if err != nil {
+			return fmt.Errorf("failed to find trial plan: %v", err)
+		}
+
 		subscription := &model.Subscription{
 			TenantID:        tenant.ID,
-			Plan:            "Basic", // Default plan
+			PlanID:          trialPlan.ID,
 			BillingCycle:    model.BillingCycleMonthly,
 			Amount:          0, // Trial is free
 			Status:          model.SubscriptionStatusTrial,
-			NextBillingDate: time.Now().AddDate(0, 1, 0), // 30 days trial
+			NextBillingDate: time.Now().AddDate(0, 0, 14), // 14 days trial
 		}
 		if err := s.subscriptionRepo.Create(ctx, subscription); err != nil {
 			return fmt.Errorf("failed to create subscription: %v", err)

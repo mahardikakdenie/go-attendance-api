@@ -79,17 +79,22 @@ func (s *tenantService) UpdateTenant(ctx context.Context, id uint, req model.Ten
 	if planChanged {
 		sub, err := s.subscriptionRepo.FindByTenantID(ctx, id)
 		if err == nil && sub != nil {
-			sub.Plan = tenant.Plan
-			// Sync amount based on plan
-			switch sub.Plan {
-			case "Pro":
-				sub.Amount = 500000
-			case "Enterprise":
-				sub.Amount = 1500000
-			default:
-				sub.Amount = 0
+			newPlan, err := s.subscriptionRepo.FindPlanByName(ctx, tenant.Plan)
+			if err == nil && newPlan != nil {
+				sub.PlanID = newPlan.ID
+				// Sync amount based on plan
+				switch tenant.Plan {
+				case "Pro":
+					sub.Amount = 500000
+				case "Enterprise":
+					sub.Amount = 1500000
+				case "Starter":
+					sub.Amount = 100000
+				default:
+					sub.Amount = 0
+				}
+				_ = s.subscriptionRepo.Update(ctx, sub)
 			}
-			_ = s.subscriptionRepo.Update(ctx, sub)
 		}
 	}
 

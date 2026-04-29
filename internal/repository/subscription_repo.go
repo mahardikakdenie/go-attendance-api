@@ -15,6 +15,14 @@ type SubscriptionRepository interface {
 	GetStats(ctx context.Context) (float64, int64, float64, error)
 	CountEmployees(ctx context.Context, tenantID uint) (int64, error)
 	FindByTenantID(ctx context.Context, tenantID uint) (*model.Subscription, error)
+	FindPlanByName(ctx context.Context, name string) (*model.SubscriptionPlan, error)
+
+	// SubscriptionPlan CRUD
+	FindAllPlans(ctx context.Context) ([]model.SubscriptionPlan, error)
+	FindPlanByID(ctx context.Context, id uint) (*model.SubscriptionPlan, error)
+	CreatePlan(ctx context.Context, plan *model.SubscriptionPlan) error
+	UpdatePlan(ctx context.Context, plan *model.SubscriptionPlan) error
+	DeletePlan(ctx context.Context, id uint) error
 }
 
 type subscriptionRepository struct {
@@ -104,4 +112,40 @@ func (r *subscriptionRepository) FindByTenantID(ctx context.Context, tenantID ui
 		return nil, err
 	}
 	return &sub, nil
+}
+
+func (r *subscriptionRepository) FindPlanByName(ctx context.Context, name string) (*model.SubscriptionPlan, error) {
+	var plan model.SubscriptionPlan
+	err := r.db.WithContext(ctx).Where("name = ?", name).First(&plan).Error
+	if err != nil {
+		return nil, err
+	}
+	return &plan, nil
+}
+
+func (r *subscriptionRepository) FindAllPlans(ctx context.Context) ([]model.SubscriptionPlan, error) {
+	var plans []model.SubscriptionPlan
+	err := r.db.WithContext(ctx).Order("id ASC").Find(&plans).Error
+	return plans, err
+}
+
+func (r *subscriptionRepository) FindPlanByID(ctx context.Context, id uint) (*model.SubscriptionPlan, error) {
+	var plan model.SubscriptionPlan
+	err := r.db.WithContext(ctx).First(&plan, id).Error
+	if err != nil {
+		return nil, err
+	}
+	return &plan, nil
+}
+
+func (r *subscriptionRepository) CreatePlan(ctx context.Context, plan *model.SubscriptionPlan) error {
+	return r.db.WithContext(ctx).Create(plan).Error
+}
+
+func (r *subscriptionRepository) UpdatePlan(ctx context.Context, plan *model.SubscriptionPlan) error {
+	return r.db.WithContext(ctx).Save(plan).Error
+}
+
+func (r *subscriptionRepository) DeletePlan(ctx context.Context, id uint) error {
+	return r.db.WithContext(ctx).Delete(&model.SubscriptionPlan{}, id).Error
 }

@@ -28,6 +28,8 @@ type SuperadminService interface {
 	CreateSystemRole(ctx context.Context, req modelDto.CreateSystemRoleRequest, performerID uint) (model.Role, error)
 	UpdateSystemRole(ctx context.Context, id uint, req modelDto.CreateSystemRoleRequest, performerID uint) (model.Role, error)
 	DeleteSystemRole(ctx context.Context, id uint, performerID uint) error
+
+	GetAnalyticsDashboard(ctx context.Context, period string) (*modelDto.AnalyticsDashboardResponse, error)
 }
 
 type superadminService struct {
@@ -139,7 +141,7 @@ func (s *superadminService) CreatePlatformAccount(ctx context.Context, req model
 		Email:              req.Email,
 		Password:           string(hashedPassword),
 		RoleID:             req.RoleID,
-		TenantID:           1,
+		TenantID:           req.TenantID,
 		IsSystemCreated:    true,
 		MustChangePassword: true,
 		IsActive:           true,
@@ -402,4 +404,8 @@ func (s *superadminService) DeleteSystemRole(ctx context.Context, id uint, perfo
 	})
 
 	return nil
+}
+
+func (s *superadminService) GetAnalyticsDashboard(ctx context.Context, period string) (*modelDto.AnalyticsDashboardResponse, error) {
+	return s.repo.GetAnalyticsDashboard(ctx, period)
 }

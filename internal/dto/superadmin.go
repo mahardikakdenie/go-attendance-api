@@ -39,3 +39,31 @@ type PermissionResponse struct {
 	Description string `json:"description"`
 }
 
+type AnalyticsDashboardResponse struct {
+	KPIs         AnalyticsKPIs      `json:"kpis"`
+	GrowthChart  GrowthChartData    `json:"growth_chart"`
+	TenantStatus []TenantStatusData `json:"tenant_status"`
+}
+
+type AnalyticsKPIs struct {
+	TotalTenants        KPIData `json:"total_tenants"`
+	TotalUsers          KPIData `json:"total_users"`
+	ActiveSubscriptions KPIData `json:"active_subscriptions"`
+	MonthlyGrowth       KPIData `json:"monthly_growth"`
+}
+
+type KPIData struct {
+	Value     int64   `json:"value"`
+	GrowthPct float64 `json:"growth_pct"`
+}
+
+type GrowthChartData struct {
+	Labels []string `json:"labels"`
+	Data   []int64  `json:"data"`
+}
+
+type TenantStatusData struct {
+	Label string `json:"label"`
+	Value int64  `json:"value"`
+	Color string `json:"color"`
+}

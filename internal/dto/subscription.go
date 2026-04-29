@@ -50,3 +50,23 @@ type SuspendRequest struct {
 type UpgradeRequest struct {
 	Plan string `json:"plan" binding:"required"`
 }
+
+type CreatePlanRequest struct {
+	Name         string   `json:"name" binding:"required"`
+	MaxEmployees int      `json:"max_employees"`
+	Features     []string `json:"features" binding:"required"`
+}
+
+type UpdatePlanRequest struct {
+	Name         string   `json:"name"`
+	MaxEmployees int      `json:"max_employees"`
+	Features     []string `json:"features"`
+	IsActive     *bool    `json:"is_active"`
+}
+
+type UpdateTenantSubscriptionRequest struct {
+	PlanID          uint      `json:"plan_id"`
+	Status          string    `json:"status"` // Active, Past Due, Canceled, Trial
+	Amount          float64   `json:"amount"`
+	NextBillingDate time.Time `json:"next_billing_date"`
+}

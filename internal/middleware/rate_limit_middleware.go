@@ -12,8 +12,16 @@ import (
 
 func RateLimiter() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		key := fmt.Sprintf("rate_limit:%s", c.ClientIP())
-		
+		clientIP := c.ClientIP()
+
+		// Bypass for localhost
+		if clientIP == "127.0.0.1" || clientIP == "::1" {
+			c.Next()
+			return
+		}
+
+		key := fmt.Sprintf("rate_limit:%s", clientIP)
+
 		// Limit: 100 requests per minute per IP
 		limit := 100
 		window := 1 * time.Minute

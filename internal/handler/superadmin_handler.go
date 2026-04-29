@@ -24,6 +24,8 @@ type SuperadminHandler interface {
 	CreateSystemRole(c *gin.Context)
 	UpdateSystemRole(c *gin.Context)
 	DeleteSystemRole(c *gin.Context)
+
+	GetAnalyticsDashboard(c *gin.Context)
 }
 
 type superadminHandler struct {
@@ -205,4 +207,17 @@ func (h *superadminHandler) DeleteSystemRole(c *gin.Context) {
 	}
 
 	c.JSON(200, utils.BuildResponse("System role deleted successfully", 200, "success", nil))
+}
+
+// @Summary Get Superadmin Analytics Dashboard
+func (h *superadminHandler) GetAnalyticsDashboard(c *gin.Context) {
+	period := c.DefaultQuery("period", "this_year")
+
+	res, err := h.service.GetAnalyticsDashboard(c.Request.Context(), period)
+	if err != nil {
+		c.JSON(500, utils.BuildErrorResponse("Failed to fetch analytics dashboard", 500, "error", err.Error()))
+		return
+	}
+
+	c.JSON(200, utils.BuildResponse("Analytics retrieved successfully", 200, "success", res))
 }

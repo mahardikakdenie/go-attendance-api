@@ -1,16 +1,17 @@
 package routes
 
 import (
+	"github.com/gin-gonic/gin"
 	"go-attendance-api/internal/handler"
 	"go-attendance-api/internal/middleware"
 	"go-attendance-api/internal/model"
-	"github.com/gin-gonic/gin"
 )
 
 func RegisterSuperadminRoutes(rg *gin.RouterGroup, superadminH handler.SuperadminHandler, tenantH handler.TenantHandler, subscriptionH handler.SubscriptionHandler) {
 	superadmin := rg.Group("/superadmin")
 	superadmin.Use(middleware.RequireBaseRole(model.BaseRoleSuperAdmin))
 	{
+		superadmin.GET("/analytics/dashboard", superadminH.GetAnalyticsDashboard)
 		superadmin.GET("/owners-stats", superadminH.GetOwnersWithStats)
 		superadmin.PUT("/tenants/:id", tenantH.UpdateTenant)
 
@@ -34,8 +35,18 @@ func RegisterSuperadminRoutes(rg *gin.RouterGroup, superadminH handler.Superadmi
 		subscriptions := superadmin.Group("/subscriptions")
 		{
 			subscriptions.GET("", subscriptionH.GetSubscriptions)
+			subscriptions.PUT("/:id", subscriptionH.UpdateTenantSubscription)
 			subscriptions.POST("/:id/remind", subscriptionH.RemindTenant)
 			subscriptions.POST("/:id/suspend", subscriptionH.SuspendTenant)
+		}
+
+		plans := superadmin.Group("/plans")
+		{
+			plans.GET("", subscriptionH.GetAllPlans)
+			plans.GET("/:id", subscriptionH.GetPlanByID)
+			plans.POST("", subscriptionH.CreatePlan)
+			plans.PUT("/:id", subscriptionH.UpdatePlan)
+			plans.DELETE("/:id", subscriptionH.DeletePlan)
 		}
 	}
 }

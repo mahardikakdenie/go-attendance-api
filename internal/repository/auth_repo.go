@@ -21,6 +21,7 @@ type AuthRepository interface {
 	SavePasswordReset(reset *model.PasswordReset) error
 	FindPasswordResetByToken(token string) (model.PasswordReset, error)
 	MarkPasswordResetUsed(token string) error
+	GetTenantSubscription(tenantID uint) (*model.Subscription, error)
 }
 
 type authRepository struct {
@@ -102,4 +103,16 @@ func (r *authRepository) FindPasswordResetByToken(token string) (model.PasswordR
 
 func (r *authRepository) MarkPasswordResetUsed(token string) error {
 	return r.db.Model(&model.PasswordReset{}).Where("token = ?", token).Update("is_used", true).Error
+}
+
+func (r *authRepository) GetTenantSubscription(tenantID uint) (*model.Subscription, error) {
+	var sub model.Subscription
+	err := r.db.
+		Preload("Plan").
+		Where("tenant_id = ?", tenantID).
+		First(&sub).Error
+	if err != nil {
+		return nil, err
+	}
+	return &sub, nil
 }

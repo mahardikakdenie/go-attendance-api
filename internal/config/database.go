@@ -47,6 +47,7 @@ func InitDB() *gorm.DB {
 		// Stage 1: Absolute Base (No dependencies)
 		err = db.AutoMigrate(
 			&model.Tenant{},
+			&model.SubscriptionPlan{},
 			&model.Permission{},
 			&model.Role{},
 			&model.Position{},
@@ -103,6 +104,9 @@ func InitDB() *gorm.DB {
 		}
 		log.Println("✅ Migrasi database berhasil")
 
+		// 💡 Seed plans early because subscriptions depend on them
+		seeder.SeedPlans(db)
+
 		// 🔄 Data Backfill: Ensure existing tenants have a subscription record
 		backfillSubscriptions(db)
 		backfillPayrollProfiles(db)
@@ -141,10 +145,10 @@ func backfillSubscriptions(db *gorm.DB) {
 	log.Println("🔄 Checking for tenants without subscriptions...")
 
 	// Query: Insert default subscription for tenants that don't have one
-	// Kita ambil status 'Active' untuk tenant lama agar tidak langsung tersuspensi
+	// Plan ID 1 is 'Trial' as seeded in seeder.SeedPlans
 	result := db.Exec(`
-		INSERT INTO subscriptions (tenant_id, plan, billing_cycle, amount, status, next_billing_date, created_at, updated_at)
-		SELECT id, plan, 'Monthly', 0, 'Active', (NOW() + INTERVAL '30 days'), NOW(), NOW()
+		INSERT INTO subscriptions (tenant_id, plan_id, billing_cycle, amount, status, next_billing_date, created_at, updated_at)
+		SELECT id, 1, 'Monthly', 0, 'Trial', (NOW() + INTERVAL '14 days'), NOW(), NOW()
 		FROM tenants
 		WHERE id NOT IN (SELECT tenant_id FROM subscriptions)
 	`)

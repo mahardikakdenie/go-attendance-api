@@ -161,6 +161,7 @@ func SecureAuth(authService service.AuthService) gin.HandlerFunc {
 		c.Set("user_id", user.ID)
 		c.Set("tenant_id", user.TenantID) // Keep original tenant_id in Gin context if needed
 		c.Set("permissions", user.Permissions)
+		c.Set("plan_features", user.PlanFeatures)
 
 		// Set role name string for RequireRole middleware
 		if user.Role != nil {
@@ -177,11 +178,47 @@ func SecureAuth(authService service.AuthService) gin.HandlerFunc {
 
 func HasPermission(permissionID string) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		// Dual-nature Superadmin logic: If it's ADMIN base role, bypass permission check
+		// Dual-nature Superadmin logic: If it's ADMIN base role (Tenant 1), bypass permission check
 		baseRole, _ := c.Get("base_role")
-		if baseRole == string(model.BaseRoleAdmin) {
+		tenantID, _ := c.Get("tenant_id")
+
+		if baseRole == string(model.BaseRoleSuperAdmin) || (tenantID == uint(1) && baseRole == string(model.BaseRoleAdmin)) {
 			c.Next()
 			return
+		}
+
+		// 🆕 PLAN ENFORCEMENT: Check if module is allowed in Plan
+		planFeaturesVal, planExists := c.Get("plan_features")
+		if planExists {
+			planFeatures := planFeaturesVal.([]string)
+			isModuleAllowed := false
+
+			// Check for wildcard
+			for _, f := range planFeatures {
+				if f == "*" {
+					isModuleAllowed = true
+					break
+				}
+			}
+
+			if !isModuleAllowed {
+				// Get module from permissionID (e.g., "attendance.view" -> "attendance")
+				parts := strings.Split(permissionID, ".")
+				if len(parts) > 0 {
+					module := parts[0]
+					for _, f := range planFeatures {
+						if f == module {
+							isModuleAllowed = true
+							break
+						}
+					}
+				}
+			}
+
+			if !isModuleAllowed {
+				c.AbortWithStatusJSON(403, gin.H{"message": "Feature not available in your current plan. Please upgrade."})
+				return
+			}
 		}
 
 		permissionsVal, exists := c.Get("permissions")

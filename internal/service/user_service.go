@@ -56,7 +56,7 @@ func NewUserService(
 var allowedIncludes = map[string]bool{
 	"tenant":                 true,
 	"tenant.tenant_settings": true,
-	"tenant_setting":          true,
+	"tenant_setting":         true,
 	"attendances":            true,
 	"attendances.user":       true,
 	"role":                   true,
@@ -225,17 +225,17 @@ func (s *userService) GetRecentActivities(ctx context.Context, userID uint) ([]m
 
 func mapToUserResponse(user *model.User, includes []string, shift *model.WorkShift) model.UserResponse {
 	res := model.UserResponse{
-		ID:          user.ID,
-		Name:        user.Name,
-		Email:       user.Email,
-		TenantID:    user.TenantID,
-		PositionID:  user.PositionID,
-		EmployeeID:  user.EmployeeID,
-		Department:  user.Department,
-		MediaUrl:    user.MediaUrl,
-		Address:     user.Address,
-		PhoneNumber: user.PhoneNumber,
-		CreatedAt:   user.CreatedAt,
+		ID:           user.ID,
+		Name:         user.Name,
+		Email:        user.Email,
+		TenantID:     user.TenantID,
+		PositionID:   user.PositionID,
+		EmployeeID:   user.EmployeeID,
+		Department:   user.Department,
+		MediaUrl:     user.MediaUrl,
+		Address:      user.Address,
+		PhoneNumber:  user.PhoneNumber,
+		CreatedAt:    user.CreatedAt,
 		ExpenseQuota: user.ExpenseQuota,
 	}
 
@@ -380,6 +380,17 @@ func (s *userService) CreateUser(ctx context.Context, adminID uint, req model.Cr
 			return model.UserResponse{}, errors.New("admin can only create HR, Finance, or Employee accounts")
 		}
 		tenantID = admin.TenantID
+
+		// 🆕 ENFORCEMENT: Check Plan Employee Limit
+		sub, err := s.repo.GetTenantSubscription(ctx, tenantID)
+		if err == nil && sub != nil && sub.Plan != nil {
+			if sub.Plan.MaxEmployees > 0 {
+				currentCount, _ := s.repo.CountByTenantID(ctx, tenantID)
+				if int(currentCount) >= sub.Plan.MaxEmployees {
+					return model.UserResponse{}, fmt.Errorf("employee limit reached for your %s plan (Max: %d). Please upgrade your plan", sub.Plan.Name, sub.Plan.MaxEmployees)
+				}
+			}
+		}
 	default:
 		return model.UserResponse{}, errors.New("you do not have permission to create users")
 	}
