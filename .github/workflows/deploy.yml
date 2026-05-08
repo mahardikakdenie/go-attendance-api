@@ -18,7 +18,7 @@ jobs:
         uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          password: ${{ secrets.DOCKERHUB_PASSWORD }}
 
       - name: Build and push
         uses: docker/build-push-action@v5
@@ -54,21 +54,18 @@ jobs:
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
           script: |
-            # Tentukan target directory
             TARGET_DIR="/opt/projects/go-attendance-api"
             
-            # Cek apakah folder /opt/projects bisa diakses, jika tidak gunakan HOME sebagai backup
-            if [ ! -w "/opt" ] && [ ! -d "$TARGET_DIR" ]; then
-              echo "PERINGATAN: Tidak punya akses tulis ke /opt. Mencoba menggunakan sudo..."
-              # Mencoba membuat folder dengan sudo (ini akan gagal jika butuh password)
-              sudo mkdir -p $TARGET_DIR || true
-              sudo chown -R ${{ secrets.VPS_USER }}:${{ secrets.VPS_USER }} $TARGET_DIR || true
-            fi
-            
-            # Jika tetap tidak bisa diakses, informasikan dan buat di home sebagai fallback agar tidak error
-            if [ ! -w "$TARGET_DIR" ] && [ ! -d "$TARGET_DIR" ]; then
-               echo "ERROR: Gagal membuat direktori di /opt/projects. Silakan buat manual di VPS dengan: sudo mkdir -p $TARGET_DIR && sudo chown ${{ secrets.VPS_USER }} $TARGET_DIR"
-               exit 1
+            # Cek apakah direktori sudah siap
+            if [ ! -d "$TARGET_DIR" ] || [ ! -w "$TARGET_DIR" ]; then
+              echo "--------------------------------------------------------------------------"
+              echo "ERROR: Direktori $TARGET_DIR belum siap atau tidak punya izin tulis."
+              echo "Selesaikan langkah manual ini di terminal VPS Anda SEKALI SAJA:"
+              echo ""
+              echo "sudo mkdir -p $TARGET_DIR"
+              echo "sudo chown -R ${{ secrets.VPS_USER }}:${{ secrets.VPS_USER }} $TARGET_DIR"
+              echo "--------------------------------------------------------------------------"
+              exit 1
             fi
 
             cd $TARGET_DIR
@@ -76,7 +73,6 @@ jobs:
             # Buat file .env dari file .env.prod yang dikirim lewat SCP
             if [ -f .env.prod ]; then
               mv .env.prod .env
-              echo ".env.prod moved to .env"
             fi
             
             # Rename file konfigurasi
