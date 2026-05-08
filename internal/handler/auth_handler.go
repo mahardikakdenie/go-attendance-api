@@ -95,8 +95,8 @@ func (h *authHandler) Login(c *gin.Context) {
 		Name:     "access_token",
 		Value:    token,
 		Path:     "/",
-		HttpOnly: true,
-		Secure:   true, // Requirement: Secure
+		HttpOnly: false,
+		Secure:   false, // Requirement: Secure
 		SameSite: http.SameSiteStrictMode,
 		MaxAge:   86400,
 	})
