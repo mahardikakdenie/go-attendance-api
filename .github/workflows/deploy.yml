@@ -44,7 +44,7 @@ jobs:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
-          source: "docker-compose.vps.yaml,Makefile.vps"
+          source: "docker-compose.vps.yaml,Makefile.vps,.env.prod"
           target: "~/go-attendance-api"
 
       - name: Deploy to VPS
@@ -58,8 +58,11 @@ jobs:
             mkdir -p ~/go-attendance-api
             cd ~/go-attendance-api
             
-            # Buat file .env langsung dari GitHub Secret
-            echo "${{ secrets.ENV_PROD }}" > .env
+            # Buat file .env dari file .env.prod yang dikirim lewat SCP
+            if [ -f .env.prod ]; then
+              mv .env.prod .env
+              echo ".env.prod moved to .env"
+            fi
             
             # Rename file konfigurasi
             [ -f docker-compose.vps.yaml ] && mv docker-compose.vps.yaml docker-compose.yaml
