@@ -122,8 +122,8 @@ func (h *authHandler) Logout(c *gin.Context) {
 		Name:     "access_token",
 		Value:    "",
 		Path:     "/",
-		HttpOnly: true,
-		Secure:   true,
+		HttpOnly: false,
+		Secure:   false,
 		SameSite: http.SameSiteStrictMode,
 		MaxAge:   -1,
 	})
