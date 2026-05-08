@@ -20,12 +20,13 @@ RUN go mod download
 COPY . .
 
 # Generate Swagger documentation
-RUN swag init -g cmd/api/main.go
+RUN /go/bin/swag init -g cmd/api/main.go
+
+# Ensure dependencies are tidied
+RUN go mod tidy
 
 # Build the binary with optimization flags
-# -s: Omit the symbol table and debug information.
-# -w: Omit the DWARF symbol table.
-RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o main ./cmd/api/main.go
+RUN CGO_ENABLED=0 GOOS=linux go build -v -ldflags="-s -w" -o main ./cmd/api/main.go
 
 # Final stage
 FROM alpine:3.20
