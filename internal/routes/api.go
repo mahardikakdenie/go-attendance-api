@@ -16,9 +16,8 @@ func SetupRoutes(r *gin.Engine, db *gorm.DB, rdb *redis.Client) service.Calendar
 	// Initialize handlers (keep the same as original)
 	handlers, cronService, authService := initHandlers(db, rdb)
 
-	if gin.Mode() != gin.ReleaseMode {
-		r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
-	}
+	// Swagger documentation (Available in both dev and production for now)
+	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
 	api := r.Group("/api/v1")
 

@@ -4,19 +4,19 @@ export
 .PHONY: up down restart logs pull clean
 
 up:
-	docker compose -f docker-compose.vps.yaml up -d
+	docker compose -f docker-compose.yaml up -d
 
 down:
-	docker compose -f docker-compose.vps.yaml down
+	docker compose -f docker-compose.yaml down
 
 restart:
-	docker compose -f docker-compose.vps.yaml restart
+	docker compose -f docker-compose.yaml restart
 
 logs:
-	docker compose -f docker-compose.vps.yaml logs -f app
+	docker compose -f docker-compose.yaml logs -f app
 
 pull:
-	docker compose -f docker-compose.vps.yaml pull
+	docker compose -f docker-compose.yaml pull
 
 clean:
 	docker image prune -f
