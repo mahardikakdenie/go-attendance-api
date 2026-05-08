@@ -153,11 +153,18 @@ func (h *subscriptionHandler) UpgradeSubscription(ctx *gin.Context) {
 
 	var req modelDto.UpgradeRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ctx.JSON(400, utils.BuildErrorResponse("Invalid request", 400, "error", err.Error()))
+		ctx.JSON(400, utils.BuildErrorResponse("Invalid request format", 400, "error", err.Error()))
 		return
 	}
 
-	err := h.service.UpgradeSubscription(ctx.Request.Context(), tenantID, req.Plan)
+	// Manual validation for better error reporting if needed, 
+	// although service now handles it too.
+	if req.Plan == "" && req.PlanID == 0 {
+		ctx.JSON(400, utils.BuildErrorResponse("Plan name or Plan ID is required", 400, "error", nil))
+		return
+	}
+
+	err := h.service.UpgradeSubscription(ctx.Request.Context(), tenantID, req)
 	if err != nil {
 		ctx.JSON(400, utils.BuildErrorResponse(err.Error(), 400, "error", nil))
 		return

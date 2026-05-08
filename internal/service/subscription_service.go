@@ -13,7 +13,7 @@ import (
 type SubscriptionService interface {
 	GetSubscriptions(ctx context.Context, page, limit int, status, search string) (dto.SubscriptionsDataResponse, error)
 	GetMySubscription(ctx context.Context, tenantID uint) (*model.Subscription, error)
-	UpgradeSubscription(ctx context.Context, tenantID uint, planName string) error
+	UpgradeSubscription(ctx context.Context, tenantID uint, req dto.UpgradeRequest) error
 	RemindTenant(ctx context.Context, id uint) error
 	SuspendTenant(ctx context.Context, id uint, reason string) error
 
@@ -100,21 +100,32 @@ func (s *subscriptionService) GetMySubscription(ctx context.Context, tenantID ui
 	return s.repo.FindByTenantID(ctx, tenantID)
 }
 
-func (s *subscriptionService) UpgradeSubscription(ctx context.Context, tenantID uint, planName string) error {
+func (s *subscriptionService) UpgradeSubscription(ctx context.Context, tenantID uint, req dto.UpgradeRequest) error {
 	sub, err := s.repo.FindByTenantID(ctx, tenantID)
 	if err != nil {
 		return errors.New("subscription not found")
 	}
 
-	if sub.Plan != nil && sub.Plan.Name == planName {
+	var newPlan *model.SubscriptionPlan
+	if req.PlanID != 0 {
+		newPlan, err = s.repo.FindPlanByID(ctx, req.PlanID)
+		if err != nil {
+			return errors.New("plan not found")
+		}
+	} else if req.Plan != "" {
+		newPlan, err = s.repo.FindPlanByName(ctx, req.Plan)
+		if err != nil {
+			return fmt.Errorf("plan %s not found", req.Plan)
+		}
+	} else {
+		return errors.New("plan or plan_id is required")
+	}
+
+	if sub.PlanID == newPlan.ID {
 		return errors.New("already on this plan")
 	}
 
-	newPlan, err := s.repo.FindPlanByName(ctx, planName)
-	if err != nil {
-		return fmt.Errorf("plan %s not found", planName)
-	}
-
+	planName := newPlan.Name
 	var amount float64
 	switch planName {
 	case "Pro":
@@ -128,7 +139,8 @@ func (s *subscriptionService) UpgradeSubscription(ctx context.Context, tenantID 
 	case "Trial":
 		amount = 0
 	default:
-		return errors.New("invalid plan")
+		// If custom plan created by superadmin, use a default or keep current
+		amount = 0
 	}
 
 	sub.PlanID = newPlan.ID

@@ -48,7 +48,8 @@ type SuspendRequest struct {
 }
 
 type UpgradeRequest struct {
-	Plan string `json:"plan" binding:"required"`
+	Plan   string `json:"plan"`
+	PlanID uint   `json:"plan_id"`
 }
 
 type CreatePlanRequest struct {
