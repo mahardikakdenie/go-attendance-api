@@ -13,11 +13,11 @@ const (
 )
 
 type Overtime struct {
-	ID        uint      `gorm:"primaryKey" json:"id"`
-	UserID    uint      `gorm:"index;not null" json:"user_id"`
-	User      *User     `gorm:"foreignKey:UserID" json:"user,omitempty"`
-	TenantID  uint      `gorm:"index;not null" json:"tenant_id"`
-	Tenant    *Tenant   `gorm:"foreignKey:TenantID" json:"tenant,omitempty"`
+	ID       uint    `gorm:"primaryKey" json:"id"`
+	UserID   uint    `gorm:"index;not null" json:"user_id"`
+	User     *User   `gorm:"foreignKey:UserID" json:"user,omitempty"`
+	TenantID uint    `gorm:"index;not null" json:"tenant_id"`
+	Tenant   *Tenant `gorm:"foreignKey:TenantID" json:"tenant,omitempty"`
 
 	Date      time.Time `gorm:"type:date;not null" json:"date"`
 	StartTime string    `gorm:"type:varchar(5);not null" json:"start_time" example:"17:00"`
@@ -46,17 +46,17 @@ type ApproveOvertimeRequest struct {
 }
 
 type OvertimeResponse struct {
-	ID          uint           `json:"id"`
-	UserID      uint           `json:"user_id"`
-	User        *UserResponse  `json:"user,omitempty"`
-	Date        time.Time      `json:"date"`
-	StartTime   string         `json:"start_time"`
-	EndTime     string         `json:"end_time"`
-	Reason      string         `json:"reason"`
-	Status      OvertimeStatus `json:"status"`
-	AdminNotes  string         `json:"admin_notes"`
-	CreatedAt   time.Time      `json:"created_at"`
-	UpdatedAt   time.Time      `json:"updated_at"`
+	ID         uint           `json:"id"`
+	UserID     uint           `json:"user_id"`
+	User       *UserResponse  `json:"user,omitempty"`
+	Date       time.Time      `json:"date"`
+	StartTime  string         `json:"start_time"`
+	EndTime    string         `json:"end_time"`
+	Reason     string         `json:"reason"`
+	Status     OvertimeStatus `json:"status"`
+	AdminNotes string         `json:"admin_notes"`
+	CreatedAt  time.Time      `json:"created_at"`
+	UpdatedAt  time.Time      `json:"updated_at"`
 }
 
 type OvertimeFilter struct {

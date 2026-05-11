@@ -5,14 +5,14 @@ import (
 )
 
 type CreateGoalRequest struct {
-	UserID         uint           `json:"user_id" binding:"required"`
-	Title          string         `json:"title" binding:"required"`
-	Description    string         `json:"description"`
-	Type           model.GoalType `json:"type" binding:"required,oneof=KPI OKR"`
-	TargetValue    float64        `json:"target_value" binding:"required"`
-	Unit           string         `json:"unit"`
-	StartDate      string         `json:"start_date" binding:"required" example:"2026-01-01"`
-	EndDate        string         `json:"end_date" binding:"required" example:"2026-12-31"`
+	UserID      uint           `json:"user_id" binding:"required"`
+	Title       string         `json:"title" binding:"required"`
+	Description string         `json:"description"`
+	Type        model.GoalType `json:"type" binding:"required,oneof=KPI OKR"`
+	TargetValue float64        `json:"target_value" binding:"required"`
+	Unit        string         `json:"unit"`
+	StartDate   string         `json:"start_date" binding:"required" example:"2026-01-01"`
+	EndDate     string         `json:"end_date" binding:"required" example:"2026-12-31"`
 }
 
 type UpdateGoalProgressRequest struct {

@@ -14,6 +14,7 @@ type UserChangeRequestRepository interface {
 	Create(ctx context.Context, request *model.UserChangeRequest) error
 	FindByID(ctx context.Context, id uint, includes []string) (*model.UserChangeRequest, error)
 	FindAll(ctx context.Context, tenantID uint, status string) ([]model.UserChangeRequest, error)
+	FindAllByUser(ctx context.Context, userID uint) ([]model.UserChangeRequest, error)
 	Update(ctx context.Context, request *model.UserChangeRequest) error
 }
 
@@ -59,6 +60,12 @@ func (r *userChangeRequestRepository) FindAll(ctx context.Context, tenantID uint
 	}
 
 	err := query.Preload("User").Find(&requests).Error
+	return requests, err
+}
+
+func (r *userChangeRequestRepository) FindAllByUser(ctx context.Context, userID uint) ([]model.UserChangeRequest, error) {
+	var requests []model.UserChangeRequest
+	err := r.db.WithContext(ctx).Where("user_id = ?", userID).Order("created_at DESC").Find(&requests).Error
 	return requests, err
 }
 

@@ -7,7 +7,6 @@ import (
 	"math"
 	"net/http"
 	"strconv"
-	"time"
 
 	"github.com/gin-gonic/gin"
 )
@@ -144,12 +143,12 @@ func (h *overtimeHandler) GetAll(c *gin.Context) {
 		}
 	}
 	if df := c.Query("date_from"); df != "" {
-		if t, err := time.Parse("2006-01-02", df); err == nil {
+		if t, err := utils.ParseDateWIB(df); err == nil {
 			filter.DateFrom = &t
 		}
 	}
 	if dt := c.Query("date_to"); dt != "" {
-		if t, err := time.Parse("2006-01-02", dt); err == nil {
+		if t, err := utils.ParseDateWIB(dt); err == nil {
 			filter.DateTo = &t
 		}
 	}

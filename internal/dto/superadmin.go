@@ -10,6 +10,9 @@ type OwnerWithStatsResponse struct {
 	TenantName      string    `json:"tenant_name"`
 	TenantCode      string    `json:"tenant_code"`
 	TenantPlan      string    `json:"tenant_plan"`
+	TenantStatus    string    `json:"tenant_status"`
+	IsSuspended     bool      `json:"is_suspended"`
+	PlanID          uint      `json:"plan_id"`
 	EmployeeCount   int64     `json:"employee_count"`
 	AttendanceCount int64     `json:"attendance_count"`
 	LeaveCount      int64     `json:"leave_count"`
@@ -24,6 +27,14 @@ type CreateSystemRoleRequest struct {
 	Description   string   `json:"description"`
 	BaseRole      string   `json:"base_role"`
 	PermissionIDs []string `json:"permission_ids"`
+}
+
+type UpdateSystemRoleRequest struct {
+	Name             *string  `json:"name"`
+	Description      *string  `json:"description"`
+	BaseRole         *string  `json:"base_role"`
+	PermissionIDs    []string `json:"permissions"`    // User's payload uses "permissions"
+	PermissionIDsAlt []string `json:"permission_ids"` // Keep support for original tag
 }
 
 type PermissionModule struct {
@@ -63,7 +74,49 @@ type GrowthChartData struct {
 }
 
 type TenantStatusData struct {
-	Label string `json:"label"`
-	Value int64  `json:"value"`
-	Color string `json:"color"`
+	Label string `json:label`
+	Value int64  `json:value`
+	Color string `json:color`
+}
+
+type TenantFullDetailsResponse struct {
+	Tenant struct {
+		ID              uint      `json:"id"`
+		Name            string    `json:"name"`
+		Code            string    `json:"code"`
+		CreatedAt       time.Time `json:"created_at"`
+		IsSuspended     bool      `json:"is_suspended"`
+		SuspendedReason string    `json:"suspended_reason"`
+	} `json:"tenant"`
+	Subscription struct {
+		PlanName        string    `json:"plan_name"`
+		Status          string    `json:"status"`
+		Amount          float64   `json:"amount"`
+		BillingCycle    string    `json:"billing_cycle"`
+		NextBillingDate time.Time `json:"next_billing_date"`
+	} `json:"subscription"`
+	UsageStats struct {
+		TotalEmployees   int64 `json:"total_employees"`
+		TotalAttendances int64 `json:"total_attendances"`
+		TotalLeaves      int64 `json:"total_leaves"`
+		TotalPayrolls    int64 `json:"total_payrolls"`
+		TotalExpenses    int64 `json:"total_expenses"`
+	} `json:"usage_stats"`
+	Employees []struct {
+		ID         uint      `json:"id"`
+		Name       string    `json:"name"`
+		Email      string    `json:"email"`
+		Role       string    `json:"role"`
+		Position   string    `json:"position"`
+		Department string    `json:"department"`
+		CreatedAt  time.Time `json:"created_at"`
+	} `json:"employees"`
+}
+
+type UpdateTenantRequest struct {
+	Name            string `json:"name"`
+	PlanID          uint   `json:"plan_id"`
+	PlanName        string `json:"plan_name"` // Fallback for name-based update
+	IsSuspended     *bool  `json:"is_suspended"`
+	SuspendedReason string `json:"suspended_reason"`
 }

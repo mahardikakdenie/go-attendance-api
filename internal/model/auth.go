@@ -24,14 +24,14 @@ type LoginResponse struct {
 }
 
 type Token struct {
-	ID         uint `gorm:"primaryKey" json:"id"`
-	UserID     uint `json:"user_id"`
-	Token      string `gorm:"uniqueIndex" json:"-"`
-	IPAddress  string `gorm:"type:varchar(50)" json:"ip_address"`
-	UserAgent  string `gorm:"type:text" json:"user_agent"`
-	DeviceInfo string `gorm:"type:varchar(255)" json:"device_info"`
-	IsRevoked  bool   `gorm:"default:false" json:"is_revoked"`
-	CreatedAt  time.Time `json:"created_at"`
+	ID         uint       `gorm:"primaryKey" json:"id"`
+	UserID     uint       `json:"user_id"`
+	Token      string     `gorm:"uniqueIndex" json:"-"`
+	IPAddress  string     `gorm:"type:varchar(50)" json:"ip_address"`
+	UserAgent  string     `gorm:"type:text" json:"user_agent"`
+	DeviceInfo string     `gorm:"type:varchar(255)" json:"device_info"`
+	IsRevoked  bool       `gorm:"default:false" json:"is_revoked"`
+	CreatedAt  time.Time  `json:"created_at"`
 	RevokedAt  *time.Time `json:"revoked_at"`
 }
 

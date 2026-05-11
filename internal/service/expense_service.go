@@ -7,6 +7,7 @@ import (
 	dto "go-attendance-api/internal/dto"
 	"go-attendance-api/internal/model"
 	"go-attendance-api/internal/repository"
+	"go-attendance-api/internal/utils"
 	"time"
 )
 
@@ -23,10 +24,11 @@ type expenseService struct {
 	repo         repository.ExpenseRepository
 	userRepo     repository.UserRepository
 	activityRepo repository.RecentActivityRepository
+	notifService NotificationService
 }
 
-func NewExpenseService(repo repository.ExpenseRepository, userRepo repository.UserRepository, activityRepo repository.RecentActivityRepository) ExpenseService {
-	return &expenseService{repo: repo, userRepo: userRepo, activityRepo: activityRepo}
+func NewExpenseService(repo repository.ExpenseRepository, userRepo repository.UserRepository, activityRepo repository.RecentActivityRepository, notifService NotificationService) ExpenseService {
+	return &expenseService{repo: repo, userRepo: userRepo, activityRepo: activityRepo, notifService: notifService}
 }
 
 func (s *expenseService) GetAllExpenses(ctx context.Context, filter model.ExpenseFilter) ([]dto.ExpenseResponse, int64, error) {
@@ -67,9 +69,9 @@ func (s *expenseService) SubmitExpense(ctx context.Context, userID, tenantID uin
 	}
 
 	// 2. Calculate current month usage (Approved + Pending)
-	now := time.Now()
+	now := utils.Now()
 	startOfMonth := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, time.Local)
-	
+
 	expenses, _, _ := s.repo.FindAll(ctx, model.ExpenseFilter{
 		TenantID: tenantID,
 		UserID:   userID,
@@ -86,7 +88,7 @@ func (s *expenseService) SubmitExpense(ctx context.Context, userID, tenantID uin
 		return dto.ExpenseResponse{}, fmt.Errorf("quota tidak cukup. Sisa kuota bulan ini: %.2f", user.ExpenseQuota-currentUsage)
 	}
 
-	date, _ := time.Parse("2006-01-02", req.Date)
+	date, _ := utils.ParseDateWIB(req.Date)
 
 	expense := &model.Expense{
 		TenantID:    tenantID,
@@ -163,6 +165,9 @@ func (s *expenseService) ApproveExpense(ctx context.Context, id uint, adminID ui
 		Status: "success",
 	})
 
+	// NOTIFICATION
+	s.notifService.SendNotification(ctx, expense.TenantID, expense.UserID, "Expense Approved", fmt.Sprintf("Your expense claim for %.2f (%s) has been approved", expense.Amount, expense.Category), model.NotificationTypeExpense)
+
 	return nil
 }
 
@@ -189,6 +194,9 @@ func (s *expenseService) RejectExpense(ctx context.Context, id uint, adminID uin
 		Action: fmt.Sprintf("Rejected expense claim ID %d", id),
 		Status: "success",
 	})
+
+	// NOTIFICATION
+	s.notifService.SendNotification(ctx, expense.TenantID, expense.UserID, "Expense Rejected", fmt.Sprintf("Your expense claim for %.2f (%s) has been rejected", expense.Amount, expense.Category), model.NotificationTypeExpense)
 
 	return nil
 }

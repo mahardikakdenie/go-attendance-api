@@ -2,6 +2,7 @@ package seeder
 
 import (
 	"go-attendance-api/internal/model"
+
 	"gorm.io/gorm"
 )
 

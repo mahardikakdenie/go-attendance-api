@@ -70,7 +70,7 @@ func (h *activityHandler) GetQuickInfo(c *gin.Context) {
 
 	pendingLeaves, _ := h.leaveService.GetPendingCount(ctx, userID)
 	pendingOvertimes, _ := h.overtimeService.GetPendingCount(ctx, userID)
-	
+
 	// For notifications_count, we'll use a mock value for now or use recent activities if available
 	notificationsCount := 5 // Mock as requested in expected response structure
 

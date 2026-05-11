@@ -36,6 +36,10 @@ type SupportRepository interface {
 	FindSupportMessageByID(ctx context.Context, id uuid.UUID, includes []string) (*model.SupportMessage, error)
 	UpdateSupportMessage(ctx context.Context, message *model.SupportMessage) error
 
+	// Support Reply
+	CreateReply(ctx context.Context, reply *model.SupportReply) error
+	FindRepliesByMessageID(ctx context.Context, messageID uuid.UUID) ([]model.SupportReply, error)
+
 	// Transaction
 	Transaction(ctx context.Context, fn func(repo SupportRepository) error) error
 }
@@ -148,4 +152,18 @@ func (r *supportRepository) FindSupportMessageByID(ctx context.Context, id uuid.
 
 func (r *supportRepository) UpdateSupportMessage(ctx context.Context, message *model.SupportMessage) error {
 	return r.db.WithContext(ctx).Save(message).Error
+}
+
+func (r *supportRepository) CreateReply(ctx context.Context, reply *model.SupportReply) error {
+	return r.db.WithContext(ctx).Create(reply).Error
+}
+
+func (r *supportRepository) FindRepliesByMessageID(ctx context.Context, messageID uuid.UUID) ([]model.SupportReply, error) {
+	var replies []model.SupportReply
+	err := r.db.WithContext(ctx).
+		Preload("User").
+		Where("message_id = ?", messageID).
+		Order("created_at ASC").
+		Find(&replies).Error
+	return replies, err
 }

@@ -29,13 +29,20 @@ func (r *tenantRepository) Create(ctx context.Context, tenant *model.Tenant) err
 
 func (r *tenantRepository) FindAll(ctx context.Context) ([]model.Tenant, error) {
 	var tenants []model.Tenant
-	err := r.db.WithContext(ctx).Find(&tenants).Error
+	err := r.db.WithContext(ctx).
+		Preload("Subscription").
+		Preload("Subscription.Plan").
+		Find(&tenants).Error
 	return tenants, err
 }
 
 func (r *tenantRepository) FindByID(ctx context.Context, id uint) (*model.Tenant, error) {
 	var tenant model.Tenant
-	err := r.db.WithContext(ctx).Preload("TenantSettings").First(&tenant, id).Error
+	err := r.db.WithContext(ctx).
+		Preload("TenantSettings").
+		Preload("Subscription").
+		Preload("Subscription.Plan").
+		First(&tenant, id).Error
 	if err != nil {
 		return nil, err
 	}

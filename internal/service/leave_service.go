@@ -7,7 +7,6 @@ import (
 	"go-attendance-api/internal/model"
 	"go-attendance-api/internal/repository"
 	"go-attendance-api/internal/utils"
-	"time"
 
 	"github.com/redis/go-redis/v9"
 )
@@ -27,6 +26,7 @@ type leaveService struct {
 	userRepo     repository.UserRepository
 	orgService   OrganizationService
 	userService  UserService
+	notifService NotificationService
 	redis        *redis.Client
 }
 
@@ -36,6 +36,7 @@ func NewLeaveService(
 	userRepo repository.UserRepository,
 	orgService OrganizationService,
 	userService UserService,
+	notifService NotificationService,
 	redis *redis.Client,
 ) LeaveService {
 	return &leaveService{
@@ -44,6 +45,7 @@ func NewLeaveService(
 		userRepo:     userRepo,
 		orgService:   orgService,
 		userService:  userService,
+		notifService: notifService,
 		redis:        redis,
 	}
 }
@@ -54,11 +56,11 @@ func (s *leaveService) GetPendingCount(ctx context.Context, userID uint) (int, e
 }
 
 func (s *leaveService) RequestLeave(ctx context.Context, userID uint, tenantID uint, req model.LeaveRequest) (model.LeaveResponse, error) {
-	startDate, err := time.Parse("2006-01-02", req.StartDate)
+	startDate, err := utils.ParseDateWIB(req.StartDate)
 	if err != nil {
 		return model.LeaveResponse{}, errors.New("invalid start date format")
 	}
-	endDate, err := time.Parse("2006-01-02", req.EndDate)
+	endDate, err := utils.ParseDateWIB(req.EndDate)
 	if err != nil {
 		return model.LeaveResponse{}, errors.New("invalid end date format")
 	}
@@ -129,6 +131,7 @@ func (s *leaveService) RequestLeave(ctx context.Context, userID uint, tenantID u
 	// NOTIFICATION LOGIC
 	// 1. Notify Approval Manager (Could be direct manager or escalated)
 	if approvalManager != nil && user != nil {
+		s.notifService.SendNotification(ctx, tenantID, approvalManager.ID, "Leave Approval Needed", fmt.Sprintf("%s requested %s for %d days", user.Name, lt.Name, totalDays), model.NotificationTypeLeave)
 		subject := fmt.Sprintf("Leave Approval Needed: %s", user.Name)
 		html := utils.GetLeaveApprovalRequestTemplate(
 			approvalManager.Name,
@@ -138,15 +141,15 @@ func (s *leaveService) RequestLeave(ctx context.Context, userID uint, tenantID u
 			req.EndDate,
 			totalDays,
 			req.Reason,
-			)
+		)
 
-			utils.SendEmail(ctx, []string{approvalManager.Email}, subject, html)
-			}
+		utils.SendEmail(ctx, []string{approvalManager.Email}, subject, html)
+	}
 
-			// 2. Notify Delegate
-			if req.DelegateID != nil {
-			delegate, _ := s.userRepo.FindByID(ctx, *req.DelegateID, nil)
-			if delegate != nil {
+	// 2. Notify Delegate
+	if req.DelegateID != nil {
+		delegate, _ := s.userRepo.FindByID(ctx, *req.DelegateID, nil)
+		if delegate != nil {
 			subject := fmt.Sprintf("Leave Delegation: %s", user.Name)
 			html := utils.GetLeaveDelegationTemplate(
 				delegate.Name,
@@ -156,8 +159,8 @@ func (s *leaveService) RequestLeave(ctx context.Context, userID uint, tenantID u
 			)
 
 			utils.SendEmail(ctx, []string{delegate.Email}, subject, html)
-			}
-			}
+		}
+	}
 	return model.LeaveResponse{
 		ID:          leave.ID,
 		UserID:      leave.UserID,
@@ -175,7 +178,7 @@ func (s *leaveService) RequestLeave(ctx context.Context, userID uint, tenantID u
 }
 
 func (s *leaveService) GetLeaveBalances(ctx context.Context, userID uint) ([]model.LeaveBalance, error) {
-	year := time.Now().Year()
+	year := utils.Now().Year()
 	balances, err := s.repo.GetBalancesByUser(ctx, userID, year)
 	if err != nil {
 		return nil, err
@@ -278,6 +281,8 @@ func (s *leaveService) ApproveLeave(ctx context.Context, approverID uint, leaveI
 		Status: "success",
 	})
 
+	s.notifService.SendNotification(ctx, leave.TenantID, leave.UserID, "Leave Approved", fmt.Sprintf("Your %s request for %s has been approved", leave.LeaveType.Name, leave.StartDate.Format("2006-01-02")), model.NotificationTypeLeave)
+
 	return nil
 }
 
@@ -342,6 +347,8 @@ func (s *leaveService) RejectLeave(ctx context.Context, approverID uint, leaveID
 		Action: fmt.Sprintf("Your %s request was rejected", leave.LeaveType.Name),
 		Status: "rejected",
 	})
+
+	s.notifService.SendNotification(ctx, leave.TenantID, leave.UserID, "Leave Rejected", fmt.Sprintf("Your %s request for %s has been rejected", leave.LeaveType.Name, leave.StartDate.Format("2006-01-02")), model.NotificationTypeLeave)
 
 	return nil
 }

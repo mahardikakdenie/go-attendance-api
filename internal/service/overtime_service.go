@@ -3,9 +3,10 @@ package service
 import (
 	"context"
 	"errors"
+	"fmt"
 	"go-attendance-api/internal/model"
 	"go-attendance-api/internal/repository"
-	"time"
+	"go-attendance-api/internal/utils"
 )
 
 type OvertimeService interface {
@@ -18,14 +19,16 @@ type OvertimeService interface {
 }
 
 type overtimeService struct {
-	repo        repository.OvertimeRepository
-	userService UserService
+	repo         repository.OvertimeRepository
+	userService  UserService
+	notifService NotificationService
 }
 
-func NewOvertimeService(repo repository.OvertimeRepository, userService UserService) OvertimeService {
+func NewOvertimeService(repo repository.OvertimeRepository, userService UserService, notifService NotificationService) OvertimeService {
 	return &overtimeService{
-		repo:        repo,
-		userService: userService,
+		repo:         repo,
+		userService:  userService,
+		notifService: notifService,
 	}
 }
 
@@ -35,7 +38,7 @@ func (s *overtimeService) GetPendingCount(ctx context.Context, userID uint) (int
 }
 
 func (s *overtimeService) CreateRequest(ctx context.Context, userID uint, tenantID uint, req model.CreateOvertimeRequest) (model.OvertimeResponse, error) {
-	date, err := time.Parse("2006-01-02", req.Date)
+	date, err := utils.ParseDateWIB(req.Date)
 	if err != nil {
 		return model.OvertimeResponse{}, errors.New("invalid date format, use YYYY-MM-DD")
 	}
@@ -67,7 +70,7 @@ func (s *overtimeService) ApproveRequest(ctx context.Context, id uint, adminID u
 		return model.OvertimeResponse{}, errors.New("request is already processed")
 	}
 
-	now := time.Now()
+	now := utils.Now()
 	overtime.Status = model.OvertimeStatusApproved
 	overtime.AdminNotes = req.AdminNotes
 	overtime.ApprovedBy = &adminID
@@ -76,6 +79,9 @@ func (s *overtimeService) ApproveRequest(ctx context.Context, id uint, adminID u
 	if err := s.repo.Update(ctx, overtime); err != nil {
 		return model.OvertimeResponse{}, err
 	}
+
+	// NOTIFICATION
+	s.notifService.SendNotification(ctx, overtime.TenantID, overtime.UserID, "Overtime Approved", fmt.Sprintf("Your overtime request for %s (%s-%s) has been approved", overtime.Date.Format("2006-01-02"), overtime.StartTime, overtime.EndTime), model.NotificationTypeOvertime)
 
 	return s.mapToResponse(*overtime), nil
 }
@@ -90,7 +96,7 @@ func (s *overtimeService) RejectRequest(ctx context.Context, id uint, adminID ui
 		return model.OvertimeResponse{}, errors.New("request is already processed")
 	}
 
-	now := time.Now()
+	now := utils.Now()
 	overtime.Status = model.OvertimeStatusRejected
 	overtime.AdminNotes = req.AdminNotes
 	overtime.ApprovedBy = &adminID
@@ -99,6 +105,9 @@ func (s *overtimeService) RejectRequest(ctx context.Context, id uint, adminID ui
 	if err := s.repo.Update(ctx, overtime); err != nil {
 		return model.OvertimeResponse{}, err
 	}
+
+	// NOTIFICATION
+	s.notifService.SendNotification(ctx, overtime.TenantID, overtime.UserID, "Overtime Rejected", fmt.Sprintf("Your overtime request for %s (%s-%s) has been rejected", overtime.Date.Format("2006-01-02"), overtime.StartTime, overtime.EndTime), model.NotificationTypeOvertime)
 
 	return s.mapToResponse(*overtime), nil
 }

@@ -34,85 +34,96 @@ func InitDB() *gorm.DB {
 	// Enable UUID extension for PostgreSQL
 	db.Exec("CREATE EXTENSION IF NOT EXISTS \"uuid-ossp\"")
 
+	// 🆕 CLEANUP: Drop legacy 'plan' column from subscriptions if exists
+	db.Exec("ALTER TABLE subscriptions DROP COLUMN IF EXISTS plan")
+
+	// 🆕 FIX: Ensure precision is updated for duration_hours
+	db.Exec("ALTER TABLE timesheet_entries ALTER COLUMN duration_hours TYPE numeric(8,4)")
+
 	if os.Getenv("RESET_DB") == "true" {
+
 		log.Println("⚠️ Resetting database tables...")
 		// Disable FK checks for clean drop if possible or drop in strict reverse order
-		db.Exec("DROP TABLE IF EXISTS timesheet_entries, tasks, projects, password_resets, subscriptions, appraisals, performance_cycles, performance_goals, expenses, payrolls, attendance_corrections, employee_lifecycle_tasks, lifecycle_tasks, employee_rosters, holidays, work_shifts, support_messages, provisioning_tickets, trial_requests, leaves, leave_balances, leave_types, attendances, overtimes, user_change_requests, recent_activities, tokens, media, user_payroll_profiles, users, positions, role_hierarchies, role_permissions, permissions, roles, tenant_settings, tenants CASCADE")
+		db.Exec("DROP TABLE IF EXISTS support_replies, allowance_presets, notifications, subscription_features, invoices, timesheet_entries, tasks, projects, password_resets, subscriptions, appraisals, performance_cycles, performance_goals, expenses, payrolls, attendance_corrections, employee_lifecycle_tasks, lifecycle_tasks, employee_rosters, holidays, work_shifts, support_messages, provisioning_tickets, trial_requests, leaves, leave_balances, leave_types, attendances, overtimes, user_change_requests, recent_activities, tokens, media, user_payroll_profiles, users, positions, role_hierarchies, role_permissions, permissions, roles, tenant_settings, tenants CASCADE")
 		log.Println("⚠️ Semua tabel berhasil di-reset (CASCADE)")
 	}
 
-	if os.Getenv("RUN_MIGRATION") == "true" || os.Getenv("RESET_DB") == "true" {
-		log.Println("🔄 Running migrations...")
+	log.Println("🔄 Running migrations...")
 
-		// Stage 1: Absolute Base (No dependencies)
-		err = db.AutoMigrate(
-			&model.Tenant{},
-			&model.SubscriptionPlan{},
-			&model.Permission{},
-			&model.Role{},
-			&model.Position{},
-			&model.WorkShift{},
-			&model.Holiday{},
-			&model.LifecycleTask{},
-		)
-		if err != nil {
-			log.Fatalf("❌ Gagal migrasi Stage 1: %v", err)
-		}
-
-		// Stage 2: Hierarchies and User (Depends on Stage 1)
-		err = db.AutoMigrate(
-			&model.RolePermission{},
-			&model.RoleHierarchy{},
-			&model.User{},
-			&model.UserPayrollProfile{},
-		)
-		if err != nil {
-			log.Fatalf("❌ Gagal migrasi Stage 2: %v", err)
-		}
-
-		// Stage 3: Business Logic (Depends on User)
-		err = db.AutoMigrate(
-			&model.RecentActivity{},
-			&model.UserChangeRequest{},
-			&model.Overtime{},
-			&model.TenantSetting{},
-			&model.Attendance{},
-			&model.Token{},
-			&model.Media{},
-			&model.LeaveType{},
-			&model.LeaveBalance{},
-			&model.Leave{},
-			&model.TrialRequest{},
-			&model.ProvisioningTicket{},
-			&model.SupportMessage{},
-			&model.EmployeeRoster{},
-			&model.EmployeeLifecycleTask{},
-			&model.AttendanceCorrection{},
-			&model.Payroll{},
-			&model.Expense{},
-			&model.PerformanceGoal{},
-			&model.PerformanceCycle{},
-			&model.Appraisal{},
-			&model.Subscription{},
-			&model.PasswordReset{},
-			&model.Project{},
-			&model.Task{},
-			&model.TimesheetEntry{},
-		)
-		if err != nil {
-			log.Fatalf("❌ Gagal migrasi Stage 3: %v", err)
-		}
-		log.Println("✅ Migrasi database berhasil")
-
-		// 💡 Seed plans early because subscriptions depend on them
-		seeder.SeedPlans(db)
-
-		// 🔄 Data Backfill: Ensure existing tenants have a subscription record
-		backfillSubscriptions(db)
-		backfillPayrollProfiles(db)
+	// Stage 1: Absolute Base (No dependencies)
+	err = db.AutoMigrate(
+		&model.Tenant{},
+		&model.SubscriptionPlan{},
+		&model.SubscriptionFeature{},
+		&model.AllowancePreset{},
+		&model.Menu{},
+		&model.Permission{}, &model.Role{},
+		&model.Position{}, &model.WorkShift{},
+		&model.Holiday{},
+		&model.LifecycleTask{},
+		&model.Menu{},
+	)
+	if err != nil {
+		log.Fatalf("❌ Gagal migrasi Stage 1: %v", err)
 	}
 
-	// Register Tenant Plugin AFTER migration to avoid interference with schema changes
+	// Stage 2: Hierarchies and User (Depends on Stage 1)
+	err = db.AutoMigrate(
+		&model.RolePermission{},
+		&model.RoleHierarchy{},
+		&model.User{},
+		&model.UserPayrollProfile{},
+	)
+	if err != nil {
+		log.Fatalf("❌ Gagal migrasi Stage 2: %v", err)
+	}
+
+	// Stage 3: Business Logic (Depends on User)
+	err = db.AutoMigrate(
+		&model.RecentActivity{},
+		&model.UserChangeRequest{},
+		&model.Overtime{},
+		&model.TenantSetting{},
+		&model.Attendance{},
+		&model.Token{},
+		&model.Media{},
+		&model.LeaveType{},
+		&model.LeaveBalance{},
+		&model.Leave{},
+		&model.TrialRequest{},
+		&model.ProvisioningTicket{},
+		&model.SupportMessage{},
+		&model.EmployeeRoster{},
+		&model.EmployeeLifecycleTask{},
+		&model.AttendanceCorrection{},
+		&model.Payroll{},
+		&model.Expense{},
+		&model.PerformanceGoal{},
+		&model.PerformanceCycle{},
+		&model.Appraisal{},
+		&model.Subscription{},
+		&model.Invoice{},
+		&model.PasswordReset{},
+		&model.Project{},
+		&model.Task{},
+		&model.TimesheetEntry{},
+		&model.Notification{},
+		&model.SupportReply{},
+		&model.AuditLog{},
+	)
+	if err != nil {
+		log.Fatalf("❌ Gagal migrasi Stage 3: %v", err)
+	}
+	log.Println("✅ Migrasi database berhasil")
+
+	// Seed plans early because subscriptions depend on them
+	seeder.SeedPlans(db)
+
+	// Data Backfill
+	backfillSubscriptions(db)
+	backfillPayrollProfiles(db)
+
+	// Register Tenant Plugin
 	if err := db.Use(&TenantPlugin{}); err != nil {
 		log.Fatalf("❌ Gagal inisialisasi TenantPlugin: %v", err)
 	}
@@ -121,6 +132,9 @@ func InitDB() *gorm.DB {
 	if os.Getenv("RUN_SEEDER") == "true" {
 		log.Println("🌱 Running seeder...")
 
+		seeder.SeedSubscriptionFeatures(db)
+		seeder.SeedAllowancePresets(db)
+		seeder.SeedMenus(db)
 		seeder.SeedTenant(db)
 		seeder.SeedRoles(db)
 		seeder.SeedRoleHierarchy(db)
@@ -134,6 +148,7 @@ func InitDB() *gorm.DB {
 		seeder.SeedOvertimes(db)
 		seeder.SeedSupport(db)
 		seeder.SeedUserPayrollProfiles(db)
+		seeder.SeedMenus(db)
 
 		log.Println("✅ Seeder selesai")
 	}
@@ -143,16 +158,12 @@ func InitDB() *gorm.DB {
 
 func backfillSubscriptions(db *gorm.DB) {
 	log.Println("🔄 Checking for tenants without subscriptions...")
-
-	// Query: Insert default subscription for tenants that don't have one
-	// Plan ID 1 is 'Trial' as seeded in seeder.SeedPlans
 	result := db.Exec(`
 		INSERT INTO subscriptions (tenant_id, plan_id, billing_cycle, amount, status, next_billing_date, created_at, updated_at)
 		SELECT id, 1, 'Monthly', 0, 'Trial', (NOW() + INTERVAL '14 days'), NOW(), NOW()
 		FROM tenants
 		WHERE id NOT IN (SELECT tenant_id FROM subscriptions)
 	`)
-
 	if result.Error != nil {
 		log.Printf("⚠️ Warning during subscription backfill: %v\n", result.Error)
 	} else if result.RowsAffected > 0 {
@@ -162,14 +173,12 @@ func backfillSubscriptions(db *gorm.DB) {
 
 func backfillPayrollProfiles(db *gorm.DB) {
 	log.Println("🔄 Checking for users without payroll profiles...")
-
 	result := db.Exec(`
 		INSERT INTO user_payroll_profiles (user_id, ptkp_status, basic_salary, fixed_allowance, created_at, updated_at)
 		SELECT id, 'TK/0', base_salary, 0, NOW(), NOW()
 		FROM users
 		WHERE id NOT IN (SELECT user_id FROM user_payroll_profiles)
 	`)
-
 	if result.Error != nil {
 		log.Printf("⚠️ Warning during payroll profile backfill: %v\n", result.Error)
 	} else if result.RowsAffected > 0 {

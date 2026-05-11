@@ -45,10 +45,10 @@ type ProjectRequest struct {
 }
 
 type ProjectMember struct {
-	ProjectID      uint   `gorm:"primaryKey" json:"project_id"`
-	UserID         uint   `gorm:"primaryKey" json:"user_id"`
-	Role           string `gorm:"type:varchar(50)" json:"role"` // e.g., "Lead", "Member"
-	AllocatedHours int    `json:"allocated_hours"`
+	ProjectID      uint      `gorm:"primaryKey" json:"project_id"`
+	UserID         uint      `gorm:"primaryKey" json:"user_id"`
+	Role           string    `gorm:"type:varchar(50)" json:"role"` // e.g., "Lead", "Member"
+	AllocatedHours int       `json:"allocated_hours"`
 	CreatedAt      time.Time `json:"created_at"`
 	UpdatedAt      time.Time `json:"updated_at"`
 
@@ -70,13 +70,15 @@ type Task struct {
 
 type TimesheetEntry struct {
 	ID            uuid.UUID `gorm:"type:uuid;primaryKey;default:uuid_generate_v4()" json:"id"`
-	TenantID      uint      `gorm:"not null;index" json:"tenant_id"`
-	UserID        uint      `gorm:"not null;index" json:"user_id"`
+	TenantID      uint      `gorm:"not null;index:idx_tenant_date;index:idx_tenant_user_date" json:"tenant_id"`
+	UserID        uint      `gorm:"not null;index;index:idx_tenant_user_date" json:"user_id"`
 	ProjectID     uint      `gorm:"not null;index" json:"project_id" binding:"required"`
 	TaskID        *uint     `gorm:"index" json:"task_id"`
-	Date          time.Time `gorm:"not null;type:date" json:"date" binding:"required"`
-	DurationHours float64   `gorm:"not null;type:decimal(5,2)" json:"duration_hours" binding:"required,gt=0"`
+	TaskName      string    `gorm:"-" json:"task_name"`
+	Date          time.Time `gorm:"not null;type:date;index:idx_tenant_date;index:idx_tenant_user_date" json:"date" binding:"required"`
+	DurationHours float64   `gorm:"not null;type:decimal(8,4)" json:"duration_hours" binding:"required,gt=0,lte=9999.9999"`
 	Notes         string    `gorm:"type:text" json:"notes"`
+	Description   string    `gorm:"-" json:"description"`
 	CreatedAt     time.Time `json:"created_at"`
 	UpdatedAt     time.Time `json:"updated_at"`
 
@@ -87,18 +89,26 @@ type TimesheetEntry struct {
 
 // DTO for Monthly Report
 type MonthlyTimesheetReport struct {
-	EmployeeName     string                 `json:"employee_name"`
-	EmployeeID       string                 `json:"employee_id"`
-	Department       string                 `json:"department"`
-	Period           string                 `json:"period"`
-	Entries          []TimesheetEntry       `json:"entries"`
-	TotalHours       float64                `json:"total_hours"`
-	ProjectBreakdown map[string]float64     `json:"project_breakdown"`
-	Signatures       TimesheetSignatures    `json:"signatures"`
+	EmployeeName     string              `json:"employee_name"`
+	EmployeeID       string              `json:"employee_id"`
+	Department       string              `json:"department"`
+	Period           string              `json:"period"`
+	Entries          []TimesheetEntry    `json:"entries"`
+	TotalHours       float64             `json:"total_hours"`
+	ProjectBreakdown map[string]float64  `json:"project_breakdown"`
+	Signatures       TimesheetSignatures `json:"signatures"`
 }
 
 type TimesheetSignatures struct {
 	EmployeeName string `json:"employee_name"`
 	ManagerName  string `json:"manager_name"`
 	HRName       string `json:"hr_name"`
+}
+
+type TimesheetFilter struct {
+	TenantID  uint
+	UserID    uint
+	ProjectID uint
+	StartDate *time.Time
+	EndDate   *time.Time
 }

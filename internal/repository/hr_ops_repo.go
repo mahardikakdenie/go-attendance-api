@@ -125,7 +125,7 @@ func (r *hrOpsRepository) FindEventByDate(ctx context.Context, tenantID uint, da
 func (r *hrOpsRepository) FindHolidayByDate(ctx context.Context, tenantID uint, date time.Time) (*model.CalendarEvent, error) {
 	var event model.CalendarEvent
 	// Only return if it blocks office (Office Closed)
-	err := r.db.WithContext(ctx).Where("tenant_id = ? AND date = ? AND category = ?", 
+	err := r.db.WithContext(ctx).Where("tenant_id = ? AND date = ? AND category = ?",
 		tenantID, date.Format("2006-01-02"), model.EventCategoryOfficeClosed).First(&event).Error
 	if err != nil {
 		return nil, err

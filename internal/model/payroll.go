@@ -54,6 +54,9 @@ type Payroll struct {
 	THR                float64 `json:"thr"`
 	OvertimePay        float64 `json:"overtime_pay"`
 
+	// 🆕 Detailed Breakdowns
+	CustomVariableAllowances []CustomAllowance `gorm:"serializer:json;type:jsonb" json:"custom_variable_allowances"`
+
 	// Working Info
 	AttendanceDays       int     `json:"attendance_days"`
 	WorkingDays          int     `json:"working_days"`
@@ -83,6 +86,11 @@ type Payroll struct {
 
 	User   User   `gorm:"foreignKey:UserID" json:"user,omitempty"`
 	Tenant Tenant `gorm:"foreignKey:TenantID" json:"tenant,omitempty"`
+}
+
+type CustomAllowance struct {
+	Name   string  `json:"name"`
+	Amount float64 `json:"amount"`
 }
 
 type PayrollSummary struct {

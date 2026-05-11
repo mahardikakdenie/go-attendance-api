@@ -120,14 +120,6 @@ func SeedRoles(db *gorm.DB) {
 			log.Printf("Seeder: Role %s ditambahkan", r.Name)
 		}
 
-		// Update fields if role exists (optional, but good for keeping seeder up to date)
-		db.Model(&role).Updates(model.Role{
-			Description: r.Description,
-			BaseRole:    r.BaseRole,
-			IsSystem:    r.IsSystem,
-			IsImmutable: r.IsImmutable,
-		})
-
 		// Assign permissions based on role
 		if role.BaseRole == model.BaseRoleSuperAdmin || role.BaseRole == model.BaseRoleAdmin {
 			// Full Access

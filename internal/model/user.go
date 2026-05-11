@@ -44,8 +44,10 @@ type User struct {
 	MustChangePassword bool `gorm:"default:false" json:"must_change_password"`
 	IsActive           bool `gorm:"default:true" json:"is_active"`
 
-	Attendances      []Attendance     `gorm:"foreignKey:UserID" json:"attendances,omitempty"`
-	RecentActivities []RecentActivity `gorm:"foreignKey:UserID" json:"recent_activities,omitempty"`
+	Attendances      []Attendance        `gorm:"foreignKey:UserID" json:"attendances,omitempty"`
+	RecentActivities []RecentActivity    `gorm:"foreignKey:UserID" json:"recent_activities,omitempty"`
+	LeaveBalances    []LeaveBalance      `gorm:"foreignKey:UserID" json:"leave_balances,omitempty"`
+	PayrollProfile   *UserPayrollProfile `gorm:"foreignKey:UserID" json:"payroll_profile,omitempty"`
 
 	MediaUrl string `gorm:"type:varchar(255)" json:"media_url" example:"https://cdn.example.com/profile/budi.jpg" binding:"omitempty,url"`
 
@@ -54,10 +56,12 @@ type User struct {
 }
 
 type UserFilter struct {
+	IDs            []uint
 	RequesterID    uint
 	Name           string
 	Email          string
 	RoleID         uint
+	BaseRole       BaseRole
 	AllowedRoleIDs []uint
 	TenantID       uint
 	EmployeeID     string
@@ -116,4 +120,12 @@ type UserResponse struct {
 	Shift            *WorkShiftResponse       `json:"shift,omitempty"`
 	Attendances      []AttendanceResponse     `json:"attendances,omitempty"`
 	RecentActivities []RecentActivityResponse `json:"recent_activities,omitempty"`
+	LeaveBalances    []LeaveBalance           `json:"leave_balances,omitempty"`
+	PayrollProfile   *UserPayrollProfile      `json:"payroll_profile,omitempty"`
+	Subscription     *SubscriptionContext     `json:"subscription,omitempty"`
+}
+
+type SubscriptionContext struct {
+	Plan   string `json:"plan"`
+	Status string `json:"status"`
 }

@@ -4,6 +4,7 @@ import (
 	"go-attendance-api/internal/handler"
 	"go-attendance-api/internal/middleware"
 	"go-attendance-api/internal/model"
+
 	"github.com/gin-gonic/gin"
 )
 

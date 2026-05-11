@@ -48,11 +48,11 @@ func (s *WorkShift) BeforeCreate(tx *gorm.DB) (err error) {
 type EventType string
 
 const (
-	EventTypeNationalHoliday  EventType = "National Holiday"
-	EventTypeCompanyEvent     EventType = "Company Event"
-	EventTypeMandatoryLeave   EventType = "Mandatory Leave"
-	EventTypeMeeting          EventType = "Meeting"
-	EventTypeOther            EventType = "Other"
+	EventTypeNationalHoliday EventType = "National Holiday"
+	EventTypeCompanyEvent    EventType = "Company Event"
+	EventTypeMandatoryLeave  EventType = "Mandatory Leave"
+	EventTypeMeeting         EventType = "Meeting"
+	EventTypeOther           EventType = "Other"
 )
 
 type EventCategory string
@@ -78,7 +78,7 @@ type CalendarEvent struct {
 	Users []User `gorm:"many2many:calendar_event_users;" json:"users,omitempty"`
 }
 
-// Keeping old names as aliases for GORM compatibility if needed, 
+// Keeping old names as aliases for GORM compatibility if needed,
 // but preferred way is to migrate the table.
 type Holiday = CalendarEvent
 type HolidayType = EventType
@@ -91,13 +91,13 @@ func (e *CalendarEvent) BeforeCreate(tx *gorm.DB) (err error) {
 }
 
 type EmployeeRoster struct {
-	ID        uint      `gorm:"primaryKey" json:"id"`
-	TenantID  uint      `gorm:"not null" json:"tenant_id"`
-	UserID    uint      `gorm:"not null" json:"user_id"`
-	Date      time.Time `gorm:"type:date;not null" json:"date"`
+	ID        uint       `gorm:"primaryKey" json:"id"`
+	TenantID  uint       `gorm:"not null" json:"tenant_id"`
+	UserID    uint       `gorm:"not null" json:"user_id"`
+	Date      time.Time  `gorm:"type:date;not null" json:"date"`
 	ShiftID   *uuid.UUID `gorm:"type:uuid" json:"shift_id"` // null means fallback to default/global company shift
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
+	CreatedAt time.Time  `json:"created_at"`
+	UpdatedAt time.Time  `json:"updated_at"`
 
 	User  User       `gorm:"foreignKey:UserID" json:"-"`
 	Shift *WorkShift `gorm:"foreignKey:ShiftID" json:"shift,omitempty"`

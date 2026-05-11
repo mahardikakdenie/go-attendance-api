@@ -5,16 +5,18 @@ import "time"
 type UserChangeRequestStatus string
 
 const (
-	StatusPending  UserChangeRequestStatus = "pending"
-	StatusApproved UserChangeRequestStatus = "approved"
-	StatusRejected UserChangeRequestStatus = "rejected"
+	StatusDraft     UserChangeRequestStatus = "draft"
+	StatusPending   UserChangeRequestStatus = "pending"
+	StatusApproved  UserChangeRequestStatus = "approved"
+	StatusRejected  UserChangeRequestStatus = "rejected"
+	StatusCancelled UserChangeRequestStatus = "cancelled"
 )
 
 type UserChangeRequest struct {
-	ID        uint   `gorm:"primaryKey" json:"id"`
-	UserID    uint   `gorm:"index;not null" json:"user_id"`
-	User      *User  `gorm:"foreignKey:UserID" json:"user,omitempty"`
-	TenantID  uint   `gorm:"index;not null" json:"tenant_id"`
+	ID       uint  `gorm:"primaryKey" json:"id"`
+	UserID   uint  `gorm:"index;not null" json:"user_id"`
+	User     *User `gorm:"foreignKey:UserID" json:"user,omitempty"`
+	TenantID uint  `gorm:"index;not null" json:"tenant_id"`
 
 	// Fields to change
 	Name        string `json:"name" binding:"required"`
@@ -58,6 +60,6 @@ type UserChangeRequestResponse struct {
 	AdminNotes  string                  `json:"admin_notes"`
 	CreatedAt   time.Time               `json:"created_at"`
 	UpdatedAt   time.Time               `json:"updated_at"`
-	
+
 	User *UserResponse `json:"user,omitempty"`
 }

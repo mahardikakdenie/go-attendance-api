@@ -60,10 +60,10 @@ type PerformanceCycle struct {
 type AppraisalStatus string
 
 const (
-	AppraisalStatusPending        AppraisalStatus = "PENDING"
-	AppraisalStatusSelfReview     AppraisalStatus = "SELF_REVIEW"
-	AppraisalStatusManagerReview  AppraisalStatus = "MANAGER_REVIEW"
-	AppraisalStatusCompleted      AppraisalStatus = "COMPLETED"
+	AppraisalStatusPending       AppraisalStatus = "PENDING"
+	AppraisalStatusSelfReview    AppraisalStatus = "SELF_REVIEW"
+	AppraisalStatusManagerReview AppraisalStatus = "MANAGER_REVIEW"
+	AppraisalStatusCompleted     AppraisalStatus = "COMPLETED"
 )
 
 type Appraisal struct {

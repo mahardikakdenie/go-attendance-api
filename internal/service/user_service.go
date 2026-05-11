@@ -62,6 +62,8 @@ var allowedIncludes = map[string]bool{
 	"role":                   true,
 	"role.permissions":       true,
 	"recent_activities":      true,
+	"leave_balances":         true,
+	"payroll_profile":        true,
 }
 
 func filterIncludes(includes []string) []string {
@@ -161,7 +163,7 @@ func (s *userService) GetMe(
 
 	// Resolve active shift for today
 	var activeShift *model.WorkShift
-	now := time.Now().In(time.FixedZone("WIB", 7*3600))
+	now := utils.Now()
 
 	// 0. Check Approved Leave
 	isOnLeave, _ := s.leaveRepo.CheckOnLeave(ctx, userID, now)
@@ -275,11 +277,21 @@ func mapToUserResponse(user *model.User, includes []string, shift *model.WorkShi
 
 	if (hasInclude(includes, "tenant") || hasInclude(includes, "tenant_setting")) && user.Tenant != nil {
 		res.Tenant = &model.TenantResponse{
-			ID:             user.Tenant.ID,
-			Name:           user.Tenant.Name,
-			TenantSettings: user.Tenant.TenantSettings,
+			ID:              user.Tenant.ID,
+			Name:            user.Tenant.Name,
+			Plan:            "Basic", // Default fallback
+			IsSuspended:     user.Tenant.IsSuspended,
+			SuspendedReason: user.Tenant.SuspendedReason,
+			TenantSettings:  user.Tenant.TenantSettings,
+			Subscription:    user.Tenant.Subscription,
 		}
 		res.TenantSetting = user.Tenant.TenantSettings
+
+		// 🆕 Synchronize Real-time Plan and Features from Subscription Table
+		if user.Tenant.Subscription != nil && user.Tenant.Subscription.Plan != nil {
+			res.Tenant.Plan = user.Tenant.Subscription.Plan.Name
+			res.PlanFeatures = user.Tenant.Subscription.Plan.Features
+		}
 	}
 
 	if hasInclude(includes, "attendances") {
@@ -311,6 +323,14 @@ func mapToUserResponse(user *model.User, includes []string, shift *model.WorkShi
 				CreatedAt: act.CreatedAt,
 			})
 		}
+	}
+
+	if hasInclude(includes, "leave_balances") {
+		res.LeaveBalances = user.LeaveBalances
+	}
+
+	if hasInclude(includes, "payroll_profile") {
+		res.PayrollProfile = user.PayrollProfile
 	}
 
 	return res

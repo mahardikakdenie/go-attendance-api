@@ -98,6 +98,9 @@ func (h *userHandler) GetAllUsers(c *gin.Context) {
 		if val, err := strconv.Atoi(l); err == nil {
 			filter.Limit = val
 		}
+	} else {
+		// 🆕 Default limit for high-scale directory: 100
+		filter.Limit = 100
 	}
 
 	if o := c.Query("offset"); o != "" {
@@ -206,7 +209,7 @@ func (h *userHandler) GetMe(c *gin.Context) {
 	includes := parseIncludeParams(c)
 
 	// Always include required relations for GetMe as requested for efficiency
-	requiredIncludes := []string{"tenant", "tenant.tenant_settings", "attendances", "role", "recent_activities", "role.permissions", "tenant_setting"}
+	requiredIncludes := []string{"tenant", "tenant.tenant_settings", "attendances", "role", "recent_activities", "role.permissions", "tenant_setting", "leave_balances", "payroll_profile", "tenant.subscription", "tenant.subscription.plan"}
 	for _, inc := range requiredIncludes {
 		if !contains(includes, inc) {
 			includes = append(includes, inc)

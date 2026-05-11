@@ -5,6 +5,7 @@ import (
 	"errors"
 	"go-attendance-api/internal/model"
 	"go-attendance-api/internal/repository"
+	"go-attendance-api/internal/utils"
 	"time"
 
 	"github.com/google/uuid"
@@ -39,18 +40,18 @@ func NewAttendanceCorrectionService(
 }
 
 func (s *attendanceCorrectionService) RequestCorrection(ctx context.Context, userID uint, tenantID uint, req model.CreateCorrectionRequest) (model.AttendanceCorrectionResponse, error) {
-	parsedDate, err := time.Parse("2006-01-02", req.Date)
+	parsedDate, err := utils.ParseDateWIB(req.Date)
 	if err != nil {
 		return model.AttendanceCorrectionResponse{}, errors.New("invalid date format, use YYYY-MM-DD")
 	}
 
-	if parsedDate.After(time.Now()) {
+	if parsedDate.After(utils.Now()) {
 		return model.AttendanceCorrectionResponse{}, errors.New("cannot request correction for future dates")
 	}
 
 	var clockIn, clockOut *time.Time
 	if req.ClockInTime != nil && *req.ClockInTime != "" {
-		t, err := time.Parse("2006-01-02 15:04:05", req.Date+" "+*req.ClockInTime)
+		t, err := utils.ParseTimeWIB("2006-01-02 15:04:05", req.Date+" "+*req.ClockInTime)
 		if err != nil {
 			return model.AttendanceCorrectionResponse{}, errors.New("invalid clock_in_time format, use HH:mm:ss")
 		}
@@ -58,7 +59,7 @@ func (s *attendanceCorrectionService) RequestCorrection(ctx context.Context, use
 	}
 
 	if req.ClockOutTime != nil && *req.ClockOutTime != "" {
-		t, err := time.Parse("2006-01-02 15:04:05", req.Date+" "+*req.ClockOutTime)
+		t, err := utils.ParseTimeWIB("2006-01-02 15:04:05", req.Date+" "+*req.ClockOutTime)
 		if err != nil {
 			return model.AttendanceCorrectionResponse{}, errors.New("invalid clock_out_time format, use HH:mm:ss")
 		}
@@ -106,7 +107,7 @@ func (s *attendanceCorrectionService) ApproveCorrection(ctx context.Context, req
 		return errors.New("request is already processed")
 	}
 
-	now := time.Now()
+	now := utils.Now()
 	correction.Status = model.CorrectionApproved
 	correction.ApprovedBy = &adminID
 	correction.ApprovedAt = &now
@@ -169,7 +170,7 @@ func (s *attendanceCorrectionService) RejectCorrection(ctx context.Context, requ
 		return errors.New("request is already processed")
 	}
 
-	now := time.Now()
+	now := utils.Now()
 	correction.Status = model.CorrectionRejected
 	correction.ApprovedBy = &adminID
 	correction.ApprovedAt = &now

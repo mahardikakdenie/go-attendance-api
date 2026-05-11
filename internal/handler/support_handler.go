@@ -28,6 +28,8 @@ type SupportHandler interface {
 
 	// Tenant User
 	CreateSupportMessage(c *gin.Context)
+	CreateReply(c *gin.Context)
+	GetReplies(c *gin.Context)
 }
 
 type supportHandler struct {
@@ -229,4 +231,64 @@ func (h *supportHandler) CreateSupportMessage(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusCreated, utils.BuildResponse("Support message sent successfully", 201, "success", res))
+}
+
+// @Summary Reply to Support Message
+// @Description Send a reply to a support ticket
+// @Tags Support
+// @Accept json
+// @Produce json
+// @Param id path string true "Message ID (UUID)"
+// @Param body body modelDto.CreateSupportReplyRequest true "Reply Payload"
+// @Security BearerAuth
+// @Success 201 {object} utils.APIResponse{data=modelDto.SupportReplyResponse}
+// @Router /v1/support/message/{id}/reply [post]
+func (h *supportHandler) CreateReply(c *gin.Context) {
+	idStr := c.Param("id")
+	id, err := uuid.Parse(idStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, utils.BuildErrorResponse("Invalid UUID", 400, "error", err.Error()))
+		return
+	}
+
+	var req modelDto.CreateSupportReplyRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, utils.BuildErrorResponse("Invalid request", 400, "error", err.Error()))
+		return
+	}
+
+	userID := c.MustGet("user_id").(uint)
+
+	res, err := h.service.CreateReply(c.Request.Context(), userID, id, req.Message)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, utils.BuildErrorResponse("Failed to send reply", 500, "error", err.Error()))
+		return
+	}
+
+	c.JSON(http.StatusCreated, utils.BuildResponse("Reply sent successfully", 201, "success", res))
+}
+
+// @Summary Get Replies for Message
+// @Description List all replies for a support ticket
+// @Tags Support
+// @Produce json
+// @Param id path string true "Message ID (UUID)"
+// @Security BearerAuth
+// @Success 200 {object} utils.APIResponse{data=[]modelDto.SupportReplyResponse}
+// @Router /v1/support/message/{id}/replies [get]
+func (h *supportHandler) GetReplies(c *gin.Context) {
+	idStr := c.Param("id")
+	id, err := uuid.Parse(idStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, utils.BuildErrorResponse("Invalid UUID", 400, "error", err.Error()))
+		return
+	}
+
+	res, err := h.service.GetReplies(c.Request.Context(), id)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, utils.BuildErrorResponse("Failed to fetch replies", 500, "error", err.Error()))
+		return
+	}
+
+	c.JSON(http.StatusOK, utils.BuildResponse("Replies fetched successfully", 200, "success", res))
 }

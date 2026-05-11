@@ -3,6 +3,7 @@ package routes
 import (
 	"go-attendance-api/internal/handler"
 	"go-attendance-api/internal/middleware"
+
 	"github.com/gin-gonic/gin"
 )
 
@@ -11,9 +12,13 @@ func RegisterTimesheetRoutes(rg *gin.RouterGroup, h handler.TimesheetHandler) {
 	{
 		timesheet.POST("/entries", h.CreateEntry)
 		timesheet.GET("/me/report", h.GetMyReport)
+		timesheet.GET("/me/entries", h.GetMyPaginatedReport)
 		timesheet.POST("/tasks", h.CreateTask)
 		timesheet.GET("/tasks", h.GetTasks)
-		
+
+		timesheet.GET("/monitoring", middleware.RequireRole("superadmin", "admin", "hr"), h.GetMonitoring)
+		timesheet.GET("/analytics", middleware.RequireRole("superadmin", "admin", "hr"), h.GetAnalytics)
+
 		timesheet.GET("/projects", h.GetProjects)
 		timesheet.GET("/projects/:id/members", h.GetMembers)
 
@@ -23,7 +28,7 @@ func RegisterTimesheetRoutes(rg *gin.RouterGroup, h handler.TimesheetHandler) {
 			adminTimesheet.POST("/projects", h.CreateProject)
 			adminTimesheet.PUT("/projects/:id", h.UpdateProject)
 			adminTimesheet.DELETE("/projects/:id", h.DeleteProject)
-			
+
 			adminTimesheet.POST("/projects/:id/members", h.AssignMembers)
 			adminTimesheet.DELETE("/projects/:id/members/:user_id", h.RemoveMember)
 
@@ -37,7 +42,7 @@ func RegisterTimesheetRoutes(rg *gin.RouterGroup, h handler.TimesheetHandler) {
 		projects.POST("", middleware.HasPermission("project.manage"), h.CreateProject)
 		projects.PUT("/:id", middleware.HasPermission("project.manage"), h.UpdateProject)
 		projects.DELETE("/:id", middleware.HasPermission("project.manage"), h.DeleteProject)
-		
+
 		projects.POST("/:id/members", middleware.HasPermission("project.manage"), h.AssignMembers)
 		projects.DELETE("/:id/members/:user_id", middleware.HasPermission("project.manage"), h.RemoveMember)
 		projects.GET("/:id/members", middleware.HasPermission("user.view"), h.GetMembers)

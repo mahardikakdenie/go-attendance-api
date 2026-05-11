@@ -15,14 +15,14 @@ const (
 )
 
 type LeaveType struct {
-	ID        uint           `gorm:"primaryKey" json:"id"`
-	TenantID  uint           `gorm:"index;not null" json:"tenant_id"`
-	Name      string         `gorm:"type:varchar(100);not null" json:"name"` // e.g., Annual, Sick, Paternity
-	Code      string         `gorm:"type:varchar(20);not null" json:"code"` // e.g., ANNUAL, SICK
-	DefaultDays int          `json:"default_days"`
-	CreatedAt time.Time      `json:"created_at"`
-	UpdatedAt time.Time      `json:"updated_at"`
-	DeletedAt gorm.DeletedAt `gorm:"index" json:"-"`
+	ID          uint           `gorm:"primaryKey" json:"id"`
+	TenantID    uint           `gorm:"index;not null" json:"tenant_id"`
+	Name        string         `gorm:"type:varchar(100);not null" json:"name"` // e.g., Annual, Sick, Paternity
+	Code        string         `gorm:"type:varchar(20);not null" json:"code"`  // e.g., ANNUAL, SICK
+	DefaultDays int            `json:"default_days"`
+	CreatedAt   time.Time      `json:"created_at"`
+	UpdatedAt   time.Time      `json:"updated_at"`
+	DeletedAt   gorm.DeletedAt `gorm:"index" json:"-"`
 }
 
 type LeaveBalance struct {

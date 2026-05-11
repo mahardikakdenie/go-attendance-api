@@ -3,6 +3,7 @@ package routes
 import (
 	"go-attendance-api/internal/handler"
 	"go-attendance-api/internal/middleware"
+
 	"github.com/gin-gonic/gin"
 )
 
@@ -10,6 +11,7 @@ func RegisterPayrollRoutes(rg *gin.RouterGroup, h handler.PayrollHandler) {
 	payroll := rg.Group("/payroll")
 	{
 		payroll.POST("/calculate", h.Calculate)
+		payroll.POST("/bulk-generate", h.BulkGenerate)
 		payroll.POST("/generate", h.Generate)
 		payroll.GET("", h.GetList)
 		payroll.GET("/summary", h.GetSummary)

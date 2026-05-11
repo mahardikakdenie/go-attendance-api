@@ -7,7 +7,7 @@ import (
 	dto "go-attendance-api/internal/dto"
 	"go-attendance-api/internal/model"
 	"go-attendance-api/internal/repository"
-	"time"
+	"go-attendance-api/internal/utils"
 )
 
 type SubscriptionService interface {
@@ -16,6 +16,7 @@ type SubscriptionService interface {
 	UpgradeSubscription(ctx context.Context, tenantID uint, req dto.UpgradeRequest) error
 	RemindTenant(ctx context.Context, id uint) error
 	SuspendTenant(ctx context.Context, id uint, reason string) error
+	ReactivateSubscription(ctx context.Context, subID uint, superadminID uint, ip string) (*model.Subscription, error)
 
 	// Superadmin Plan Management
 	GetAllPlans(ctx context.Context) ([]model.SubscriptionPlan, error)
@@ -26,15 +27,32 @@ type SubscriptionService interface {
 
 	// Superadmin Subscription Management
 	UpdateTenantSubscription(ctx context.Context, subID uint, req dto.UpdateTenantSubscriptionRequest) (*model.Subscription, error)
+
+	GetAllFeatures(ctx context.Context) ([]model.SubscriptionFeature, error)
 }
 
 type subscriptionService struct {
-	repo       repository.SubscriptionRepository
-	tenantRepo repository.TenantRepository
+	repo         repository.SubscriptionRepository
+	tenantRepo   repository.TenantRepository
+	userRepo     repository.UserRepository
+	auditRepo    repository.AuditLogRepository
+	notifService NotificationService
 }
 
-func NewSubscriptionService(repo repository.SubscriptionRepository, tenantRepo repository.TenantRepository) SubscriptionService {
-	return &subscriptionService{repo: repo, tenantRepo: tenantRepo}
+func NewSubscriptionService(
+	repo repository.SubscriptionRepository,
+	tenantRepo repository.TenantRepository,
+	userRepo repository.UserRepository,
+	auditRepo repository.AuditLogRepository,
+	notifService NotificationService,
+) SubscriptionService {
+	return &subscriptionService{
+		repo:         repo,
+		tenantRepo:   tenantRepo,
+		userRepo:     userRepo,
+		auditRepo:    auditRepo,
+		notifService: notifService,
+	}
 }
 
 func (s *subscriptionService) GetSubscriptions(ctx context.Context, page, limit int, status, search string) (dto.SubscriptionsDataResponse, error) {
@@ -62,23 +80,31 @@ func (s *subscriptionService) GetSubscriptions(ctx context.Context, page, limit 
 		}
 
 		planName := ""
+		maxEmployees := int64(0)
 		if sub.Plan != nil {
 			planName = sub.Plan.Name
+			maxEmployees = int64(sub.Plan.MaxEmployees)
+		}
+
+		remainingLimit := maxEmployees - activeEmployees
+		if remainingLimit < 0 {
+			remainingLimit = 0
 		}
 
 		items = append(items, dto.SubscriptionItem{
-			ID:              sub.ID,
-			TenantID:        sub.TenantID,
-			TenantName:      tenantName,
-			TenantCode:      tenantCode,
-			TenantLogo:      tenantLogo,
-			Plan:            planName,
-			BillingCycle:    sub.BillingCycle,
-			Amount:          sub.Amount,
-			Status:          sub.Status,
-			NextBillingDate: sub.NextBillingDate,
-			ActiveEmployees: activeEmployees,
-			CreatedAt:       sub.CreatedAt,
+			ID:                      sub.ID,
+			TenantID:                sub.TenantID,
+			TenantName:              tenantName,
+			TenantCode:              tenantCode,
+			TenantLogo:              tenantLogo,
+			Plan:                    planName,
+			BillingCycle:            sub.BillingCycle,
+			Amount:                  sub.Amount,
+			Status:                  sub.Status,
+			NextBillingDate:         sub.NextBillingDate,
+			ActiveEmployees:         activeEmployees,
+			RemainingEmployeesLimit: remainingLimit,
+			CreatedAt:               sub.CreatedAt,
 		})
 	}
 
@@ -97,7 +123,20 @@ func (s *subscriptionService) GetSubscriptions(ctx context.Context, page, limit 
 }
 
 func (s *subscriptionService) GetMySubscription(ctx context.Context, tenantID uint) (*model.Subscription, error) {
-	return s.repo.FindByTenantID(ctx, tenantID)
+	sub, err := s.repo.FindByTenantID(ctx, tenantID)
+	if err != nil {
+		return nil, err
+	}
+
+	// 🆕 Dynamic Status Check: If NextBillingDate has passed, set to Non-Active
+	if sub.Status != model.SubscriptionStatusNonActive && sub.Status != model.SubscriptionStatusCanceled {
+		if utils.Now().After(sub.NextBillingDate) {
+			sub.Status = model.SubscriptionStatusNonActive
+			_ = s.repo.Update(ctx, sub)
+		}
+	}
+
+	return sub, nil
 }
 
 func (s *subscriptionService) UpgradeSubscription(ctx context.Context, tenantID uint, req dto.UpgradeRequest) error {
@@ -125,37 +164,18 @@ func (s *subscriptionService) UpgradeSubscription(ctx context.Context, tenantID 
 		return errors.New("already on this plan")
 	}
 
-	planName := newPlan.Name
-	var amount float64
-	switch planName {
-	case "Pro":
-		amount = 500000
-	case "Enterprise":
-		amount = 1500000
-	case "Starter":
-		amount = 100000
-	case "Basic":
-		amount = 0
-	case "Trial":
-		amount = 0
-	default:
-		// If custom plan created by superadmin, use a default or keep current
-		amount = 0
-	}
-
 	sub.PlanID = newPlan.ID
-	sub.Amount = amount
+	sub.Amount = newPlan.Price
 	sub.Status = model.SubscriptionStatusActive
-	sub.NextBillingDate = time.Now().AddDate(0, 1, 0)
+
+	duration := 30 // Default 30 days if not set
+	if newPlan.Days > 0 {
+		duration = newPlan.Days
+	}
+	sub.NextBillingDate = utils.Now().AddDate(0, 0, duration)
 
 	if err := s.repo.Update(ctx, sub); err != nil {
 		return err
-	}
-
-	if sub.Tenant != nil {
-		tenant := sub.Tenant
-		tenant.Plan = planName
-		return s.tenantRepo.Update(ctx, tenant)
 	}
 
 	return nil
@@ -192,6 +212,68 @@ func (s *subscriptionService) SuspendTenant(ctx context.Context, id uint, reason
 	return s.tenantRepo.Update(ctx, tenant)
 }
 
+func (s *subscriptionService) ReactivateSubscription(ctx context.Context, subID uint, superadminID uint, ip string) (*model.Subscription, error) {
+	// 1. Validate ID exists
+	sub, err := s.repo.FindByID(ctx, subID)
+	if err != nil {
+		return nil, errors.New("subscription not found")
+	}
+
+	// 2. Validate current status is Canceled
+	if sub.Status != model.SubscriptionStatusCanceled {
+		return nil, fmt.Errorf("only canceled subscriptions can be reactivated (current: %s)", sub.Status)
+	}
+
+	oldStatus := string(sub.Status)
+
+	// 3. Change status to Active
+	sub.Status = model.SubscriptionStatusActive
+
+	// 4. Ensure tenant is unsuspended
+	if sub.Tenant != nil {
+		tenant := sub.Tenant
+		tenant.IsSuspended = false
+		tenant.SuspendedReason = ""
+		_ = s.tenantRepo.Update(ctx, tenant)
+	}
+
+	// 5. Recalculate billing date if passed
+	now := utils.Now()
+	if sub.NextBillingDate.Before(now) {
+		duration := 30 // Default 30 days
+		if sub.Plan != nil && sub.Plan.Days > 0 {
+			duration = sub.Plan.Days
+		}
+		sub.NextBillingDate = now.AddDate(0, 0, duration)
+	}
+
+	// Save updates
+	if err := s.repo.Update(ctx, sub); err != nil {
+		return nil, fmt.Errorf("failed to update subscription: %w", err)
+	}
+
+	// 6. Notify Tenant Owner
+	admins, _, _ := s.userRepo.FindAll(ctx, model.UserFilter{TenantID: sub.TenantID}, nil)
+	for _, admin := range admins {
+		if admin.Role != nil && (admin.Role.Name == "admin" || admin.Role.Name == "hr") {
+			s.notifService.SendNotification(ctx, sub.TenantID, admin.ID, "Subscription Restored", "Your organization subscription has been reactivated by System Administrator. Full access restored.", model.NotificationTypeSubscription)
+		}
+	}
+
+	// 7. Log to Audit Logs
+	_ = s.auditRepo.Create(ctx, &model.AuditLog{
+		UserID:    superadminID,
+		Action:    "SUBSCRIPTION_REACTIVATED",
+		Entity:    "subscription",
+		EntityID:  fmt.Sprintf("%d", sub.ID),
+		OldValue:  oldStatus,
+		NewValue:  string(sub.Status),
+		IPAddress: ip,
+	})
+
+	return sub, nil
+}
+
 func (s *subscriptionService) GetAllPlans(ctx context.Context) ([]model.SubscriptionPlan, error) {
 	return s.repo.FindAllPlans(ctx)
 }
@@ -203,6 +285,8 @@ func (s *subscriptionService) GetPlanByID(ctx context.Context, id uint) (*model.
 func (s *subscriptionService) CreatePlan(ctx context.Context, req dto.CreatePlanRequest) (*model.SubscriptionPlan, error) {
 	plan := &model.SubscriptionPlan{
 		Name:         req.Name,
+		Price:        req.Price,
+		Days:         req.Days,
 		MaxEmployees: req.MaxEmployees,
 		Features:     req.Features,
 		IsActive:     true,
@@ -222,6 +306,12 @@ func (s *subscriptionService) UpdatePlan(ctx context.Context, id uint, req dto.U
 
 	if req.Name != "" {
 		plan.Name = req.Name
+	}
+	if req.Price >= 0 {
+		plan.Price = req.Price
+	}
+	if req.Days >= 0 {
+		plan.Days = req.Days
 	}
 	if req.MaxEmployees >= 0 {
 		plan.MaxEmployees = req.MaxEmployees
@@ -255,11 +345,6 @@ func (s *subscriptionService) UpdateTenantSubscription(ctx context.Context, subI
 			return nil, fmt.Errorf("invalid plan id: %v", err)
 		}
 		sub.PlanID = plan.ID
-		// Sync Tenant string plan for UI compatibility
-		if sub.Tenant != nil {
-			sub.Tenant.Plan = plan.Name
-			_ = s.tenantRepo.Update(ctx, sub.Tenant)
-		}
 	}
 
 	if req.Status != "" {
@@ -278,4 +363,8 @@ func (s *subscriptionService) UpdateTenantSubscription(ctx context.Context, subI
 		return nil, err
 	}
 	return sub, nil
+}
+
+func (s *subscriptionService) GetAllFeatures(ctx context.Context) ([]model.SubscriptionFeature, error) {
+	return s.repo.FindAllFeatures(ctx)
 }

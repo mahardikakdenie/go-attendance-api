@@ -18,42 +18,53 @@ type CalendarCronService interface {
 }
 
 type calendarCronService struct {
-	hrRepo   repository.HrOpsRepository
-	userRepo repository.UserRepository
-	cron     *cron.Cron
+	hrRepo         repository.HrOpsRepository
+	userRepo       repository.UserRepository
+	billingService BillingService
+	cron           *cron.Cron
 }
 
-func NewCalendarCronService(hrRepo repository.HrOpsRepository, userRepo repository.UserRepository) CalendarCronService {
+func NewCalendarCronService(hrRepo repository.HrOpsRepository, userRepo repository.UserRepository, billingService BillingService) CalendarCronService {
 	return &calendarCronService{
-		hrRepo:   hrRepo,
-		userRepo: userRepo,
-		cron:     cron.New(),
+		hrRepo:         hrRepo,
+		userRepo:       userRepo,
+		billingService: billingService,
+		cron:           cron.New(),
 	}
 }
 
 func (s *calendarCronService) Run() {
-	// Schedule to run every day at 08:00 AM WIB
-	// WIB is UTC+7, so 08:00 WIB is 01:00 UTC
+	// 1. Daily Calendar Event Reminders (08:00 AM)
 	_, err := s.cron.AddFunc("0 8 * * *", func() {
 		log.Println("[Cron] Starting Daily Calendar Event Reminders...")
 		if err := s.SendUpcomingEventReminders(); err != nil {
 			log.Printf("[Cron] Error sending reminders: %v\n", err)
 		}
 	})
-
 	if err != nil {
 		log.Fatalf("[Cron] Failed to schedule calendar reminders: %v\n", err)
 	}
 
+	// 2. Daily Automated Invoice Generation (01:00 AM)
+	_, err = s.cron.AddFunc("0 1 * * *", func() {
+		log.Println("[Cron] Starting Automated Invoice Generation for expiring subscriptions...")
+		if err := s.billingService.GenerateExpiringInvoices(context.Background()); err != nil {
+			log.Printf("[Cron] Error generating invoices: %v\n", err)
+		}
+	})
+	if err != nil {
+		log.Fatalf("[Cron] Failed to schedule invoice generation: %v\n", err)
+	}
+
 	s.cron.Start()
-	log.Println("[Cron] Calendar Cron Service started successfully.")
+	log.Println("[Cron] Services started successfully (Reminders + Billing).")
 }
 
 func (s *calendarCronService) SendUpcomingEventReminders() error {
 	ctx := context.Background()
 	// Tomorrow date
-	tomorrow := time.Now().In(time.FixedZone("WIB", 7*3600)).AddDate(0, 0, 1)
-	
+	tomorrow := utils.Now().AddDate(0, 0, 1)
+
 	events, err := s.hrRepo.FindUpcomingEvents(ctx, tomorrow)
 	if err != nil {
 		return err
@@ -86,7 +97,7 @@ func (s *calendarCronService) SendUpcomingEventReminders() error {
 		// Compose Email
 		subject := fmt.Sprintf("Reminder: %s tomorrow!", event.Name)
 		dateStr := event.Date.Format("Monday, 02 January 2006")
-		
+
 		for _, user := range targetUsers {
 			html := utils.GetCalendarEventReminderTemplate(
 				user.Name,
@@ -105,7 +116,7 @@ func (s *calendarCronService) SendUpcomingEventReminders() error {
 				}
 			}(user.Email, subject, html)
 		}
-		
+
 		log.Printf("[Cron] Sent reminders for event '%s' to %d users.\n", event.Name, len(targetUsers))
 	}
 

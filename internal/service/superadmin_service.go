@@ -24,12 +24,14 @@ type SuperadminService interface {
 
 	// System Role Management
 	ListSystemRoles(ctx context.Context) ([]model.Role, error)
-	ListAllPermissions(ctx context.Context) ([]modelDto.PermissionModule, error)
+	ListAllPermissions(ctx context.Context, scope string) ([]modelDto.PermissionModule, error)
 	CreateSystemRole(ctx context.Context, req modelDto.CreateSystemRoleRequest, performerID uint) (model.Role, error)
 	UpdateSystemRole(ctx context.Context, id uint, req modelDto.CreateSystemRoleRequest, performerID uint) (model.Role, error)
+	PatchSystemRole(ctx context.Context, id uint, req modelDto.UpdateSystemRoleRequest, performerID uint) (model.Role, error)
 	DeleteSystemRole(ctx context.Context, id uint, performerID uint) error
 
 	GetAnalyticsDashboard(ctx context.Context, period string) (*modelDto.AnalyticsDashboardResponse, error)
+	GetTenantFullDetails(ctx context.Context, tenantID uint) (*modelDto.TenantFullDetailsResponse, error)
 }
 
 type superadminService struct {
@@ -236,7 +238,7 @@ func (s *superadminService) ListSystemRoles(ctx context.Context) ([]model.Role, 
 	return s.roleRepo.FindSystemRoles(ctx)
 }
 
-func (s *superadminService) ListAllPermissions(ctx context.Context) ([]modelDto.PermissionModule, error) {
+func (s *superadminService) ListAllPermissions(ctx context.Context, scope string) ([]modelDto.PermissionModule, error) {
 	permissions, err := s.permissionRepo.FindAll(ctx)
 	if err != nil {
 		return nil, err
@@ -259,9 +261,39 @@ func (s *superadminService) ListAllPermissions(ctx context.Context) ([]modelDto.
 		"performance":  "Performance & Goals",
 	}
 
+	// Scope filtering logic
+	systemModules := map[string]bool{
+		"tenant":       true,
+		"subscription": true,
+		"support":      true,
+		"role":         true,
+		"user":         true, // Superadmin needs to manage platform accounts
+	}
+
+	tenantModules := map[string]bool{
+		"attendance":  true,
+		"leave":       true,
+		"overtime":    true,
+		"payroll":     true,
+		"user":        true, // Tenant needs to manage employees
+		"project":     true,
+		"timesheet":   true,
+		"performance": true,
+		"finance":     true,
+		"role":        true,
+	}
+
 	// Group permissions by module
 	modulesMap := make(map[string][]modelDto.PermissionResponse)
 	for _, p := range permissions {
+		// Apply scope filter
+		if scope == "system" && !systemModules[p.Module] {
+			continue
+		}
+		if scope == "tenant" && !tenantModules[p.Module] {
+			continue
+		}
+
 		resp := modelDto.PermissionResponse{
 			ID:          p.ID,
 			Module:      p.Module,
@@ -286,7 +318,7 @@ func (s *superadminService) ListAllPermissions(ctx context.Context) ([]modelDto.
 		})
 	}
 
-	// ISSUE-005: Sort for deterministic response
+	// Sort for deterministic response
 	sort.Slice(result, func(i, j int) bool {
 		return result[i].Key < result[j].Key
 	})
@@ -369,6 +401,62 @@ func (s *superadminService) UpdateSystemRole(ctx context.Context, id uint, req m
 	return *role, nil
 }
 
+func (s *superadminService) PatchSystemRole(ctx context.Context, id uint, req modelDto.UpdateSystemRoleRequest, performerID uint) (model.Role, error) {
+	role, err := s.roleRepo.FindByID(ctx, id)
+	if err != nil {
+		return model.Role{}, errors.New("role not found")
+	}
+
+	if role.TenantID != nil {
+		return model.Role{}, errors.New("cannot update tenant role via system role API")
+	}
+
+	if role.IsImmutable {
+		return model.Role{}, errors.New("this system role is immutable and cannot be modified")
+	}
+
+	if req.Name != nil {
+		role.Name = *req.Name
+	}
+	if req.Description != nil {
+		role.Description = *req.Description
+	}
+	if req.BaseRole != nil {
+		role.BaseRole = model.BaseRole(*req.BaseRole)
+	}
+
+	// Logic for permissions: user's payload uses "permissions"
+	targetPerms := req.PermissionIDs
+	if len(targetPerms) == 0 && len(req.PermissionIDsAlt) > 0 {
+		targetPerms = req.PermissionIDsAlt
+	}
+
+	if len(targetPerms) > 0 {
+		if err := s.roleRepo.UpdateWithPermissions(ctx, role, targetPerms); err != nil {
+			return model.Role{}, err
+		}
+	} else {
+		if err := s.roleRepo.Update(ctx, role); err != nil {
+			return model.Role{}, err
+		}
+	}
+
+	// Audit Log
+	_ = s.activityRepo.Create(ctx, &model.RecentActivity{
+		UserID: performerID,
+		Title:  "System Role Patched",
+		Action: fmt.Sprintf("Patched system role: %s", role.Name),
+		Status: "success",
+	})
+
+	// Fetch with permissions
+	updatedRole, _ := s.roleRepo.FindByID(ctx, role.ID)
+	if updatedRole != nil {
+		return *updatedRole, nil
+	}
+	return *role, nil
+}
+
 func (s *superadminService) DeleteSystemRole(ctx context.Context, id uint, performerID uint) error {
 	role, err := s.roleRepo.FindByID(ctx, id)
 	if err != nil {
@@ -408,4 +496,8 @@ func (s *superadminService) DeleteSystemRole(ctx context.Context, id uint, perfo
 
 func (s *superadminService) GetAnalyticsDashboard(ctx context.Context, period string) (*modelDto.AnalyticsDashboardResponse, error) {
 	return s.repo.GetAnalyticsDashboard(ctx, period)
+}
+
+func (s *superadminService) GetTenantFullDetails(ctx context.Context, tenantID uint) (*modelDto.TenantFullDetailsResponse, error) {
+	return s.repo.GetTenantFullDetails(ctx, tenantID)
 }

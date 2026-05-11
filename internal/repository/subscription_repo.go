@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"fmt"
 	"go-attendance-api/internal/model"
 
 	"gorm.io/gorm"
@@ -16,6 +17,7 @@ type SubscriptionRepository interface {
 	CountEmployees(ctx context.Context, tenantID uint) (int64, error)
 	FindByTenantID(ctx context.Context, tenantID uint) (*model.Subscription, error)
 	FindPlanByName(ctx context.Context, name string) (*model.SubscriptionPlan, error)
+	FindExpiringSubscriptions(ctx context.Context, days int) ([]model.Subscription, error)
 
 	// SubscriptionPlan CRUD
 	FindAllPlans(ctx context.Context) ([]model.SubscriptionPlan, error)
@@ -23,6 +25,9 @@ type SubscriptionRepository interface {
 	CreatePlan(ctx context.Context, plan *model.SubscriptionPlan) error
 	UpdatePlan(ctx context.Context, plan *model.SubscriptionPlan) error
 	DeletePlan(ctx context.Context, id uint) error
+
+	// SubscriptionFeature CRUD
+	FindAllFeatures(ctx context.Context) ([]model.SubscriptionFeature, error)
 }
 
 type subscriptionRepository struct {
@@ -41,7 +46,7 @@ func (r *subscriptionRepository) FindAll(ctx context.Context, page, limit int, s
 	var subs []model.Subscription
 	var total int64
 
-	query := r.db.WithContext(ctx).Model(&model.Subscription{}).Preload("Tenant").Preload("Tenant.TenantSettings")
+	query := r.db.WithContext(ctx).Model(&model.Subscription{}).Preload("Tenant").Preload("Tenant.TenantSettings").Preload("Plan")
 
 	if status != "" {
 		query = query.Where("status = ?", status)
@@ -107,7 +112,7 @@ func (r *subscriptionRepository) CountEmployees(ctx context.Context, tenantID ui
 
 func (r *subscriptionRepository) FindByTenantID(ctx context.Context, tenantID uint) (*model.Subscription, error) {
 	var sub model.Subscription
-	err := r.db.WithContext(ctx).Preload("Tenant").Where("tenant_id = ?", tenantID).First(&sub).Error
+	err := r.db.WithContext(ctx).Preload("Tenant").Preload("Plan").Where("tenant_id = ?", tenantID).First(&sub).Error
 	if err != nil {
 		return nil, err
 	}
@@ -116,11 +121,23 @@ func (r *subscriptionRepository) FindByTenantID(ctx context.Context, tenantID ui
 
 func (r *subscriptionRepository) FindPlanByName(ctx context.Context, name string) (*model.SubscriptionPlan, error) {
 	var plan model.SubscriptionPlan
-	err := r.db.WithContext(ctx).Where("name = ?", name).First(&plan).Error
+	err := r.db.WithContext(ctx).Where("LOWER(name) = LOWER(?)", name).First(&plan).Error
 	if err != nil {
 		return nil, err
 	}
 	return &plan, nil
+}
+
+func (r *subscriptionRepository) FindExpiringSubscriptions(ctx context.Context, days int) ([]model.Subscription, error) {
+	var subs []model.Subscription
+	interval := fmt.Sprintf("%d days", days)
+	err := r.db.WithContext(ctx).
+		Preload("Tenant").
+		Preload("Plan").
+		Where("status IN ?", []model.SubscriptionStatus{model.SubscriptionStatusActive, model.SubscriptionStatusTrial}).
+		Where("DATE(next_billing_date) = CURRENT_DATE + CAST(? AS INTERVAL)", interval).
+		Find(&subs).Error
+	return subs, err
 }
 
 func (r *subscriptionRepository) FindAllPlans(ctx context.Context) ([]model.SubscriptionPlan, error) {
@@ -148,4 +165,10 @@ func (r *subscriptionRepository) UpdatePlan(ctx context.Context, plan *model.Sub
 
 func (r *subscriptionRepository) DeletePlan(ctx context.Context, id uint) error {
 	return r.db.WithContext(ctx).Delete(&model.SubscriptionPlan{}, id).Error
+}
+
+func (r *subscriptionRepository) FindAllFeatures(ctx context.Context) ([]model.SubscriptionFeature, error) {
+	var features []model.SubscriptionFeature
+	err := r.db.WithContext(ctx).Order("id ASC").Find(&features).Error
+	return features, err
 }

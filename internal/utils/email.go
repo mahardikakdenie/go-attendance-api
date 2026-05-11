@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+
+	"go.uber.org/zap"
 )
 
 type ResendPayload struct {
@@ -57,8 +59,18 @@ func SendEmail(ctx context.Context, to []string, subject, html string) error {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
+		GetLogger().Error("Resend API error",
+			zap.Int("status_code", resp.StatusCode),
+			zap.String("to", to[0]),
+			zap.String("subject", subject),
+		)
 		return fmt.Errorf("resend api error: status code %d", resp.StatusCode)
 	}
+
+	GetLogger().Info("Email sent successfully",
+		zap.String("to", to[0]),
+		zap.String("subject", subject),
+	)
 
 	return nil
 }

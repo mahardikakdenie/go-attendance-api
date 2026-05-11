@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )
@@ -24,7 +25,7 @@ func (p *TenantPlugin) Initialize(db *gorm.DB) error {
 	db.Callback().Row().Before("gorm:row").Register("tenant_plugin:row", p.applyTenantFilter)
 	// Raw
 	db.Callback().Raw().Before("gorm:raw").Register("tenant_plugin:raw", p.applyTenantFilter)
-	
+
 	return nil
 }
 
@@ -41,7 +42,7 @@ func (p *TenantPlugin) applyTenantFilter(db *gorm.DB) {
 						tableName = db.Statement.Schema.Table
 					}
 
-					// Apply WHERE (table.tenant_id = ? OR table.tenant_id IS NULL) 
+					// Apply WHERE (table.tenant_id = ? OR table.tenant_id IS NULL)
 					// Using explicit table name prefix to avoid SQL ambiguity during JOINs
 					db.Statement.AddClause(clause.Where{Exprs: []clause.Expression{
 						clause.Or(

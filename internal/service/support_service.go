@@ -33,6 +33,8 @@ type SupportService interface {
 
 	// Tenant User
 	CreateSupportMessage(ctx context.Context, tenantID uint, userID uint, req modelDto.CreateSupportMessageRequest) (modelDto.SupportMessageResponse, error)
+	CreateReply(ctx context.Context, userID uint, messageID uuid.UUID, message string) (modelDto.SupportReplyResponse, error)
+	GetReplies(ctx context.Context, messageID uuid.UUID) ([]modelDto.SupportReplyResponse, error)
 }
 
 type supportService struct {
@@ -43,6 +45,7 @@ type supportService struct {
 	subscriptionRepo  repository.SubscriptionRepository
 	tenantSettingRepo repository.TenantSettingRepository
 	profileRepo       repository.UserPayrollProfileRepository
+	notifService      NotificationService
 }
 
 func NewSupportService(
@@ -53,6 +56,7 @@ func NewSupportService(
 	subscriptionRepo repository.SubscriptionRepository,
 	tenantSettingRepo repository.TenantSettingRepository,
 	profileRepo repository.UserPayrollProfileRepository,
+	notifService NotificationService,
 ) SupportService {
 	return &supportService{
 		repo:              repo,
@@ -62,6 +66,7 @@ func NewSupportService(
 		subscriptionRepo:  subscriptionRepo,
 		tenantSettingRepo: tenantSettingRepo,
 		profileRepo:       profileRepo,
+		notifService:      notifService,
 	}
 }
 
@@ -78,6 +83,12 @@ func (s *supportService) CreateTrialRequest(ctx context.Context, req modelDto.Cr
 
 	if err := s.repo.CreateTrialRequest(ctx, trial); err != nil {
 		return modelDto.TrialRequestResponse{}, err
+	}
+
+	// 🆕 NOTIFICATION: Notify all Superadmins
+	superadmins, _, _ := s.userRepo.FindAll(ctx, model.UserFilter{BaseRole: model.BaseRoleSuperAdmin}, nil)
+	for _, sa := range superadmins {
+		s.notifService.SendNotification(ctx, sa.TenantID, sa.ID, "New Trial Request", fmt.Sprintf("New trial request from %s (%s)", trial.CompanyName, trial.ContactName), model.NotificationTypeSupport)
 	}
 
 	// Kirim email konfirmasi secara asinkron
@@ -257,7 +268,7 @@ func (s *supportService) ExecuteProvisioning(ctx context.Context, ticketID uuid.
 			BillingCycle:    model.BillingCycleMonthly,
 			Amount:          0, // Trial is free
 			Status:          model.SubscriptionStatusTrial,
-			NextBillingDate: time.Now().AddDate(0, 0, 14), // 14 days trial
+			NextBillingDate: utils.Now().AddDate(0, 0, 14), // 14 days trial
 		}
 		if err := s.subscriptionRepo.Create(ctx, subscription); err != nil {
 			return fmt.Errorf("failed to create subscription: %v", err)
@@ -291,7 +302,7 @@ func (s *supportService) ExecuteProvisioning(ctx context.Context, ticketID uuid.
 		}()
 
 		// 5. Mark Ticket COMPLETED
-		now := time.Now()
+		now := utils.Now()
 		ticket.Status = model.ProvisioningTicketStatusCompleted
 		ticket.CompletedAt = &now
 		if err := repo.UpdateProvisioningTicket(ctx, ticket); err != nil {
@@ -325,7 +336,86 @@ func (s *supportService) CreateSupportMessage(ctx context.Context, tenantID uint
 		return modelDto.SupportMessageResponse{}, err
 	}
 
+	// 🆕 NOTIFICATION: Notify HQ Admins (Tenant 1)
+	hqAdmins, _, _ := s.userRepo.FindAll(ctx, model.UserFilter{TenantID: 1}, nil)
+	for _, admin := range hqAdmins {
+		if admin.Role != nil && admin.Role.Name == "admin" {
+			s.notifService.SendNotification(ctx, 1, admin.ID, "New Support Ticket", fmt.Sprintf("New ticket from Tenant %d: %s", tenantID, message.Subject), model.NotificationTypeSupport)
+		}
+	}
+
 	return mapToSupportMessageResponse(message), nil
+}
+
+func (s *supportService) CreateReply(ctx context.Context, userID uint, messageID uuid.UUID, message string) (modelDto.SupportReplyResponse, error) {
+	ticket, err := s.repo.FindSupportMessageByID(ctx, messageID, []string{"user"})
+	if err != nil {
+		return modelDto.SupportReplyResponse{}, err
+	}
+
+	reply := &model.SupportReply{
+		MessageID: messageID,
+		UserID:    userID,
+		Message:   message,
+	}
+
+	if err := s.repo.CreateReply(ctx, reply); err != nil {
+		return modelDto.SupportReplyResponse{}, err
+	}
+
+	// 🆕 NOTIFICATION: Two-way
+	if userID == ticket.UserID {
+		// User replied, notify HQ Admins
+		hqAdmins, _, _ := s.userRepo.FindAll(ctx, model.UserFilter{TenantID: 1}, nil)
+		for _, admin := range hqAdmins {
+			if admin.Role != nil && admin.Role.Name == "admin" {
+				s.notifService.SendNotification(ctx, 1, admin.ID, "Support Ticket Reply", fmt.Sprintf("User replied to ticket: %s", ticket.Subject), model.NotificationTypeSupport)
+			}
+		}
+	} else {
+		// Admin replied, notify the user who opened the ticket
+		s.notifService.SendNotification(ctx, ticket.TenantID, ticket.UserID, "Support Response", fmt.Sprintf("Support has replied to your ticket: %s", ticket.Subject), model.NotificationTypeSupport)
+
+		// Auto-update status to IN_PROGRESS if it was PENDING
+		if ticket.Status == model.SupportStatusPending {
+			ticket.Status = model.SupportStatusInProgress
+			_ = s.repo.UpdateSupportMessage(ctx, ticket)
+		}
+	}
+
+	return mapToSupportReplyResponse(reply), nil
+}
+
+func (s *supportService) GetReplies(ctx context.Context, messageID uuid.UUID) ([]modelDto.SupportReplyResponse, error) {
+	replies, err := s.repo.FindRepliesByMessageID(ctx, messageID)
+	if err != nil {
+		return nil, err
+	}
+
+	var responses []modelDto.SupportReplyResponse
+	for _, r := range replies {
+		responses = append(responses, mapToSupportReplyResponse(&r))
+	}
+	return responses, nil
+}
+
+// Helpers
+func mapToSupportReplyResponse(r *model.SupportReply) modelDto.SupportReplyResponse {
+	res := modelDto.SupportReplyResponse{
+		ID:        r.ID,
+		MessageID: r.MessageID,
+		UserID:    r.UserID,
+		Message:   r.Message,
+		CreatedAt: r.CreatedAt,
+	}
+	if r.User.ID != 0 {
+		res.User = &model.UserResponse{
+			ID:    r.User.ID,
+			Name:  r.User.Name,
+			Email: r.User.Email,
+		}
+	}
+	return res
 }
 
 // Helpers

@@ -69,3 +69,16 @@ type SupportMessageResponse struct {
 type UpdateSupportMessageStatusRequest struct {
 	Status model.SupportStatus `json:"status" binding:"required"`
 }
+
+type CreateSupportReplyRequest struct {
+	Message string `json:"message" binding:"required"`
+}
+
+type SupportReplyResponse struct {
+	ID        uuid.UUID           `json:"id"`
+	MessageID uuid.UUID           `json:"message_id"`
+	UserID    uint                `json:"user_id"`
+	Message   string              `json:"message"`
+	CreatedAt time.Time           `json:"created_at"`
+	User      *model.UserResponse `json:"user,omitempty"`
+}

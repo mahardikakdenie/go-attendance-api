@@ -33,6 +33,10 @@ type Handlers struct {
 	Timesheet     handler.TimesheetHandler
 	HrOps         handler.HrOpsHandler
 	Performance   handler.PerformanceHandler
+	Billing       handler.BillingHandler
+	Notification  handler.NotificationHandler
+	Setting       handler.SettingHandler
+	Menu          handler.MenuHandler
 }
 
 func initHandlers(db *gorm.DB, rdb *redis.Client) (*Handlers, service.CalendarCronService, service.AuthService) {
@@ -62,30 +66,39 @@ func initHandlers(db *gorm.DB, rdb *redis.Client) (*Handlers, service.CalendarCr
 	performanceRepo := repository.NewPerformanceRepository(db)
 	superadminRepo := repository.NewSuperadminRepository(db)
 	expenseRepo := repository.NewExpenseRepository(db)
+	invoiceRepo := repository.NewInvoiceRepository(db)
+	notificationRepo := repository.NewNotificationRepository(db)
+	allowancePresetRepo := repository.NewAllowancePresetRepository(db)
+	menuRepo := repository.NewMenuRepository(db)
+	auditLogRepo := repository.NewAuditLogRepository(db)
 
 	// Services
+	notificationService := service.NewNotificationService(notificationRepo, rdb)
 	authService := service.NewAuthService(authRepo, activityRepo)
 	userService := service.NewUserService(userRepo, roleRepo, activityRepo, hierarchyRepo, hrOpsRepo, leaveRepo, userPayrollProfileRepo)
-	tenantService := service.NewTenantService(tenantRepo, subscriptionRepo)
+	tenantService := service.NewTenantService(tenantRepo, subscriptionRepo, userRepo, notificationService)
 	tenantSettingService := service.NewTenantSettingService(tenantSettingRepo)
 	mediaService := service.NewMediaService(mediaRepo)
 	attendanceService := service.NewAttendanceService(attendanceRepo, userRepo, tenantSettingRepo, tenantRepo, activityRepo, hrOpsRepo, leaveRepo, userService, rdb)
 	orgService := service.NewOrganizationService(userRepo, leaveRepo, positionRepo)
-	leaveService := service.NewLeaveService(leaveRepo, activityRepo, userRepo, orgService, userService, rdb)
-	overtimeService := service.NewOvertimeService(overtimeRepo, userService)
-	ucrService := service.NewUserChangeRequestService(ucrRepo, userRepo)
-	payrollService := service.NewPayrollService(payrollRepo, userRepo, tenantRepo, tenantSettingRepo, attendanceRepo, leaveRepo, userPayrollProfileRepo, overtimeRepo, hrOpsRepo)
+	leaveService := service.NewLeaveService(leaveRepo, activityRepo, userRepo, orgService, userService, notificationService, rdb)
+	overtimeService := service.NewOvertimeService(overtimeRepo, userService, notificationService)
+	ucrService := service.NewUserChangeRequestService(ucrRepo, userRepo, notificationService)
+	payrollService := service.NewPayrollService(payrollRepo, userRepo, tenantRepo, tenantSettingRepo, attendanceRepo, leaveRepo, userPayrollProfileRepo, overtimeRepo, hrOpsRepo, notificationService)
 	dashboardService := service.NewDashboardService(tenantRepo, userRepo, attendanceRepo, leaveRepo, overtimeRepo, timesheetRepo, rdb)
 	tenantRoleService := service.NewTenantRoleService(roleRepo, permissionRepo, hierarchyRepo)
-	supportService := service.NewSupportService(supportRepo, tenantRepo, userRepo, roleRepo, subscriptionRepo, tenantSettingRepo, userPayrollProfileRepo)
+	supportService := service.NewSupportService(supportRepo, tenantRepo, userRepo, roleRepo, subscriptionRepo, tenantSettingRepo, userPayrollProfileRepo, notificationService)
 	timesheetService := service.NewTimesheetService(timesheetRepo, userRepo)
 	correctionService := service.NewAttendanceCorrectionService(correctionRepo, attendanceRepo, userRepo, activityRepo)
 	performanceService := service.NewPerformanceService(performanceRepo, userRepo)
 	superadminService := service.NewSuperadminService(superadminRepo, userRepo, roleRepo, permissionRepo, activityRepo)
-	subscriptionService := service.NewSubscriptionService(subscriptionRepo, tenantRepo)
-	expenseService := service.NewExpenseService(expenseRepo, userRepo, activityRepo)
+	subscriptionService := service.NewSubscriptionService(subscriptionRepo, tenantRepo, userRepo, auditLogRepo, notificationService)
+	expenseService := service.NewExpenseService(expenseRepo, userRepo, activityRepo, notificationService)
 	hrOpsService := service.NewHrOpsService(hrOpsRepo, userRepo, leaveRepo, tenantSettingRepo)
-	calendarCronService := service.NewCalendarCronService(hrOpsRepo, userRepo)
+	billingService := service.NewBillingService(invoiceRepo, subscriptionRepo)
+	allowancePresetService := service.NewAllowancePresetService(allowancePresetRepo)
+	menuService := service.NewMenuService(menuRepo, rdb)
+	calendarCronService := service.NewCalendarCronService(hrOpsRepo, userRepo, billingService)
 
 	// Handlers
 	handlers := &Handlers{
@@ -111,6 +124,10 @@ func initHandlers(db *gorm.DB, rdb *redis.Client) (*Handlers, service.CalendarCr
 		Timesheet:     handler.NewTimesheetHandler(timesheetService),
 		HrOps:         handler.NewHrOpsHandler(hrOpsService),
 		Performance:   handler.NewPerformanceHandler(performanceService),
+		Billing:       handler.NewBillingHandler(billingService),
+		Notification:  handler.NewNotificationHandler(notificationService),
+		Setting:       handler.NewSettingHandler(allowancePresetService),
+		Menu:          handler.NewMenuHandler(menuService),
 	}
 
 	return handlers, calendarCronService, authService

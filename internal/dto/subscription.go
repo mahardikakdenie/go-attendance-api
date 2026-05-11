@@ -15,18 +15,19 @@ type SubscriptionStats struct {
 }
 
 type SubscriptionItem struct {
-	ID              uint                     `json:"id"`
-	TenantID        uint                     `json:"tenant_id"`
-	TenantName      string                   `json:"tenant_name"`
-	TenantCode      string                   `json:"tenant_code"`
-	TenantLogo      string                   `json:"tenant_logo"`
-	Plan            string                   `json:"plan"`
-	BillingCycle    model.BillingCycle       `json:"billing_cycle"`
-	Amount          float64                  `json:"amount"`
-	Status          model.SubscriptionStatus `json:"status"`
-	NextBillingDate time.Time                `json:"next_billing_date"`
-	ActiveEmployees int64                    `json:"active_employees"`
-	CreatedAt       time.Time                `json:"created_at"`
+	ID                      uint                     `json:"id"`
+	TenantID                uint                     `json:"tenant_id"`
+	TenantName              string                   `json:"tenant_name"`
+	TenantCode              string                   `json:"tenant_code"`
+	TenantLogo              string                   `json:"tenant_logo"`
+	Plan                    string                   `json:"plan"`
+	BillingCycle            model.BillingCycle       `json:"billing_cycle"`
+	Amount                  float64                  `json:"amount"`
+	Status                  model.SubscriptionStatus `json:"status"`
+	NextBillingDate         time.Time                `json:"next_billing_date"`
+	ActiveEmployees         int64                    `json:"active_employees"`
+	RemainingEmployeesLimit int64                    `json:"remaining_employees_limit"`
+	CreatedAt               time.Time                `json:"created_at"`
 }
 
 type SubscriptionsResponse struct {
@@ -54,12 +55,16 @@ type UpgradeRequest struct {
 
 type CreatePlanRequest struct {
 	Name         string   `json:"name" binding:"required"`
+	Price        float64  `json:"price"`
+	Days         int      `json:"days"`
 	MaxEmployees int      `json:"max_employees"`
 	Features     []string `json:"features" binding:"required"`
 }
 
 type UpdatePlanRequest struct {
 	Name         string   `json:"name"`
+	Price        float64  `json:"price"`
+	Days         int      `json:"days"`
 	MaxEmployees int      `json:"max_employees"`
 	Features     []string `json:"features"`
 	IsActive     *bool    `json:"is_active"`

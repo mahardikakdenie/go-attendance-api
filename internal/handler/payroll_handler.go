@@ -12,6 +12,7 @@ import (
 
 type PayrollHandler interface {
 	Calculate(c *gin.Context)
+	BulkGenerate(c *gin.Context)
 	Generate(c *gin.Context)
 	GetList(c *gin.Context)
 	GetSummary(c *gin.Context)
@@ -53,6 +54,28 @@ func (h *payrollHandler) Calculate(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"success": true, "data": res})
+}
+
+// @Summary Bulk Generate Payroll for Employees
+func (h *payrollHandler) BulkGenerate(c *gin.Context) {
+	var req service.BulkGenerateRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, utils.BuildErrorResponse("Invalid request", 400, "error", err.Error()))
+		return
+	}
+
+	tenantID := c.MustGet("tenant_id").(uint)
+	count, err := h.service.BulkGeneratePayroll(c.Request.Context(), tenantID, req)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, utils.BuildErrorResponse("Bulk generation failed", 500, "error", err.Error()))
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": strconv.Itoa(count) + " payroll records generated as Draft",
+		"count":   count,
+	})
 }
 
 // @Summary Generate Payroll for Period

@@ -7,9 +7,16 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-var Ctx = context.Background()
+var (
+	Ctx         = context.Background()
+	redisClient *redis.Client
+)
 
 func NewRedis() *redis.Client {
+	if redisClient != nil {
+		return redisClient
+	}
+
 	redisAddr := getEnv("REDIS_ADDR", "127.0.0.1:6379")
 
 	if len(redisAddr) >= 8 && (redisAddr[:8] == "redis://" || (len(redisAddr) >= 9 && redisAddr[:9] == "rediss://")) {
@@ -17,14 +24,17 @@ func NewRedis() *redis.Client {
 		if err != nil {
 			panic("failed to parse redis url: " + err.Error())
 		}
-		return redis.NewClient(opts)
+		redisClient = redis.NewClient(opts)
+		return redisClient
 	}
 
-	return redis.NewClient(&redis.Options{
+	redisClient = redis.NewClient(&redis.Options{
 		Addr:     redisAddr,
 		Password: getEnv("REDIS_PASSWORD", ""), // kalau ada password isi disini
 		DB:       0,
 	})
+
+	return redisClient
 }
 
 func getEnv(key, fallback string) string {

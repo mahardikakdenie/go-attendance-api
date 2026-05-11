@@ -53,19 +53,19 @@ func (r *roleHierarchyRepository) GetChildRoleIDs(ctx context.Context, parentRol
 func (r *roleHierarchyRepository) GetAllDescendantRoleIDs(ctx context.Context, parentRoleID uint) ([]uint, error) {
 	var allDescendants []uint
 	visited := make(map[uint]bool)
-	
+
 	var traverse func(roleID uint) error
 	traverse = func(roleID uint) error {
 		if visited[roleID] {
 			return nil
 		}
 		visited[roleID] = true
-		
+
 		children, err := r.GetChildRoleIDs(ctx, roleID)
 		if err != nil {
 			return err
 		}
-		
+
 		for _, childID := range children {
 			allDescendants = append(allDescendants, childID)
 			if err := traverse(childID); err != nil {
@@ -74,7 +74,7 @@ func (r *roleHierarchyRepository) GetAllDescendantRoleIDs(ctx context.Context, p
 		}
 		return nil
 	}
-	
+
 	err := traverse(parentRoleID)
 	return allDescendants, err
 }

@@ -94,21 +94,14 @@ func (s *authService) Login(req model.LoginRequest, ip, ua, device string) (stri
 		return "", model.UserResponse{}, errors.New("invalid email or password")
 	}
 
-	// Check if tenant is suspended
-	if user.Tenant != nil && user.Tenant.IsSuspended {
-		reason := "Tenant account is suspended"
-		if user.Tenant.SuspendedReason != "" {
-			reason = fmt.Sprintf("Tenant account is suspended: %s", user.Tenant.SuspendedReason)
-		}
-		return "", model.UserResponse{}, errors.New(reason)
-	}
+	// 🆕 Logic removed: Login is allowed even if suspended, handled by middleware/FE
 
 	secret := os.Getenv("JWT_SECRET")
 	if secret == "" {
 		return "", model.UserResponse{}, errors.New("JWT secret not configured")
 	}
 
-	exp := time.Now().Add(24 * time.Hour)
+	exp := utils.Now().Add(24 * time.Hour)
 
 	var roleName string
 	if user.Role != nil {
@@ -120,7 +113,7 @@ func (s *authService) Login(req model.LoginRequest, ip, ua, device string) (stri
 		"tenant_id": user.TenantID,
 		"role":      roleName,
 		"exp":       exp.Unix(),
-		"iat":       time.Now().Unix(),
+		"iat":       utils.Now().Unix(),
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
@@ -151,9 +144,22 @@ func (s *authService) Login(req model.LoginRequest, ip, ua, device string) (stri
 	})
 
 	var planFeatures []string
+	var subContext *model.SubscriptionContext
 	sub, err := s.repo.GetTenantSubscription(user.TenantID)
 	if err == nil && sub != nil && sub.Plan != nil {
 		planFeatures = sub.Plan.Features
+		subContext = &model.SubscriptionContext{
+			Plan:   sub.Plan.Name,
+			Status: string(sub.Status),
+		}
+	}
+
+	// Handle Superadmin
+	if user.TenantID == 1 {
+		subContext = &model.SubscriptionContext{
+			Plan:   "Unlimited (System)",
+			Status: "Active",
+		}
 	}
 
 	userResponse := model.UserResponse{
@@ -170,6 +176,7 @@ func (s *authService) Login(req model.LoginRequest, ip, ua, device string) (stri
 		IsSystemCreated:    user.IsSystemCreated,
 		MustChangePassword: user.MustChangePassword,
 		PlanFeatures:       planFeatures,
+		Subscription:       subContext,
 	}
 
 	if user.Role != nil {
@@ -260,19 +267,36 @@ func (s *authService) GetMe(token string) (model.UserResponse, error) {
 
 	var tenantResponse *model.TenantResponse
 	var planFeatures []string
+	var subContext *model.SubscriptionContext
+
 	if user.Tenant != nil {
 		tenantResponse = &model.TenantResponse{
 			ID:              user.Tenant.ID,
 			Name:            user.Tenant.Name,
-			Plan:            user.Tenant.Plan,
+			Plan:            "Basic", // Default
 			IsSuspended:     user.Tenant.IsSuspended,
 			SuspendedReason: user.Tenant.SuspendedReason,
 		}
 
-		// 🆕 Fetch Plan Features
+		// 🆕 Fetch Plan from Subscription Table
 		sub, err := s.repo.GetTenantSubscription(user.TenantID)
 		if err == nil && sub != nil && sub.Plan != nil {
+			tenantResponse.Plan = sub.Plan.Name
 			planFeatures = sub.Plan.Features
+			subContext = &model.SubscriptionContext{
+				Plan:   sub.Plan.Name,
+				Status: string(sub.Status),
+			}
+		}
+
+		// Handle Superadmin Tenant (ID 1)
+		if user.Tenant.ID == 1 {
+			tenantResponse.Plan = "Unlimited (System)"
+			planFeatures = []string{"*"}
+			subContext = &model.SubscriptionContext{
+				Plan:   "Unlimited (System)",
+				Status: "Active",
+			}
 		}
 	}
 
@@ -291,6 +315,7 @@ func (s *authService) GetMe(token string) (model.UserResponse, error) {
 		IsSystemCreated:    user.IsSystemCreated,
 		MustChangePassword: user.MustChangePassword,
 		PlanFeatures:       planFeatures,
+		Subscription:       subContext,
 	}
 
 	if user.Role != nil {
@@ -360,7 +385,7 @@ func (s *authService) ForgotPassword(ctx context.Context, req model.ForgotPasswo
 	}
 
 	token := uuid.New().String()
-	expiresAt := time.Now().Add(4 * time.Hour)
+	expiresAt := utils.Now().Add(4 * time.Hour)
 
 	reset := &model.PasswordReset{
 		Email:     req.Email,

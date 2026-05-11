@@ -21,7 +21,7 @@ const (
 	EmployeeCountRange1To10   EmployeeCountRange = "1-10"
 	EmployeeCountRange11To50  EmployeeCountRange = "11-50"
 	EmployeeCountRange51To200 EmployeeCountRange = "51-200"
-	EmployeeCountRange201Plus  EmployeeCountRange = "201+"
+	EmployeeCountRange201Plus EmployeeCountRange = "201+"
 )
 
 type TrialRequest struct {

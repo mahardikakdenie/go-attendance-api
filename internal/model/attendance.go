@@ -49,8 +49,8 @@ type Attendance struct {
 }
 
 type AttendanceResponse struct {
-	ID     uuid.UUID `json:"id"`
-	UserID uint      `json:"user_id"`
+	ID     uuid.UUID     `json:"id"`
+	UserID uint          `json:"user_id"`
 	User   *UserResponse `json:"user,omitempty"`
 
 	ClockInTime  time.Time  `json:"clock_in_time"`
@@ -69,14 +69,14 @@ type AttendanceResponse struct {
 }
 
 type AttendanceSummaryResponse struct {
-	TotalRecord          int64   `json:"total_record"`
-	TotalRecordDiff      float64 `json:"total_record_diff"`
+	TotalRecord     int64   `json:"total_record"`
+	TotalRecordDiff float64 `json:"total_record_diff"`
 
-	OntimeSummary          int64   `json:"ontime_summary"`
-	OntimeSummaryDiff      float64 `json:"ontime_summary_diff"`
+	OntimeSummary     int64   `json:"ontime_summary"`
+	OntimeSummaryDiff float64 `json:"ontime_summary_diff"`
 
-	LateSummary          int64   `json:"late_summary"`
-	LateSummaryDiff      float64 `json:"late_summary_diff"`
+	LateSummary     int64   `json:"late_summary"`
+	LateSummaryDiff float64 `json:"late_summary_diff"`
 }
 
 type AttendanceFilter struct {

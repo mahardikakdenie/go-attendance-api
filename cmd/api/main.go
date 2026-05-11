@@ -66,7 +66,7 @@ func main() {
 	r.Use(middleware.RateLimiter())
 
 	calendarCron := routes.SetupRoutes(r, db, rdb)
-	
+
 	// Start Cron Job
 	calendarCron.Run()
 

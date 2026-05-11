@@ -129,13 +129,13 @@ func (h *attendanceHandler) GetAttendanceSummary(c *gin.Context) {
 	}
 
 	if dateFrom := c.Query("date_from"); dateFrom != "" {
-		if t, err := time.Parse("2006-01-02", dateFrom); err == nil {
+		if t, err := utils.ParseDateWIB(dateFrom); err == nil {
 			filter.DateFrom = &t
 		}
 	}
 
 	if dateTo := c.Query("date_to"); dateTo != "" {
-		if t, err := time.Parse("2006-01-02", dateTo); err == nil {
+		if t, err := utils.ParseDateWIB(dateTo); err == nil {
 			filter.DateTo = &t
 		}
 	}
@@ -228,13 +228,13 @@ func (h *attendanceHandler) GetAllAttendance(c *gin.Context) {
 	}
 
 	if dateFrom := c.Query("date_from"); dateFrom != "" {
-		if t, err := time.Parse("2006-01-02", dateFrom); err == nil {
+		if t, err := utils.ParseDateWIB(dateFrom); err == nil {
 			filter.DateFrom = &t
 		}
 	}
 
 	if dateTo := c.Query("date_to"); dateTo != "" {
-		if t, err := time.Parse("2006-01-02", dateTo); err == nil {
+		if t, err := utils.ParseDateWIB(dateTo); err == nil {
 			filter.DateTo = &t
 		}
 	}
@@ -445,13 +445,13 @@ func (h *attendanceHandler) GetGroupAttendance(c *gin.Context) {
 	}
 
 	if dateFrom := c.Query("date_from"); dateFrom != "" {
-		if t, err := time.Parse("2006-01-02", dateFrom); err == nil {
+		if t, err := utils.ParseDateWIB(dateFrom); err == nil {
 			filter.DateFrom = &t
 		}
 	}
 
 	if dateTo := c.Query("date_to"); dateTo != "" {
-		if t, err := time.Parse("2006-01-02", dateTo); err == nil {
+		if t, err := utils.ParseDateWIB(dateTo); err == nil {
 			filter.DateTo = &t
 		}
 	}

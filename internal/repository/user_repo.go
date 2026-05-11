@@ -53,17 +53,22 @@ func (r *userRepository) RecentActivityRepo() RecentActivityRepository {
 }
 
 var userPreloadMap = map[string]string{
-	"tenant":                 "Tenant",
-	"tenant.tenant_settings": "Tenant.TenantSettings",
-	"tenant_setting":         "Tenant.TenantSettings",
-	"attendances":            "Attendances",
-	"attendances.user":       "Attendances.User",
-	"role":                   "Role",
-	"role.permissions":       "Role.Permissions",
-	"position":               "Position",
-	"recent_activities":      "RecentActivities",
-	"manager":                "Manager",
-	"delegate":               "Delegate",
+	"tenant":                    "Tenant",
+	"tenant.tenant_settings":    "Tenant.TenantSettings",
+	"tenant_setting":            "Tenant.TenantSettings",
+	"attendances":               "Attendances",
+	"attendances.user":          "Attendances.User",
+	"role":                      "Role",
+	"role.permissions":          "Role.Permissions",
+	"position":                  "Position",
+	"recent_activities":         "RecentActivities",
+	"manager":                   "Manager",
+	"delegate":                  "Delegate",
+	"leave_balances":            "LeaveBalances",
+	"leave_balances.leave_type": "LeaveBalances.LeaveType",
+	"payroll_profile":           "PayrollProfile",
+	"tenant.subscription":       "Tenant.Subscription",
+	"tenant.subscription.plan":  "Tenant.Subscription.Plan",
 }
 
 func (r *userRepository) FindByID(ctx context.Context, id uint, includes []string) (*model.User, error) {
@@ -95,6 +100,10 @@ func (r *userRepository) FindAll(
 	query := r.db.WithContext(ctx).Model(&model.User{})
 	query = utils.ApplyPreloads(query, includes, userPreloadMap)
 
+	if len(filter.IDs) > 0 {
+		query = query.Where("users.id IN ?", filter.IDs)
+	}
+
 	if filter.Name != "" {
 		query = query.Where("name ILIKE ?", "%"+filter.Name+"%")
 	}
@@ -104,7 +113,11 @@ func (r *userRepository) FindAll(
 	}
 
 	if filter.RoleID != 0 {
-		query = query.Where("role_id = ?", filter.RoleID)
+		query = query.Where("users.role_id = ?", filter.RoleID)
+	}
+
+	if filter.BaseRole != "" {
+		query = query.Joins("Role").Where("\"Role\".base_role = ?", filter.BaseRole)
 	}
 
 	if len(filter.AllowedRoleIDs) > 0 {

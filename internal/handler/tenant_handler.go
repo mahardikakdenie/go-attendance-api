@@ -3,7 +3,7 @@ package handler
 import (
 	"strconv"
 
-	// modelDto "go-attendance-api/internal/dto"
+	modelDto "go-attendance-api/internal/dto"
 	"go-attendance-api/internal/model"
 	"go-attendance-api/internal/service"
 	"go-attendance-api/internal/utils"
@@ -131,7 +131,7 @@ func (h *tenantHandler) UpdateTenant(c *gin.Context) {
 		return
 	}
 
-	var req model.Tenant
+	var req modelDto.UpdateTenantRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(400, utils.BuildErrorResponse("Invalid request", 400, "error", err.Error()))
 		return

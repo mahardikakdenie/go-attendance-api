@@ -44,6 +44,15 @@ func SetupRoutes(r *gin.Engine, db *gorm.DB, rdb *redis.Client) service.Calendar
 		RegisterHrOpsRoutes(protected, handlers.HrOps)
 		RegisterSupportRoutes(protected, handlers.Support)
 		RegisterSubscriptionRoutes(protected, handlers.Subscription)
+		RegisterBillingRoutes(protected, handlers.Billing)
+		RegisterNotificationRoutes(protected, handlers.Notification)
+		RegisterMenuRoutes(protected, handlers.Menu)
+
+		settings := protected.Group("/settings")
+		{
+			settings.GET("/allowance-presets", handlers.Setting.GetAllowancePresets)
+		}
+
 		RegisterFinancePerformanceRoutes(protected, handlers.Finance, handlers.Performance)
 		RegisterTimesheetRoutes(protected, handlers.Timesheet)
 		RegisterSuperadminRoutes(protected, handlers.Superadmin, handlers.Tenant, handlers.Subscription)

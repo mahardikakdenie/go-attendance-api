@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"go-attendance-api/internal/model"
+
 	"gorm.io/gorm"
 )
 

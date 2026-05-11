@@ -7,6 +7,7 @@ import (
 	modelDto "go-attendance-api/internal/dto"
 	"go-attendance-api/internal/model"
 	"go-attendance-api/internal/repository"
+	"go-attendance-api/internal/utils"
 	"math"
 	"net/url"
 	"sort"
@@ -77,7 +78,7 @@ func (s *dashboardService) GetAdminDashboard(ctx context.Context, currentUserID 
 	}
 
 	// Calculate Monthly Growth & Tenant Growth Data
-	now := time.Now()
+	now := utils.Now()
 	thisMonth := now.Month()
 	thisYear := now.Year()
 	lastMonth := now.AddDate(0, -1, 0).Month()
@@ -100,9 +101,9 @@ func (s *dashboardService) GetAdminDashboard(ctx context.Context, currentUserID 
 		monthKey := t.CreatedAt.Format("Jan")
 		growthData[monthKey]++
 
-		plan := t.Plan
-		if plan == "" {
-			plan = "Basic"
+		plan := "Basic"
+		if t.Subscription != nil && t.Subscription.Plan != nil {
+			plan = t.Subscription.Plan.Name
 		}
 
 		if _, ok := planDistributionMap[plan]; !ok {
@@ -164,7 +165,7 @@ func (s *dashboardService) GetHrDashboard(ctx context.Context, tenantID uint, cu
 		}
 	}
 
-	now := time.Now().In(WIB)
+	now := utils.Now()
 	last30Days := now.AddDate(0, 0, -30)
 	last6Months := now.AddDate(0, -6, 0)
 
@@ -184,34 +185,46 @@ func (s *dashboardService) GetHrDashboard(ctx context.Context, tenantID uint, cu
 	go func() {
 		defer wg.Done()
 		u, _, _ := s.userRepo.FindAll(ctx, model.UserFilter{TenantID: tenantID}, []string{"role", "position"})
-		mu.Lock(); users = u; mu.Unlock()
+		mu.Lock()
+		users = u
+		mu.Unlock()
 	}()
 	go func() {
 		defer wg.Done()
 		a, _, _ := s.attendanceRepo.FindAll(ctx, model.AttendanceFilter{TenantID: tenantID, DateFrom: &last30Days, DateTo: &now}, []string{}, 0, 0)
-		mu.Lock(); attendances = a; mu.Unlock()
+		mu.Lock()
+		attendances = a
+		mu.Unlock()
 	}()
 	go func() {
 		defer wg.Done()
 		o, _, _ := s.overtimeRepo.FindAll(ctx, model.OvertimeFilter{TenantID: tenantID, DateFrom: &last30Days, DateTo: &now, Status: model.OvertimeStatusApproved})
-		mu.Lock(); overtimes = o; mu.Unlock()
+		mu.Lock()
+		overtimes = o
+		mu.Unlock()
 	}()
 	go func() {
 		defer wg.Done()
 		// Broaden: Include upcoming approved leaves too
 		l, _, _ := s.leaveRepo.FindAll(ctx, model.LeaveFilter{TenantID: tenantID, DateFrom: &last30Days, Status: model.LeaveStatusApproved}, 0, 0)
-		mu.Lock(); leaves = l; mu.Unlock()
+		mu.Lock()
+		leaves = l
+		mu.Unlock()
 	}()
 	go func() {
 		defer wg.Done()
 		p, _ := s.leaveRepo.GetPendingCount(ctx, tenantID)
-		mu.Lock(); pendingLeave = p; mu.Unlock()
+		mu.Lock()
+		pendingLeave = p
+		mu.Unlock()
 	}()
 	go func() {
 		defer wg.Done()
 		// For trends, we need 6 months. Include future approved for the current month.
 		l, _, _ := s.leaveRepo.FindAll(ctx, model.LeaveFilter{TenantID: tenantID, DateFrom: &last6Months, Status: model.LeaveStatusApproved}, 0, 0)
-		mu.Lock(); trendLeaves = l; mu.Unlock()
+		mu.Lock()
+		trendLeaves = l
+		mu.Unlock()
 	}()
 	wg.Wait()
 
@@ -265,8 +278,8 @@ func (s *dashboardService) GetHrDashboard(ctx context.Context, tenantID uint, cu
 			totalPresenceCount++
 		}
 		for _, o := range userOvertimes[u.ID] {
-			start, _ := time.Parse("15:04", o.StartTime)
-			end, _ := time.Parse("15:04", o.EndTime)
+			start, _ := utils.ParseTimeWIB("15:04", o.StartTime)
+			end, _ := utils.ParseTimeWIB("15:04", o.EndTime)
 			diff := end.Sub(start).Hours()
 			if diff < 0 {
 				diff += 24
@@ -501,19 +514,19 @@ func (s *dashboardService) GetHeatmapData(ctx context.Context, tenantID uint, qu
 
 	var dateFrom, dateTo *time.Time
 	if query.DateFrom != "" {
-		if t, err := time.Parse("2006-01-02", query.DateFrom); err == nil {
+		if t, err := utils.ParseDateWIB(query.DateFrom); err == nil {
 			dateFrom = &t
 		}
 	} else {
-		t := time.Now().In(WIB).AddDate(0, 0, -30)
+		t := utils.Now().AddDate(0, 0, -30)
 		dateFrom = &t
 	}
 	if query.DateTo != "" {
-		if t, err := time.Parse("2006-01-02", query.DateTo); err == nil {
+		if t, err := utils.ParseDateWIB(query.DateTo); err == nil {
 			dateTo = &t
 		}
 	} else {
-		t := time.Now().In(WIB)
+		t := utils.Now()
 		dateTo = &t
 	}
 
@@ -634,7 +647,7 @@ func (s *dashboardService) addToHeatmapMap(m map[string][]modelDto.MappedUser, k
 }
 
 func (s *dashboardService) GetFinanceDashboard(ctx context.Context, tenantID uint, currentUserID uint) (modelDto.FinanceDashboardResponse, error) {
-	now := time.Now().In(WIB)
+	now := utils.Now()
 	last6Months := now.AddDate(0, -6, 0)
 
 	// Fetch current user
@@ -672,8 +685,8 @@ func (s *dashboardService) GetFinanceDashboard(ctx context.Context, tenantID uin
 		}
 
 		hourlyRate := userSalary / 173.0
-		start, _ := time.Parse("15:04", o.StartTime)
-		end, _ := time.Parse("15:04", o.EndTime)
+		start, _ := utils.ParseTimeWIB("15:04", o.StartTime)
+		end, _ := utils.ParseTimeWIB("15:04", o.EndTime)
 		diff := end.Sub(start).Hours()
 		if diff < 0 {
 			diff += 24
@@ -738,39 +751,47 @@ func (s *dashboardService) GetFinanceDashboard(ctx context.Context, tenantID uin
 }
 
 func (s *dashboardService) GetDailyPulse(ctx context.Context, tenantID uint) (modelDto.DailyPulseResponse, error) {
-	now := time.Now().In(WIB)
-	todayStart := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, WIB)
+	now := utils.Now()
+	todayStart := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, utils.WIB)
 	todayEnd := todayStart.Add(24 * time.Hour)
 
 	var (
-		users           []model.User
-		todayAttendance []model.Attendance
-		pendingLeaves   []model.Leave
+		users            []model.User
+		todayAttendance  []model.Attendance
+		pendingLeaves    []model.Leave
 		pendingOTsActual []model.Overtime
-		wg              sync.WaitGroup
-		mu              sync.Mutex
+		wg               sync.WaitGroup
+		mu               sync.Mutex
 	)
 
 	wg.Add(4)
 	go func() {
 		defer wg.Done()
 		u, _, _ := s.userRepo.FindAll(ctx, model.UserFilter{TenantID: tenantID}, []string{"role", "position"})
-		mu.Lock(); users = u; mu.Unlock()
+		mu.Lock()
+		users = u
+		mu.Unlock()
 	}()
 	go func() {
 		defer wg.Done()
 		a, _, _ := s.attendanceRepo.FindAll(ctx, model.AttendanceFilter{TenantID: tenantID, DateFrom: &todayStart, DateTo: &todayEnd}, nil, 0, 0)
-		mu.Lock(); todayAttendance = a; mu.Unlock()
+		mu.Lock()
+		todayAttendance = a
+		mu.Unlock()
 	}()
 	go func() {
 		defer wg.Done()
 		l, _, _ := s.leaveRepo.FindAll(ctx, model.LeaveFilter{TenantID: tenantID, Status: model.LeaveStatusPending}, 0, 0)
-		mu.Lock(); pendingLeaves = l; mu.Unlock()
+		mu.Lock()
+		pendingLeaves = l
+		mu.Unlock()
 	}()
 	go func() {
 		defer wg.Done()
 		o, _, _ := s.overtimeRepo.FindAll(ctx, model.OvertimeFilter{TenantID: tenantID, Status: model.OvertimeStatusPending})
-		mu.Lock(); pendingOTsActual = o; mu.Unlock()
+		mu.Lock()
+		pendingOTsActual = o
+		mu.Unlock()
 	}()
 	wg.Wait()
 
@@ -850,7 +871,7 @@ func (s *dashboardService) GetDailyPulse(ctx context.Context, tenantID uint) (mo
 }
 
 func (s *dashboardService) GetEmployeeDNA(ctx context.Context, tenantID uint, userID uint) (modelDto.EmployeeDnaResponse, error) {
-	now := time.Now().In(WIB)
+	now := utils.Now()
 	last30Days := now.AddDate(0, 0, -30)
 
 	// 1. Fetch User Data
@@ -910,8 +931,8 @@ func (s *dashboardService) GetEmployeeDNA(ctx context.Context, tenantID uint, us
 	// Target: approved OT vs total work hours. Let's say 20% of work hours as "efficient" cap.
 	totalOTHours := 0.0
 	for _, o := range overtimes {
-		start, _ := time.Parse("15:04", o.StartTime)
-		end, _ := time.Parse("15:04", o.EndTime)
+		start, _ := utils.ParseTimeWIB("15:04", o.StartTime)
+		end, _ := utils.ParseTimeWIB("15:04", o.EndTime)
 		diff := end.Sub(start).Hours()
 		if diff < 0 {
 			diff += 24

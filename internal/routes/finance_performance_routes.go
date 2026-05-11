@@ -3,6 +3,7 @@ package routes
 import (
 	"go-attendance-api/internal/handler"
 	"go-attendance-api/internal/middleware"
+
 	"github.com/gin-gonic/gin"
 )
 

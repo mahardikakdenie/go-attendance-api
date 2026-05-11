@@ -6,7 +6,7 @@ import (
 	dto "go-attendance-api/internal/dto"
 	"go-attendance-api/internal/model"
 	"go-attendance-api/internal/repository"
-	"time"
+	"go-attendance-api/internal/utils"
 )
 
 type PerformanceService interface {
@@ -62,8 +62,8 @@ func (s *performanceService) CreateGoal(ctx context.Context, tenantID uint, requ
 		return dto.GoalResponse{}, err
 	}
 
-	start, _ := time.Parse("2006-01-02", req.StartDate)
-	end, _ := time.Parse("2006-01-02", req.EndDate)
+	start, _ := utils.ParseDateWIB(req.StartDate)
+	end, _ := utils.ParseDateWIB(req.EndDate)
 
 	goal := &model.PerformanceGoal{
 		TenantID:    tenantID,

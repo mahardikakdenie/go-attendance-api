@@ -32,14 +32,14 @@ func (r *userPayrollProfileRepository) FindByUserID(ctx context.Context, userID 
 func (r *userPayrollProfileRepository) Upsert(ctx context.Context, profile *model.UserPayrollProfile) error {
 	var existing model.UserPayrollProfile
 	err := r.db.WithContext(ctx).Where("user_id = ?", profile.UserID).First(&existing).Error
-	
+
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return r.db.WithContext(ctx).Create(profile).Error
 		}
 		return err
 	}
-	
+
 	profile.ID = existing.ID
 	return r.db.WithContext(ctx).Save(profile).Error
 }

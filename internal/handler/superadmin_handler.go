@@ -21,11 +21,14 @@ type SuperadminHandler interface {
 	// System Role Management
 	ListSystemRoles(c *gin.Context)
 	ListAllPermissions(c *gin.Context)
+	ListTenantModules(c *gin.Context)
 	CreateSystemRole(c *gin.Context)
 	UpdateSystemRole(c *gin.Context)
+	PatchSystemRole(c *gin.Context)
 	DeleteSystemRole(c *gin.Context)
 
 	GetAnalyticsDashboard(c *gin.Context)
+	GetTenantDetails(c *gin.Context)
 }
 
 type superadminHandler struct {
@@ -150,9 +153,21 @@ func (h *superadminHandler) ListSystemRoles(c *gin.Context) {
 
 // @Summary List All Available Permissions
 func (h *superadminHandler) ListAllPermissions(c *gin.Context) {
-	permissions, err := h.service.ListAllPermissions(c.Request.Context())
+	scope := c.DefaultQuery("scope", "system") // Default to system for superadmin
+	permissions, err := h.service.ListAllPermissions(c.Request.Context(), scope)
 	if err != nil {
 		c.JSON(500, utils.BuildErrorResponse("Failed to list permissions", 500, "error", err.Error()))
+		return
+	}
+
+	c.JSON(200, utils.BuildResponse("Success", 200, "success", permissions))
+}
+
+// @Summary List Tenant Modules
+func (h *superadminHandler) ListTenantModules(c *gin.Context) {
+	permissions, err := h.service.ListAllPermissions(c.Request.Context(), "tenant")
+	if err != nil {
+		c.JSON(500, utils.BuildErrorResponse("Failed to list tenant modules", 500, "error", err.Error()))
 		return
 	}
 
@@ -196,6 +211,24 @@ func (h *superadminHandler) UpdateSystemRole(c *gin.Context) {
 	c.JSON(200, utils.BuildResponse("System role updated successfully", 200, "success", role))
 }
 
+func (h *superadminHandler) PatchSystemRole(c *gin.Context) {
+	userID := c.GetUint("user_id")
+	id, _ := strconv.Atoi(c.Param("id"))
+	var req modelDto.UpdateSystemRoleRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(400, utils.BuildErrorResponse("Invalid request", 400, "error", err.Error()))
+		return
+	}
+
+	role, err := h.service.PatchSystemRole(c.Request.Context(), uint(id), req, userID)
+	if err != nil {
+		c.JSON(500, utils.BuildErrorResponse("Failed to patch system role", 500, "error", err.Error()))
+		return
+	}
+
+	c.JSON(200, utils.BuildResponse("System role patched successfully", 200, "success", role))
+}
+
 // @Summary Delete System Role
 func (h *superadminHandler) DeleteSystemRole(c *gin.Context) {
 	userID := c.GetUint("user_id")
@@ -212,7 +245,6 @@ func (h *superadminHandler) DeleteSystemRole(c *gin.Context) {
 // @Summary Get Superadmin Analytics Dashboard
 func (h *superadminHandler) GetAnalyticsDashboard(c *gin.Context) {
 	period := c.DefaultQuery("period", "this_year")
-
 	res, err := h.service.GetAnalyticsDashboard(c.Request.Context(), period)
 	if err != nil {
 		c.JSON(500, utils.BuildErrorResponse("Failed to fetch analytics dashboard", 500, "error", err.Error()))
@@ -220,4 +252,21 @@ func (h *superadminHandler) GetAnalyticsDashboard(c *gin.Context) {
 	}
 
 	c.JSON(200, utils.BuildResponse("Analytics retrieved successfully", 200, "success", res))
+}
+
+func (h *superadminHandler) GetTenantDetails(c *gin.Context) {
+	idParam := c.Param("id")
+	id, err := strconv.Atoi(idParam)
+	if err != nil {
+		c.JSON(400, utils.BuildErrorResponse("Invalid tenant ID", 400, "error", nil))
+		return
+	}
+
+	res, err := h.service.GetTenantFullDetails(c.Request.Context(), uint(id))
+	if err != nil {
+		c.JSON(500, utils.BuildErrorResponse("Failed to fetch tenant details", 500, "error", err.Error()))
+		return
+	}
+
+	c.JSON(200, utils.BuildResponse("Tenant details retrieved successfully", 200, "success", res))
 }

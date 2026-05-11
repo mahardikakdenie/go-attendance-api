@@ -30,9 +30,9 @@ type UpdateRoleRequest struct {
 }
 
 type tenantRoleService struct {
-	roleRepo      repository.RoleRepository
+	roleRepo       repository.RoleRepository
 	permissionRepo repository.PermissionRepository
-	hierarchyRepo repository.RoleHierarchyRepository
+	hierarchyRepo  repository.RoleHierarchyRepository
 }
 
 func NewTenantRoleService(
@@ -41,9 +41,9 @@ func NewTenantRoleService(
 	hierarchyRepo repository.RoleHierarchyRepository,
 ) TenantRoleService {
 	return &tenantRoleService{
-		roleRepo:      roleRepo,
+		roleRepo:       roleRepo,
 		permissionRepo: permissionRepo,
-		hierarchyRepo: hierarchyRepo,
+		hierarchyRepo:  hierarchyRepo,
 	}
 }
 

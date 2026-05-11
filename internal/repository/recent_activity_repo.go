@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"go-attendance-api/internal/model"
+
 	"gorm.io/gorm"
 )
 
@@ -23,13 +24,13 @@ func NewRecentActivityRepository(db *gorm.DB) RecentActivityRepository {
 
 func (r *recentActivityRepository) FindByUserID(ctx context.Context, userID uint, limit int) ([]model.RecentActivity, error) {
 	var activities []model.RecentActivity
-	
+
 	query := r.db.WithContext(ctx).Where("user_id = ?", userID).Order("created_at DESC")
-	
+
 	if limit > 0 {
 		query = query.Limit(limit)
 	}
-	
+
 	err := query.Find(&activities).Error
 	return activities, err
 }

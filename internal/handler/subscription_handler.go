@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"net/http"
 	"strconv"
 
 	modelDto "go-attendance-api/internal/dto"
@@ -26,6 +27,8 @@ type SubscriptionHandler interface {
 
 	// Superadmin Subscription Management
 	UpdateTenantSubscription(c *gin.Context)
+	GetSubscriptionFeatures(c *gin.Context)
+	ReactivateSubscription(c *gin.Context)
 }
 
 type subscriptionHandler struct {
@@ -134,11 +137,16 @@ func (h *subscriptionHandler) GetMySubscription(ctx *gin.Context) {
 
 	res, err := h.service.GetMySubscription(ctx.Request.Context(), tenantID)
 	if err != nil {
+		// If record not found, return empty object instead of 500 error
+		if err.Error() == "record not found" || err.Error() == "subscription not found" {
+			ctx.JSON(http.StatusOK, utils.BuildResponse("No active subscription found", 200, "success", gin.H{}))
+			return
+		}
 		ctx.JSON(500, utils.BuildErrorResponse("Failed to fetch subscription", 500, "error", err.Error()))
 		return
 	}
 
-	ctx.JSON(200, utils.BuildResponse("Success", 200, "OK", res))
+	ctx.JSON(200, utils.BuildResponse("Success", 200, "success", res))
 }
 
 // @Summary Upgrade Subscription
@@ -157,7 +165,7 @@ func (h *subscriptionHandler) UpgradeSubscription(ctx *gin.Context) {
 		return
 	}
 
-	// Manual validation for better error reporting if needed, 
+	// Manual validation for better error reporting if needed,
 	// although service now handles it too.
 	if req.Plan == "" && req.PlanID == 0 {
 		ctx.JSON(400, utils.BuildErrorResponse("Plan name or Plan ID is required", 400, "error", nil))
@@ -290,4 +298,42 @@ func (h *subscriptionHandler) UpdateTenantSubscription(c *gin.Context) {
 		return
 	}
 	c.JSON(200, utils.BuildResponse("Subscription updated successfully", 200, "success", res))
+}
+
+func (h *subscriptionHandler) GetSubscriptionFeatures(c *gin.Context) {
+	res, err := h.service.GetAllFeatures(c.Request.Context())
+	if err != nil {
+		c.JSON(500, utils.BuildErrorResponse("Failed to fetch features", 500, "error", err.Error()))
+		return
+	}
+	c.JSON(200, utils.BuildResponse("Features retrieved successfully", 200, "success", res))
+}
+
+// @Summary Reactivate Subscription
+// @Description Restore a canceled subscription (Superadmin only)
+// @Tags Subscription
+// @Security BearerAuth
+// @Param id path int true "Subscription ID"
+// @Success 200 {object} utils.APIResponse
+// @Router /api/v1/superadmin/subscriptions/{id}/reactivate [post]
+func (h *subscriptionHandler) ReactivateSubscription(c *gin.Context) {
+	id, _ := strconv.ParseUint(c.Param("id"), 10, 32)
+	superadminID := c.MustGet("user_id").(uint)
+	ip := c.ClientIP()
+
+	res, err := h.service.ReactivateSubscription(c.Request.Context(), uint(id), superadminID, ip)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, utils.BuildErrorResponse("Failed to reactivate subscription", 400, "error", err.Error()))
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "Subscription reactivated successfully",
+		"data": gin.H{
+			"subscription_id":   res.ID,
+			"new_status":        res.Status,
+			"next_billing_date": res.NextBillingDate,
+		},
+	})
 }

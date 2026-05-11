@@ -2,12 +2,12 @@ package service
 
 import (
 	"context"
+	"fmt"
 	dto "go-attendance-api/internal/dto"
 	"go-attendance-api/internal/model"
 	"go-attendance-api/internal/repository"
-	"fmt"
+	"go-attendance-api/internal/utils"
 	"strings"
-	"time"
 
 	"github.com/google/uuid"
 )
@@ -87,8 +87,8 @@ func (s *hrOpsService) CreateShift(ctx context.Context, tenantID uint, req model
 }
 
 func (s *hrOpsService) GetWeeklyRoster(ctx context.Context, tenantID uint, startDateStr, endDateStr string, deptID *uint) ([]dto.EmployeeScheduleResponse, error) {
-	start, _ := time.Parse("2006-01-02", startDateStr)
-	end, _ := time.Parse("2006-01-02", endDateStr)
+	start, _ := utils.ParseDateWIB(startDateStr)
+	end, _ := utils.ParseDateWIB(endDateStr)
 
 	// 1. Fetch approved leaves for the range
 	leaves, _, _ := s.leaveRepo.FindAll(ctx, model.LeaveFilter{
@@ -194,17 +194,17 @@ func (s *hrOpsService) GetWeeklyRoster(ctx context.Context, tenantID uint, start
 }
 
 func (s *hrOpsService) SaveRoster(ctx context.Context, tenantID uint, req dto.SaveRosterRequest) error {
-	baseDate, _ := time.Parse("2006-01-02", req.StartDate)
+	baseDate, _ := utils.ParseDateWIB(req.StartDate)
 
 	var allRosters []model.EmployeeRoster
 	for _, assign := range req.Assignments {
-		// Assuming we save a 7-day window based on common weekly view, 
+		// Assuming we save a 7-day window based on common weekly view,
 		// but we should iterate based on what the front-end provides if possible.
 		// For now, we iterate through the days present in the range from baseDate.
 		for i := 0; i < 7; i++ {
 			date := baseDate.AddDate(0, 0, i)
 			dayName := strings.ToLower(date.Format("Monday"))
-			
+
 			shiftIDStr, exists := assign.Roster[dayName]
 			if !exists {
 				continue
@@ -212,7 +212,7 @@ func (s *hrOpsService) SaveRoster(ctx context.Context, tenantID uint, req dto.Sa
 
 			var shiftID *uuid.UUID
 
-			// If shiftIDStr is empty, "off", or starts with "work_shift_tenant", 
+			// If shiftIDStr is empty, "off", or starts with "work_shift_tenant",
 			// we set shiftID to nil to fallback to the default company shift.
 			if shiftIDStr != "" && shiftIDStr != "off" && shiftIDStr != "leave" && !strings.HasPrefix(shiftIDStr, "work_shift_tenant") {
 				if id, err := uuid.Parse(shiftIDStr); err == nil {
@@ -264,7 +264,7 @@ func (s *hrOpsService) mapUserIDs(users []model.User) []uint {
 }
 
 func (s *hrOpsService) CreateHoliday(ctx context.Context, tenantID uint, req dto.CreateCalendarEventRequest) (dto.CalendarEventResponse, error) {
-	date, _ := time.Parse("2006-01-02", req.Date)
+	date, _ := utils.ParseDateWIB(req.Date)
 	isPaid := req.IsPaid
 
 	// Default category based on type if not provided

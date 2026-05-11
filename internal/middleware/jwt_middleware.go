@@ -37,15 +37,29 @@ func SecureAuth(authService service.AuthService) gin.HandlerFunc {
 
 		isDev := os.Getenv("APP_ENV") == "development"
 
-		// Tarik header yang dibutuhkan
+		// Tarik header yang dibutuhkan (dengan fallback ke query parameters)
 		tsStr := c.GetHeader("X-Timestamp")
+		if tsStr == "" {
+			tsStr = c.Query("ts")
+		}
+
 		reqID := c.GetHeader("X-Request-ID")
+		if reqID == "" {
+			reqID = c.Query("req_id")
+		}
+
 		sig := c.GetHeader("X-Signature")
+		if sig == "" {
+			sig = c.Query("sig")
+		}
+
+		// 🆕 Check if this is a stream request
+		isStream := strings.Contains(c.Request.URL.Path, "/stream")
 
 		////////////////////////////////////////////////////////
-		// 1. TIMESTAMP CHECK (BYPASS IN DEV)
+		// 1. TIMESTAMP CHECK (BYPASS IN DEV OR STREAM)
 		////////////////////////////////////////////////////////
-		if !isDev {
+		if !isDev && !isStream {
 			ts, err := strconv.ParseInt(tsStr, 10, 64)
 			if err != nil {
 				c.AbortWithStatusJSON(403, gin.H{"message": "Invalid timestamp format (Required in Production)"})
@@ -61,9 +75,9 @@ func SecureAuth(authService service.AuthService) gin.HandlerFunc {
 		}
 
 		////////////////////////////////////////////////////////
-		// 2. INTERNAL SECRET (BYPASS IN DEV)
+		// 2. INTERNAL SECRET (BYPASS IN DEV OR STREAM)
 		////////////////////////////////////////////////////////
-		if !isDev && c.GetHeader("X-Internal-Secret") != os.Getenv("INTERNAL_SECRET") {
+		if !isDev && !isStream && c.GetHeader("X-Internal-Secret") != os.Getenv("INTERNAL_SECRET") {
 			c.AbortWithStatusJSON(403, gin.H{"message": "Forbidden: Invalid Internal Secret"})
 			return
 		}
@@ -83,14 +97,40 @@ func SecureAuth(authService service.AuthService) gin.HandlerFunc {
 			return
 		}
 
-		// Check if tenant is suspended
-		if user.Tenant != nil && user.Tenant.IsSuspended {
-			reason := "Tenant account is suspended"
-			if user.Tenant.SuspendedReason != "" {
-				reason = fmt.Sprintf("Tenant account is suspended: %s", user.Tenant.SuspendedReason)
+		// Check if tenant is suspended or subscription is canceled
+		isCanceled := user.Subscription != nil && user.Subscription.Status == string(model.SubscriptionStatusCanceled)
+		isRestricted := user.Tenant != nil && (user.Tenant.IsSuspended || isCanceled)
+
+		if isRestricted {
+			isSuperAdmin := user.Role != nil && user.Role.BaseRole == model.BaseRoleSuperAdmin
+
+			// For normal users/admins/superadmins, we only allow access to recovery/management endpoints
+			// to allow them to see the suspension message, pay invoices, or use superadmin tools.
+			path := c.Request.URL.Path
+			isAllowedPath := strings.Contains(path, "/users/me") ||
+				strings.Contains(path, "/billing") ||
+				strings.Contains(path, "/subscriptions") ||
+				strings.Contains(path, "/notifications") ||
+				strings.Contains(path, "/menus/me") ||
+				strings.Contains(path, "/auth/logout") ||
+				(isSuperAdmin && strings.Contains(path, "/superadmin"))
+
+			if !isAllowedPath {
+				reason := "Tenant account is suspended or subscription canceled"
+				if isCanceled {
+					reason = "Your subscription has been canceled. Please contact support or reactivate your plan."
+				} else if user.Tenant.SuspendedReason != "" {
+					reason = fmt.Sprintf("Tenant account is suspended: %s", user.Tenant.SuspendedReason)
+				}
+
+				c.AbortWithStatusJSON(403, gin.H{
+					"message":      reason,
+					"is_suspended": user.Tenant.IsSuspended,
+					"is_canceled":  isCanceled,
+					"reason":       user.Tenant.SuspendedReason,
+				})
+				return
 			}
-			c.AbortWithStatusJSON(403, gin.H{"message": reason})
-			return
 		}
 
 		////////////////////////////////////////////////////////
@@ -104,9 +144,9 @@ func SecureAuth(authService service.AuthService) gin.HandlerFunc {
 		}
 
 		////////////////////////////////////////////////////////
-		// 4. ANTI REPLAY (BYPASS IN DEV)
+		// 4. ANTI REPLAY (BYPASS IN DEV OR STREAM)
 		////////////////////////////////////////////////////////
-		if !isDev {
+		if !isDev && !isStream {
 			if reqID == "" {
 				c.AbortWithStatusJSON(403, gin.H{"message": "Missing request id (Required in Production)"})
 				return
@@ -162,6 +202,7 @@ func SecureAuth(authService service.AuthService) gin.HandlerFunc {
 		c.Set("tenant_id", user.TenantID) // Keep original tenant_id in Gin context if needed
 		c.Set("permissions", user.Permissions)
 		c.Set("plan_features", user.PlanFeatures)
+		c.Set("is_restricted", isRestricted) // 🆕 Pass restriction status
 
 		// Set role name string for RequireRole middleware
 		if user.Role != nil {

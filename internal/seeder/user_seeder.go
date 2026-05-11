@@ -18,18 +18,6 @@ func SeedUsers(db *gorm.DB) {
 		return
 	}
 
-	// Ambil tenant system
-	var systemTenant model.Tenant
-	if err := db.Where("code = ?", "system").First(&systemTenant).Error; err != nil {
-		log.Fatalf("Seeder: Tenant system tidak ditemukan: %v", err)
-	}
-
-	// Ambil tenant PT Friendship
-	var friendshipTenant model.Tenant
-	if err := db.Where("code = ?", "friendship").First(&friendshipTenant).Error; err != nil {
-		log.Fatalf("Seeder: Tenant friendship tidak ditemukan: %v", err)
-	}
-
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte("123456"), bcrypt.DefaultCost)
 	if err != nil {
 		log.Fatalf("Gagal hash password seeder: %v", err)
@@ -43,97 +31,129 @@ func SeedUsers(db *gorm.DB) {
 	db.Where("name = ?", "finance").First(&financeRole)
 	db.Where("name = ?", "employee").First(&employeeRole)
 
-	// Positions
-	var ceoPos, managerPos, staffPos model.Position
-	db.Where("name = ? AND tenant_id = ?", "CEO", friendshipTenant.ID).First(&ceoPos)
-	db.Where("name = ? AND tenant_id = ?", "Manager", friendshipTenant.ID).First(&managerPos)
-	db.Where("name = ? AND tenant_id = ?", "Staff", friendshipTenant.ID).First(&staffPos)
+	// Fetch all tenants
+	var tenants []model.Tenant
+	db.Find(&tenants)
 
 	mediaUrl := "http://i.ibb.co.com/p6119B1C/attendance-1775556680532.png"
 
-	// 1. Super Admin
-	sa := model.User{
-		Name:        "Super Admin",
-		Email:       "superadmin@yopmail.com",
-		Password:    string(hashedPassword),
-		TenantID:    systemTenant.ID,
-		RoleID:      superAdminRole.ID,
-		EmployeeID:  "SA-001",
-		Department:  "SaaS Owner",
-		Address:     "System HQ",
-		PhoneNumber: "0000000000",
-	}
-	db.Create(&sa)
+	for _, t := range tenants {
+		if t.Code == "system" {
+			// 1. Super Admin for System Tenant
+			sa := model.User{
+				Name:        "Super Admin",
+				Email:       "superadmin@yopmail.com",
+				Password:    string(hashedPassword),
+				TenantID:    t.ID,
+				RoleID:      superAdminRole.ID,
+				EmployeeID:  "SA-001",
+				Department:  "SaaS Owner",
+				Address:     "System HQ",
+				PhoneNumber: "0000000000",
+			}
+			db.Create(&sa)
+			continue
+		}
 
-	// 2. Admin Tenant (CEO)
-	admin := model.User{
-		Name:        "Admin PT Friendship",
-		Email:       "admin@friendship.com",
-		Password:    string(hashedPassword),
-		TenantID:    friendshipTenant.ID,
-		RoleID:      adminRole.ID,
-		PositionID:  &ceoPos.ID,
-		EmployeeID:  "ADM-001",
-		Department:  "Owner",
-		Address:     "Friendship Office",
-		PhoneNumber: "0811111111",
-		BaseSalary:  50000000,
-	}
-	db.Create(&admin)
+		// Create Admin for each tenant
+		adminEmail := "admin@" + t.Code + ".com"
+		if t.Code == "friendship" {
+			adminEmail = "admin@friendship.com"
+		}
 
-	// 3. HR Manager (Reports to Admin)
-	hr := model.User{
-		Name:        "HR Manager",
-		Email:       "hr@friendship.com",
-		Password:    string(hashedPassword),
-		TenantID:    friendshipTenant.ID,
-		RoleID:      hrRole.ID,
-		PositionID:  &managerPos.ID,
-		ManagerID:   &admin.ID,
-		EmployeeID:  "HR-001",
-		Department:  "HRD",
-		Address:     "Friendship Office",
-		PhoneNumber: "0822222222",
-		MediaUrl:    mediaUrl,
-		BaseSalary:  15000000,
-	}
-	db.Create(&hr)
+		// Positions for this tenant
+		var ceoPos model.Position
+		db.Where("name = ? AND tenant_id = ?", "CEO", t.ID).First(&ceoPos)
+		if ceoPos.ID == 0 {
+			// Create a default CEO position if not exists
+			ceoPos = model.Position{TenantID: t.ID, Name: "CEO", Level: 1}
+			db.Create(&ceoPos)
+		}
 
-	// 3.5 Finance Manager (Reports to Admin)
-	financeUser := model.User{
-		Name:        "Finance Manager",
-		Email:       "finance@friendship.com",
-		Password:    string(hashedPassword),
-		TenantID:    friendshipTenant.ID,
-		RoleID:      financeRole.ID,
-		PositionID:  &managerPos.ID,
-		ManagerID:   &admin.ID,
-		EmployeeID:  "FIN-001",
-		Department:  "Finance",
-		Address:     "Friendship Office",
-		PhoneNumber: "0844444444",
-		MediaUrl:    mediaUrl,
-		BaseSalary:  14000000,
-	}
-	db.Create(&financeUser)
+		admin := model.User{
+			Name:        "Admin " + t.Name,
+			Email:       adminEmail,
+			Password:    string(hashedPassword),
+			TenantID:    t.ID,
+			RoleID:      adminRole.ID,
+			PositionID:  &ceoPos.ID,
+			EmployeeID:  "ADM-001",
+			Department:  "Owner",
+			Address:     t.Name + " Office",
+			PhoneNumber: "0811111111",
+			BaseSalary:  50000000,
+		}
+		db.Create(&admin)
 
-	// 4. Employee User (Reports to HR)
-	emp := model.User{
-		Name:        "Employee User",
-		Email:       "employee@friendship.com",
-		Password:    string(hashedPassword),
-		TenantID:    friendshipTenant.ID,
-		RoleID:      employeeRole.ID,
-		PositionID:  &staffPos.ID,
-		ManagerID:   &hr.ID,
-		EmployeeID:  "EMP-001",
-		Department:  "Operations",
-		Address:     "Friendship Office",
-		PhoneNumber: "0833333333",
-		MediaUrl:    mediaUrl,
-		BaseSalary:  8000000,
-	}
-	db.Create(&emp)
+		// Specific additional users for PT Friendship
+		if t.Code == "friendship" {
+			var managerPos, staffPos model.Position
+			db.Where("name = ? AND tenant_id = ?", "Manager", t.ID).First(&managerPos)
+			db.Where("name = ? AND tenant_id = ?", "Staff", t.ID).First(&staffPos)
 
-	log.Println("Seeder: Users with Hierarchy added")
+			// HR Manager
+			hr := model.User{
+				Name:        "HR Manager",
+				Email:       "hr@friendship.com",
+				Password:    string(hashedPassword),
+				TenantID:    t.ID,
+				RoleID:      hrRole.ID,
+				PositionID:  &managerPos.ID,
+				ManagerID:   &admin.ID,
+				EmployeeID:  "HR-001",
+				Department:  "HRD",
+				Address:     "Friendship Office",
+				PhoneNumber: "0822222222",
+				MediaUrl:    mediaUrl,
+				BaseSalary:  15000000,
+			}
+			db.Create(&hr)
+
+			// Finance Manager
+			financeUser := model.User{
+				Name:        "Finance Manager",
+				Email:       "finance@friendship.com",
+				Password:    string(hashedPassword),
+				TenantID:    t.ID,
+				RoleID:      financeRole.ID,
+				PositionID:  &managerPos.ID,
+				ManagerID:   &admin.ID,
+				EmployeeID:  "FIN-001",
+				Department:  "Finance",
+				Address:     "Friendship Office",
+				PhoneNumber: "0844444444",
+				MediaUrl:    mediaUrl,
+				BaseSalary:  14000000,
+			}
+			db.Create(&financeUser)
+
+			// Employee
+			emp := model.User{
+				Name:        "Employee User",
+				Email:       "employee@friendship.com",
+				Password:    string(hashedPassword),
+				TenantID:    t.ID,
+				RoleID:      employeeRole.ID,
+				PositionID:  &staffPos.ID,
+				ManagerID:   &hr.ID,
+				EmployeeID:  "EMP-001",
+				Department:  "Operations",
+				Address:     "Friendship Office",
+				PhoneNumber: "0833333333",
+				MediaUrl:    mediaUrl,
+				BaseSalary:  8000000,
+			}
+			db.Create(&emp)
+		}
+
+		// Variety in Subscription Statuses
+		if t.Code == "remote-co" {
+			db.Model(&model.Subscription{}).Where("tenant_id = ?", t.ID).Update("status", model.SubscriptionStatusPastDue)
+		}
+		if t.Code == "hybrid" {
+			db.Model(&model.Subscription{}).Where("tenant_id = ?", t.ID).Update("status", model.SubscriptionStatusCanceled)
+		}
+	}
+
+	log.Println("Seeder: Users for all tenants and status variety added")
 }

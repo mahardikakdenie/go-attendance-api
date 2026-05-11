@@ -1,14 +1,14 @@
 package modelDto
 
 type MappedUser struct {
-	ID           uint    `json:"id"`
-	Name         string  `json:"name"`
-	Avatar       string  `json:"avatar"`
-	Department   string  `json:"department,omitempty"`
-	Score        int     `json:"score,omitempty"`
-	RequestCount int     `json:"request_count,omitempty"`
-	TotalDays    int     `json:"total_days,omitempty"`
-	Note         string  `json:"note,omitempty"` // Context like "Annual Leave" or "Sick Leave"
+	ID           uint   `json:"id"`
+	Name         string `json:"name"`
+	Avatar       string `json:"avatar"`
+	Department   string `json:"department,omitempty"`
+	Score        int    `json:"score,omitempty"`
+	RequestCount int    `json:"request_count,omitempty"`
+	TotalDays    int    `json:"total_days,omitempty"`
+	Note         string `json:"note,omitempty"` // Context like "Annual Leave" or "Sick Leave"
 }
 
 // Admin Dashboard

@@ -20,7 +20,7 @@ func SeedAttendanceHistory(db *gorm.DB) {
 		// Check if already seeded for this user
 		var count int64
 		db.Model(&model.Attendance{}).Where("user_id = ?", user.ID).Count(&count)
-		if count > 5 {
+		if count > 0 {
 			log.Printf("Seeder Attendance: Data already exists for user %s, skipping...\n", user.Email)
 			continue
 		}

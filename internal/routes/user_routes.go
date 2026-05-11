@@ -3,6 +3,7 @@ package routes
 import (
 	"go-attendance-api/internal/handler"
 	"go-attendance-api/internal/middleware"
+
 	"github.com/gin-gonic/gin"
 )
 
@@ -14,12 +15,16 @@ func RegisterUserRoutes(rg *gin.RouterGroup, userH handler.UserHandler, ucrH han
 		users.GET("/me/activities", userH.GetRecentActivities)
 		users.POST("", middleware.RequireRole("superadmin", "admin"), userH.CreateUser)
 		users.PUT("/profile-photo", userH.UpdateProfilePhoto)
-		users.POST("/request-change", ucrH.CreateRequest)
+
+		// Profile Change Request Flow
+		users.PUT("/me", ucrH.CreateRequest) // Instead of direct update, creates a request
+		users.GET("/me/change-requests", ucrH.GetMyRequests)
+		users.PATCH("/me/change-requests/:id/cancel", ucrH.CancelRequest)
 
 		adminOnly := users.Group("")
 		adminOnly.Use(middleware.RequireRole("admin", "hr"))
 		{
-			adminOnly.GET("/pending-changes", ucrH.GetPendingRequests)
+			adminOnly.GET("/change-requests", ucrH.GetRequests)
 			adminOnly.POST("/approve-change/:id", ucrH.ApproveRequest)
 			adminOnly.POST("/reject-change/:id", ucrH.RejectRequest)
 		}

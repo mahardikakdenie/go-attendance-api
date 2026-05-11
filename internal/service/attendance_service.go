@@ -10,12 +10,10 @@ import (
 
 	"go-attendance-api/internal/model"
 	"go-attendance-api/internal/repository"
+	"go-attendance-api/internal/utils"
 
 	"github.com/redis/go-redis/v9"
 )
-
-// Inisialisasi zona waktu UTC+7 (WIB) secara global untuk package service
-var WIB = time.FixedZone("WIB", 7*3600)
 
 type AttendanceService interface {
 	RecordAttendance(
@@ -186,7 +184,7 @@ func (s *attendanceService) RecordAttendance(
 	}
 
 	// 🔥 FIX: Mengunci waktu saat ini ke UTC+7 (WIB)
-	now := time.Now().In(WIB)
+	now := utils.Now()
 	nowStr := now.Format("15:04:05")
 
 	// 1. Check Holiday
@@ -221,7 +219,7 @@ func (s *attendanceService) RecordAttendance(
 		// or use shift times + buffer. Let's use shift start as reference for lateness.
 
 		// Parse shift start to minutes for lateness
-		sTime, _ := time.Parse("15:04", activeShift.StartTime)
+		sTime, _ := utils.ParseTimeWIB("15:04", activeShift.StartTime)
 		lateMinutes = sTime.Hour()*60 + sTime.Minute()
 
 		// Adjust clock in/out ranges based on shift (simple logic for now)
@@ -475,7 +473,7 @@ func (s *attendanceService) GetSummary(ctx context.Context, tenantID uint, filte
 // @Description Get today's attendance for the logged-in user
 // @Tags Attendance
 func (s *attendanceService) GetTodayAttendance(ctx context.Context, userID uint) (*model.AttendanceResponse, error) {
-	now := time.Now().In(WIB)
+	now := utils.Now()
 	dateStr := now.Format("2006-01-02")
 	cacheKey := fmt.Sprintf("cache:attendance:today:%d:%s", userID, dateStr)
 
@@ -526,12 +524,12 @@ func isWithinTimeRange(now time.Time, start, end string) (bool, error) {
 		end = "23:59"
 	}
 
-	startTime, err := time.Parse(layout, start)
+	startTime, err := utils.ParseTimeWIB(layout, start)
 	if err != nil {
 		return false, err
 	}
 
-	endTime, err := time.Parse(layout, end)
+	endTime, err := utils.ParseTimeWIB(layout, end)
 	if err != nil {
 		return false, err
 	}

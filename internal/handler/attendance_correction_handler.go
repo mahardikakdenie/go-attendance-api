@@ -65,7 +65,7 @@ func (h *attendanceCorrectionHandler) RequestCorrection(c *gin.Context) {
 func (h *attendanceCorrectionHandler) GetCorrections(c *gin.Context) {
 	tenantID := c.MustGet("tenant_id").(uint)
 	userID := uint(0)
-	
+
 	// If not admin/hr, only show own requests
 	role := c.MustGet("role").(string)
 	if role != "admin" && role != "hr" && role != "superadmin" {
