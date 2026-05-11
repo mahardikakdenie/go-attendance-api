@@ -63,6 +63,7 @@ func main() {
 	println("Redis connected:", pong)
 
 	r := gin.Default()
+	r.Use(middleware.CORSMiddleware())
 	r.Use(middleware.RateLimiter())
 
 	calendarCron := routes.SetupRoutes(r, db, rdb)
