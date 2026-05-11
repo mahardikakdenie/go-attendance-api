@@ -70,7 +70,8 @@ func main() {
 	// Start Cron Job
 	calendarCron.Run()
 
+	log.Printf("🚀 Server starting on port %s in %s mode...\n", appPort, gin.Mode())
 	if err := r.Run(":" + appPort); err != nil {
-		log.Fatalf("Gagal menjalankan server: %v", err)
+		log.Fatalf("❌ Gagal menjalankan server: %v", err)
 	}
 }

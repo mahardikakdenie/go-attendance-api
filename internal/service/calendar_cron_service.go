@@ -29,7 +29,7 @@ func NewCalendarCronService(hrRepo repository.HrOpsRepository, userRepo reposito
 		hrRepo:         hrRepo,
 		userRepo:       userRepo,
 		billingService: billingService,
-		cron:           cron.New(),
+		cron:           cron.New(cron.WithLocation(utils.GetWIBLocation())),
 	}
 }
 

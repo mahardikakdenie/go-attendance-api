@@ -32,13 +32,22 @@ func InitDB() *gorm.DB {
 	log.Println("✅ Database connected")
 
 	// Enable UUID extension for PostgreSQL
-	db.Exec("CREATE EXTENSION IF NOT EXISTS \"uuid-ossp\"")
+	if err := db.Exec("CREATE EXTENSION IF NOT EXISTS \"uuid-ossp\"").Error; err != nil {
+		log.Printf("⚠️ Warning: Gagal create extension uuid-ossp: %v\n", err)
+	}
 
 	// 🆕 CLEANUP: Drop legacy 'plan' column from subscriptions if exists
-	db.Exec("ALTER TABLE subscriptions DROP COLUMN IF EXISTS plan")
+	if err := db.Exec("ALTER TABLE subscriptions DROP COLUMN IF EXISTS plan").Error; err != nil {
+		log.Printf("⚠️ Warning: Gagal drop column plan: %v\n", err)
+	}
 
 	// 🆕 FIX: Ensure precision is updated for duration_hours
-	db.Exec("ALTER TABLE timesheet_entries ALTER COLUMN duration_hours TYPE numeric(8,4)")
+	// We check if table exists first to avoid error on fresh DB
+	if db.Migrator().HasTable("timesheet_entries") {
+		if err := db.Exec("ALTER TABLE timesheet_entries ALTER COLUMN duration_hours TYPE numeric(8,4)").Error; err != nil {
+			log.Printf("⚠️ Warning: Gagal alter column duration_hours: %v\n", err)
+		}
+	}
 
 	if os.Getenv("RESET_DB") == "true" {
 
@@ -61,11 +70,11 @@ func InitDB() *gorm.DB {
 		&model.Position{}, &model.WorkShift{},
 		&model.Holiday{},
 		&model.LifecycleTask{},
-		&model.Menu{},
 	)
 	if err != nil {
 		log.Fatalf("❌ Gagal migrasi Stage 1: %v", err)
 	}
+
 
 	// Stage 2: Hierarchies and User (Depends on Stage 1)
 	err = db.AutoMigrate(
@@ -148,7 +157,6 @@ func InitDB() *gorm.DB {
 		seeder.SeedOvertimes(db)
 		seeder.SeedSupport(db)
 		seeder.SeedUserPayrollProfiles(db)
-		seeder.SeedMenus(db)
 
 		log.Println("✅ Seeder selesai")
 	}

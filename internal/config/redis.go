@@ -2,6 +2,7 @@ package config
 
 import (
 	"context"
+	"log"
 	"os"
 
 	"github.com/redis/go-redis/v9"
@@ -18,6 +19,7 @@ func NewRedis() *redis.Client {
 	}
 
 	redisAddr := getEnv("REDIS_ADDR", "127.0.0.1:6379")
+	log.Printf("📡 Connecting to Redis at %s...\n", redisAddr)
 
 	if len(redisAddr) >= 8 && (redisAddr[:8] == "redis://" || (len(redisAddr) >= 9 && redisAddr[:9] == "rediss://")) {
 		opts, err := redis.ParseURL(redisAddr)
