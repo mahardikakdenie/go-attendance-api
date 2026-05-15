@@ -35,3 +35,9 @@ type MenuResponse struct {
 	Permission string         `json:"permission,omitempty"`
 	Children   []MenuResponse `json:"children,omitempty"`
 }
+
+type RoleMenuOverview struct {
+	RoleName string         `json:"role_name"`
+	BaseRole string         `json:"base_role"`
+	Menus    []MenuResponse `json:"menus"`
+}

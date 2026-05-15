@@ -23,6 +23,7 @@ type OwnerWithStatsResponse struct {
 }
 
 type CreateSystemRoleRequest struct {
+	TenantID      *uint    `json:"tenant_id"`
 	Name          string   `json:"name" binding:"required"`
 	Description   string   `json:"description"`
 	BaseRole      string   `json:"base_role"`
@@ -30,6 +31,7 @@ type CreateSystemRoleRequest struct {
 }
 
 type UpdateSystemRoleRequest struct {
+	TenantID         *uint    `json:"tenant_id"`
 	Name             *string  `json:"name"`
 	Description      *string  `json:"description"`
 	BaseRole         *string  `json:"base_role"`

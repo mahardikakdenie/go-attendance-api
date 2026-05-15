@@ -259,6 +259,8 @@ func (s *superadminService) ListAllPermissions(ctx context.Context, scope string
 		"timesheet":    "Time Tracking",
 		"finance":      "Finance Operations",
 		"performance":  "Performance & Goals",
+		"analytics":    "Analytics & Reports",
+		"schedule":     "Work Schedules",
 	}
 
 	// Scope filtering logic
@@ -268,6 +270,7 @@ func (s *superadminService) ListAllPermissions(ctx context.Context, scope string
 		"support":      true,
 		"role":         true,
 		"user":         true, // Superadmin needs to manage platform accounts
+		"analytics":    true,
 	}
 
 	tenantModules := map[string]bool{
@@ -281,6 +284,9 @@ func (s *superadminService) ListAllPermissions(ctx context.Context, scope string
 		"performance": true,
 		"finance":     true,
 		"role":        true,
+		"tenant":      true,
+		"analytics":   true,
+		"schedule":    true,
 	}
 
 	// Group permissions by module
@@ -328,11 +334,12 @@ func (s *superadminService) ListAllPermissions(ctx context.Context, scope string
 
 func (s *superadminService) CreateSystemRole(ctx context.Context, req modelDto.CreateSystemRoleRequest, performerID uint) (model.Role, error) {
 	role := &model.Role{
-		TenantID:    nil,
+		TenantID:    req.TenantID,
 		Name:        req.Name,
 		Description: req.Description,
 		BaseRole:    model.BaseRole(req.BaseRole),
-		IsSystem:    true,
+		IsSystem:    req.TenantID == nil,
+		IsEditable:  req.TenantID != nil, // System roles are not editable by tenants
 	}
 
 	if role.BaseRole == "" {
@@ -366,10 +373,6 @@ func (s *superadminService) UpdateSystemRole(ctx context.Context, id uint, req m
 		return model.Role{}, errors.New("role not found")
 	}
 
-	if role.TenantID != nil {
-		return model.Role{}, errors.New("cannot update tenant role via system role API")
-	}
-
 	if role.IsImmutable {
 		return model.Role{}, errors.New("this system role is immutable and cannot be modified")
 	}
@@ -378,6 +381,16 @@ func (s *superadminService) UpdateSystemRole(ctx context.Context, id uint, req m
 	role.Description = req.Description
 	if req.BaseRole != "" {
 		role.BaseRole = model.BaseRole(req.BaseRole)
+	}
+
+	if req.TenantID != nil {
+		role.TenantID = req.TenantID
+		role.IsSystem = false
+		role.IsEditable = true
+	} else {
+		role.TenantID = nil
+		role.IsSystem = true
+		role.IsEditable = false
 	}
 
 	// ISSUE-006: Use transactional method
@@ -407,10 +420,6 @@ func (s *superadminService) PatchSystemRole(ctx context.Context, id uint, req mo
 		return model.Role{}, errors.New("role not found")
 	}
 
-	if role.TenantID != nil {
-		return model.Role{}, errors.New("cannot update tenant role via system role API")
-	}
-
 	if role.IsImmutable {
 		return model.Role{}, errors.New("this system role is immutable and cannot be modified")
 	}
@@ -423,6 +432,12 @@ func (s *superadminService) PatchSystemRole(ctx context.Context, id uint, req mo
 	}
 	if req.BaseRole != nil {
 		role.BaseRole = model.BaseRole(*req.BaseRole)
+	}
+
+	if req.TenantID != nil {
+		role.TenantID = req.TenantID
+		role.IsSystem = false
+		role.IsEditable = true
 	}
 
 	// Logic for permissions: user's payload uses "permissions"

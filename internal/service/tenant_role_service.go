@@ -9,14 +9,15 @@ import (
 
 type TenantRoleService interface {
 	ListRoles(ctx context.Context, tenantID uint) ([]model.Role, error)
-	CreateRole(ctx context.Context, tenantID uint, req CreateRoleRequest) (*model.Role, error)
-	UpdateRole(ctx context.Context, tenantID uint, roleID uint, req UpdateRoleRequest) (*model.Role, error)
+	CreateRole(ctx context.Context, tenantID uint, baseRole string, req CreateRoleRequest) (*model.Role, error)
+	UpdateRole(ctx context.Context, tenantID uint, baseRole string, roleID uint, req UpdateRoleRequest) (*model.Role, error)
 	DeleteRole(ctx context.Context, tenantID uint, roleID uint) error
 	GetHierarchy(ctx context.Context, roleID uint) ([]model.RoleHierarchy, error)
 	SaveHierarchy(ctx context.Context, tenantID uint, parentRoleID uint, childRoleIDs []uint) error
 }
 
 type CreateRoleRequest struct {
+	TenantID    *uint          `json:"tenant_id"`
 	Name        string         `json:"name" binding:"required"`
 	Description string         `json:"description"`
 	BaseRole    model.BaseRole `json:"base_role" binding:"required"`
@@ -24,6 +25,7 @@ type CreateRoleRequest struct {
 }
 
 type UpdateRoleRequest struct {
+	TenantID    *uint    `json:"tenant_id"`
 	Name        string   `json:"name"`
 	Description string   `json:"description"`
 	Permissions []string `json:"permissions"`
@@ -48,16 +50,36 @@ func NewTenantRoleService(
 }
 
 func (s *tenantRoleService) ListRoles(ctx context.Context, tenantID uint) ([]model.Role, error) {
-	return s.roleRepo.FindByTenantID(ctx, tenantID)
+	allRoles, err := s.roleRepo.FindByTenantID(ctx, tenantID)
+	if err != nil {
+		return nil, err
+	}
+
+	var filtered []model.Role
+	for _, r := range allRoles {
+		// Only show roles that belong to the tenant (custom roles)
+		// OR system roles that are explicitly marked as editable
+		if (r.TenantID != nil && *r.TenantID == tenantID) || r.IsEditable {
+			filtered = append(filtered, r)
+		}
+	}
+	return filtered, nil
 }
 
-func (s *tenantRoleService) CreateRole(ctx context.Context, tenantID uint, req CreateRoleRequest) (*model.Role, error) {
+func (s *tenantRoleService) CreateRole(ctx context.Context, tenantID uint, baseRole string, req CreateRoleRequest) (*model.Role, error) {
+	targetTenantID := tenantID
+	// Allow superadmin to specify target tenant
+	if baseRole == string(model.BaseRoleSuperAdmin) && req.TenantID != nil {
+		targetTenantID = *req.TenantID
+	}
+
 	role := &model.Role{
-		TenantID:    &tenantID,
+		TenantID:    &targetTenantID,
 		Name:        req.Name,
 		Description: req.Description,
 		BaseRole:    req.BaseRole,
 		IsSystem:    false,
+		IsEditable:  true,
 	}
 
 	if err := s.roleRepo.Create(ctx, role); err != nil {
@@ -73,13 +95,19 @@ func (s *tenantRoleService) CreateRole(ctx context.Context, tenantID uint, req C
 	return s.roleRepo.FindByID(ctx, role.ID)
 }
 
-func (s *tenantRoleService) UpdateRole(ctx context.Context, tenantID uint, roleID uint, req UpdateRoleRequest) (*model.Role, error) {
+func (s *tenantRoleService) UpdateRole(ctx context.Context, tenantID uint, baseRole string, roleID uint, req UpdateRoleRequest) (*model.Role, error) {
 	role, err := s.roleRepo.FindByID(ctx, roleID)
 	if err != nil {
 		return nil, err
 	}
 
-	if role.TenantID == nil || *role.TenantID != tenantID {
+	isSuperAdmin := baseRole == string(model.BaseRoleSuperAdmin)
+
+	if !role.IsEditable && !isSuperAdmin && (role.TenantID == nil || *role.TenantID != tenantID) {
+		return nil, errors.New("forbidden: this role is not editable")
+	}
+
+	if !isSuperAdmin && role.TenantID != nil && *role.TenantID != tenantID {
 		return nil, errors.New("forbidden: not your tenant role")
 	}
 
@@ -88,6 +116,11 @@ func (s *tenantRoleService) UpdateRole(ctx context.Context, tenantID uint, roleI
 	}
 	if req.Description != "" {
 		role.Description = req.Description
+	}
+
+	// Superadmin can also change the tenant of a role if needed (though rare)
+	if isSuperAdmin && req.TenantID != nil {
+		role.TenantID = req.TenantID
 	}
 
 	if err := s.roleRepo.Update(ctx, role); err != nil {

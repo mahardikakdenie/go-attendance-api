@@ -219,11 +219,17 @@ func SecureAuth(authService service.AuthService) gin.HandlerFunc {
 
 func HasPermission(permissionID string) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		// Dual-nature Superadmin logic: If it's ADMIN base role (Tenant 1), bypass permission check
+		// Bypass for Superadmin
 		baseRole, _ := c.Get("base_role")
+		if baseRole == string(model.BaseRoleSuperAdmin) {
+			c.Next()
+			return
+		}
+
+		// Dual-nature Superadmin logic: If it's ADMIN base role (Tenant 1), bypass permission check
 		tenantID, _ := c.Get("tenant_id")
 
-		if baseRole == string(model.BaseRoleSuperAdmin) || (tenantID == uint(1) && baseRole == string(model.BaseRoleAdmin)) {
+		if tenantID == uint(1) && baseRole == string(model.BaseRoleAdmin) {
 			c.Next()
 			return
 		}

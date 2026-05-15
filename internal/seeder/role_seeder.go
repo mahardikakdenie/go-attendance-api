@@ -33,24 +33,37 @@ func SeedRoles(db *gorm.DB) {
 		{ID: "payroll.view", Module: "payroll", Action: "view"},
 		{ID: "payroll.calculate", Module: "payroll", Action: "calculate"},
 		{ID: "payroll.approve", Module: "payroll", Action: "approve"},
+		{ID: "payroll.edit", Module: "payroll", Action: "edit"},
 
 		// User Management
 		{ID: "user.view", Module: "user", Action: "view"},
 		{ID: "user.create", Module: "user", Action: "create"},
 		{ID: "user.edit", Module: "user", Action: "edit"},
 		{ID: "user.delete", Module: "user", Action: "delete"},
+		{ID: "user.view.detail", Module: "user", Action: "view"},
 
 		// Tenant & SaaS
 		{ID: "tenant.view", Module: "tenant", Action: "view"},
 		{ID: "tenant.edit", Module: "tenant", Action: "edit"},
+		{ID: "tenant.settings.view", Module: "tenant", Action: "view"},
 		{ID: "subscription.manage", Module: "subscription", Action: "manage"},
+		{ID: "billing.manage", Module: "tenant", Action: "manage"},
+		{ID: "calendar.manage", Module: "tenant", Action: "manage"},
+		{ID: "lifecycle.manage", Module: "tenant", Action: "manage"},
 
 		// RBAC
 		{ID: "role.view", Module: "role", Action: "view"},
 		{ID: "role.manage", Module: "role", Action: "manage"},
+		{ID: "platform.roles.view", Module: "role", Action: "view"},
 
 		// Support & Provisioning
 		{ID: "support.manage", Module: "support", Action: "manage"},
+
+		// Analytics & Reports
+		{ID: "analytics.view", Module: "analytics", Action: "view"},
+
+		// Scheduling
+		{ID: "schedule.view", Module: "schedule", Action: "view"},
 
 		// Projects
 		{ID: "project.view", Module: "project", Action: "view"},
@@ -64,6 +77,8 @@ func SeedRoles(db *gorm.DB) {
 		// Finance
 		{ID: "finance.view", Module: "finance", Action: "view"},
 		{ID: "finance.manage", Module: "finance", Action: "manage"},
+		{ID: "expense.view", Module: "finance", Action: "view"},
+		{ID: "loan.view", Module: "finance", Action: "view"},
 
 		// Performance
 		{ID: "performance.view", Module: "performance", Action: "view"},
@@ -82,30 +97,39 @@ func SeedRoles(db *gorm.DB) {
 			BaseRole:    model.BaseRoleSuperAdmin,
 			IsSystem:    true,
 			IsImmutable: true,
+			IsEditable:  false,
 		},
 		{
 			Name:        "admin",
 			Description: "Tenant Owner / Administrator",
 			BaseRole:    model.BaseRoleAdmin,
 			IsSystem:    true,
+			IsImmutable: true,
+			IsEditable:  false,
 		},
 		{
 			Name:        "hr",
 			Description: "Human Resources Manager",
 			BaseRole:    model.BaseRoleHR,
 			IsSystem:    true,
+			IsImmutable: true,
+			IsEditable:  false,
 		},
 		{
 			Name:        "finance",
 			Description: "Finance & Payroll Manager",
 			BaseRole:    model.BaseRoleFinance,
 			IsSystem:    true,
+			IsImmutable: true,
+			IsEditable:  false,
 		},
 		{
 			Name:        "employee",
 			Description: "Regular Employee",
 			BaseRole:    model.BaseRoleEmployee,
 			IsSystem:    true,
+			IsImmutable: false,
+			IsEditable:  false,
 		},
 	}
 
@@ -118,6 +142,13 @@ func SeedRoles(db *gorm.DB) {
 			}
 			role = r
 			log.Printf("Seeder: Role %s ditambahkan", r.Name)
+		} else {
+			// Update flags for existing roles
+			db.Model(&role).Updates(map[string]interface{}{
+				"is_system":    r.IsSystem,
+				"is_immutable": r.IsImmutable,
+				"is_editable":  r.IsEditable,
+			})
 		}
 
 		// Assign permissions based on role

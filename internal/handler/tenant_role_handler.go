@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"fmt"
 	"go-attendance-api/internal/service"
 	"go-attendance-api/internal/utils"
 	"net/http"
@@ -60,7 +61,8 @@ func (h *tenantRoleHandler) CreateRole(c *gin.Context) {
 	}
 
 	tenantID := c.MustGet("tenant_id").(uint)
-	role, err := h.service.CreateRole(c.Request.Context(), tenantID, req)
+	baseRole := fmt.Sprintf("%v", c.MustGet("base_role"))
+	role, err := h.service.CreateRole(c.Request.Context(), tenantID, baseRole, req)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, utils.BuildErrorResponse("Failed to create role", 500, "error", err.Error()))
 		return
@@ -86,7 +88,8 @@ func (h *tenantRoleHandler) UpdateRole(c *gin.Context) {
 	}
 
 	tenantID := c.MustGet("tenant_id").(uint)
-	role, err := h.service.UpdateRole(c.Request.Context(), tenantID, uint(id), req)
+	baseRole := fmt.Sprintf("%v", c.MustGet("base_role"))
+	role, err := h.service.UpdateRole(c.Request.Context(), tenantID, baseRole, uint(id), req)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, utils.BuildErrorResponse("Failed to update role", 500, "error", err.Error()))
 		return

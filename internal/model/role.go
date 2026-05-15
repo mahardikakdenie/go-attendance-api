@@ -22,6 +22,7 @@ type Role struct {
 	BaseRole    BaseRole  `gorm:"type:varchar(20);not null;default:'EMPLOYEE'" json:"base_role"`
 	IsSystem    bool      `gorm:"default:false" json:"is_system"`
 	IsImmutable bool      `gorm:"default:false" json:"is_immutable"`
+	IsEditable  bool      `gorm:"default:true" json:"is_editable"`
 	CreatedAt   time.Time `json:"created_at"`
 	UpdatedAt   time.Time `json:"updated_at"`
 
@@ -35,5 +36,6 @@ type RoleResponse struct {
 	BaseRole    BaseRole     `json:"base_role"`
 	IsSystem    bool         `json:"is_system"`
 	IsImmutable bool         `json:"is_immutable"`
+	IsEditable  bool         `json:"is_editable"`
 	Permissions []Permission `json:"permissions,omitempty"`
 }

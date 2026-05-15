@@ -3,6 +3,8 @@ package service
 import (
 	"context"
 	"encoding/json"
+	"errors"
+	modelDto "go-attendance-api/internal/dto"
 	"go-attendance-api/internal/model"
 	"go-attendance-api/internal/repository"
 	"strings"
@@ -13,17 +15,64 @@ import (
 
 type MenuService interface {
 	GetMyMenus(ctx context.Context, baseRole string, permissions []string, planFeatures []string, isRestricted bool) ([]model.MenuResponse, error)
+	GetRolesMenuOverview(ctx context.Context, tenantID uint) ([]model.RoleMenuOverview, error)
 	GetAllMenus(ctx context.Context) ([]model.Menu, error)
+	UpdateMenu(ctx context.Context, id uint, req modelDto.UpdateMenuRequest) (*model.Menu, error)
 	InvalidateMenuCache(ctx context.Context)
 }
 
 type menuService struct {
-	repo  repository.MenuRepository
-	redis *redis.Client
+	repo     repository.MenuRepository
+	roleRepo repository.RoleRepository
+	subRepo  repository.SubscriptionRepository
+	redis    *redis.Client
 }
 
-func NewMenuService(repo repository.MenuRepository, rdb *redis.Client) MenuService {
-	return &menuService{repo: repo, redis: rdb}
+func NewMenuService(repo repository.MenuRepository, roleRepo repository.RoleRepository, subRepo repository.SubscriptionRepository, rdb *redis.Client) MenuService {
+	return &menuService{repo: repo, roleRepo: roleRepo, subRepo: subRepo, redis: rdb}
+}
+
+func (s *menuService) UpdateMenu(ctx context.Context, id uint, req modelDto.UpdateMenuRequest) (*model.Menu, error) {
+	allMenus, err := s.repo.FindAll(ctx) // Don't use getRawMenus here as we want a fresh copy from DB to avoid pointer issues with cache
+	if err != nil {
+		return nil, err
+	}
+
+	var menu *model.Menu
+	for _, m := range allMenus {
+		if m.ID == id {
+			menu = &m
+			break
+		}
+	}
+
+	if menu == nil {
+		return nil, errors.New("menu not found")
+	}
+
+	if req.Label != nil {
+		menu.Label = *req.Label
+	}
+	if req.Icon != nil {
+		menu.Icon = *req.Icon
+	}
+	if req.AllowedRoles != nil {
+		menu.AllowedRoles = req.AllowedRoles
+	}
+	if req.SortOrder != nil {
+		menu.SortOrder = *req.SortOrder
+	}
+	if req.IsSystem != nil {
+		menu.IsSystem = *req.IsSystem
+	}
+
+	err = s.repo.Update(ctx, menu)
+	if err != nil {
+		return nil, err
+	}
+
+	s.InvalidateMenuCache(ctx)
+	return menu, nil
 }
 
 func (s *menuService) getRawMenus(ctx context.Context) ([]model.Menu, error) {
@@ -66,6 +115,59 @@ func (s *menuService) GetMyMenus(ctx context.Context, baseRole string, permissio
 		return nil, err
 	}
 
+	return s.filterMenus(allMenus, baseRole, permissions, planFeatures, isRestricted), nil
+}
+
+func (s *menuService) GetRolesMenuOverview(ctx context.Context, tenantID uint) ([]model.RoleMenuOverview, error) {
+	allMenus, err := s.getRawMenus(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	// 1. Get Plan Features
+	var planFeatures []string
+	sub, err := s.subRepo.FindByTenantID(ctx, tenantID)
+	if err == nil && sub != nil && sub.Plan != nil {
+		planFeatures = sub.Plan.Features
+	} else if tenantID == 1 {
+		planFeatures = []string{"*"}
+	}
+
+	// 2. Get All Roles for Tenant
+	roles, err := s.roleRepo.FindByTenantID(ctx, tenantID)
+	if err != nil {
+		return nil, err
+	}
+
+	// 3. For each role, calculate menus
+	var overview []model.RoleMenuOverview
+	for _, r := range roles {
+		// FILTER: Hide platform system roles for normal tenants
+		if tenantID != 1 {
+			if r.BaseRole == model.BaseRoleSuperAdmin ||
+				r.BaseRole == model.BaseRoleSupport ||
+				r.BaseRole == model.BaseRoleEngineer {
+				continue
+			}
+		}
+
+		perms := make([]string, len(r.Permissions))
+		for i, p := range r.Permissions {
+			perms[i] = p.ID
+		}
+
+		roleMenus := s.filterMenus(allMenus, string(r.BaseRole), perms, planFeatures, false)
+		overview = append(overview, model.RoleMenuOverview{
+			RoleName: r.Name,
+			BaseRole: string(r.BaseRole),
+			Menus:    roleMenus,
+		})
+	}
+
+	return overview, nil
+}
+
+func (s *menuService) filterMenus(allMenus []model.Menu, baseRole string, permissions []string, planFeatures []string, isRestricted bool) []model.MenuResponse {
 	isSuperAdmin := baseRole == "SUPERADMIN"
 
 	// 1. Filter menus in a flat list
@@ -141,7 +243,7 @@ func (s *menuService) GetMyMenus(ctx context.Context, baseRole string, permissio
 	}
 
 	// 2. Build hierarchical tree
-	return buildMenuTree(filtered, nil), nil
+	return buildMenuTree(filtered, nil)
 }
 
 func buildMenuTree(menus []model.Menu, parentID *uint) []model.MenuResponse {
