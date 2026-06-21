@@ -87,6 +87,7 @@ func (h *userHandler) GetAllUsers(c *gin.Context) {
 	filter.Email = c.Query("email")
 	filter.OrderBy = c.Query("order_by")
 	filter.Sort = c.Query("sort")
+	filter.ExcludeSuperAdmin = c.Query("exclude_superadmin") != "false"
 
 	if roleIDStr := c.Query("role_id"); roleIDStr != "" {
 		if val, err := strconv.Atoi(roleIDStr); err == nil {

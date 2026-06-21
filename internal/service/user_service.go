@@ -163,6 +163,17 @@ func (s *userService) GetMe(
 		return model.UserResponse{}, err
 	}
 
+	// 🆕 Dynamic Status Check: If NextBillingDate has passed, set to Non-Active in DB and response
+	if user.Tenant != nil && user.Tenant.Subscription != nil {
+		sub := user.Tenant.Subscription
+		if sub.Status != model.SubscriptionStatusNonActive && sub.Status != model.SubscriptionStatusCanceled {
+			if utils.Now().After(sub.NextBillingDate) {
+				sub.Status = model.SubscriptionStatusNonActive
+				_ = s.repo.UpdateSubscriptionStatus(ctx, sub.ID, string(model.SubscriptionStatusNonActive))
+			}
+		}
+	}
+
 	// Resolve active shift for today
 	var activeShift *model.WorkShift
 	now := utils.Now()
@@ -293,6 +304,23 @@ func mapToUserResponse(user *model.User, includes []string, shift *model.WorkShi
 		if user.Tenant.Subscription != nil && user.Tenant.Subscription.Plan != nil {
 			res.Tenant.Plan = user.Tenant.Subscription.Plan.Name
 			res.PlanFeatures = user.Tenant.Subscription.Plan.Features
+		}
+
+		// 🆕 Populate Subscription Context for Frontend SubscriptionGuard
+		if user.Tenant.ID == 1 {
+			res.Subscription = &model.SubscriptionContext{
+				Plan:   "Unlimited (System)",
+				Status: "Active",
+			}
+		} else if user.Tenant.Subscription != nil {
+			planName := "Basic"
+			if user.Tenant.Subscription.Plan != nil {
+				planName = user.Tenant.Subscription.Plan.Name
+			}
+			res.Subscription = &model.SubscriptionContext{
+				Plan:   planName,
+				Status: string(user.Tenant.Subscription.Status),
+			}
 		}
 	}
 

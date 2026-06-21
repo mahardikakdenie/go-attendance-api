@@ -26,6 +26,7 @@ type UserRepository interface {
 	PayrollProfileRepo() UserPayrollProfileRepository
 	RecentActivityRepo() RecentActivityRepository
 	GetTenantSubscription(ctx context.Context, tenantID uint) (*model.Subscription, error)
+	UpdateSubscriptionStatus(ctx context.Context, subID uint, status string) error
 }
 
 type userRepository struct {
@@ -116,8 +117,17 @@ func (r *userRepository) FindAll(
 		query = query.Where("users.role_id = ?", filter.RoleID)
 	}
 
+	hasRoleJoin := false
 	if filter.BaseRole != "" {
 		query = query.Joins("Role").Where("\"Role\".base_role = ?", filter.BaseRole)
+		hasRoleJoin = true
+	}
+
+	if filter.ExcludeSuperAdmin {
+		if !hasRoleJoin {
+			query = query.Joins("Role")
+		}
+		query = query.Where("\"Role\".base_role != ?", model.BaseRoleSuperAdmin)
 	}
 
 	if len(filter.AllowedRoleIDs) > 0 {
@@ -257,4 +267,8 @@ func (r *userRepository) GetTenantSubscription(ctx context.Context, tenantID uin
 		return nil, err
 	}
 	return &sub, nil
+}
+
+func (r *userRepository) UpdateSubscriptionStatus(ctx context.Context, subID uint, status string) error {
+	return r.db.WithContext(ctx).Model(&model.Subscription{}).Where("id = ?", subID).Update("status", status).Error
 }

@@ -97,9 +97,39 @@ func SecureAuth(authService service.AuthService) gin.HandlerFunc {
 			return
 		}
 
-		// Check if tenant is suspended or subscription is canceled
-		isCanceled := user.Subscription != nil && user.Subscription.Status == string(model.SubscriptionStatusCanceled)
-		isRestricted := user.Tenant != nil && (user.Tenant.IsSuspended || isCanceled)
+		if !user.IsActive {
+			path := c.Request.URL.Path
+			if !strings.Contains(path, "/auth/logout") {
+				c.AbortWithStatusJSON(403, gin.H{"message": "Your account has been deactivated. Please contact your administrator."})
+				return
+			}
+		}
+
+		// Check if tenant is suspended or subscription is not Active/Trial
+		var isSubscriptionRestricted bool
+		var isCanceled bool
+		var isNonActive bool
+		var isPastDue bool
+
+		if user.Subscription != nil {
+			status := user.Subscription.Status
+			isCanceled = status == string(model.SubscriptionStatusCanceled)
+			isNonActive = status == string(model.SubscriptionStatusNonActive)
+			isPastDue = status == string(model.SubscriptionStatusPastDue)
+
+			isSubscriptionRestricted = status != string(model.SubscriptionStatusActive) &&
+				status != string(model.SubscriptionStatusTrial)
+		}
+
+		// Tenant 1 (Superadmin Tenant) is never restricted by subscription
+		if user.TenantID == 1 {
+			isSubscriptionRestricted = false
+			isCanceled = false
+			isNonActive = false
+			isPastDue = false
+		}
+
+		isRestricted := user.Tenant != nil && (user.Tenant.IsSuspended || isSubscriptionRestricted)
 
 		if isRestricted {
 			isSuperAdmin := user.Role != nil && user.Role.BaseRole == model.BaseRoleSuperAdmin
@@ -113,21 +143,30 @@ func SecureAuth(authService service.AuthService) gin.HandlerFunc {
 				strings.Contains(path, "/notifications") ||
 				strings.Contains(path, "/menus/me") ||
 				strings.Contains(path, "/auth/logout") ||
+				strings.Contains(path, "/media/upload") ||
+				strings.Contains(path, "/support") ||
+				strings.Contains(path, "/tickets") ||
 				(isSuperAdmin && strings.Contains(path, "/superadmin"))
 
 			if !isAllowedPath {
-				reason := "Tenant account is suspended or subscription canceled"
+				reason := "Tenant account is suspended or subscription inactive"
 				if isCanceled {
 					reason = "Your subscription has been canceled. Please contact support or reactivate your plan."
+				} else if isNonActive {
+					reason = "Your subscription is currently Non-Active. Please update your billing info or pay unpaid invoices."
+				} else if isPastDue {
+					reason = "Your subscription is Past Due. Please pay unpaid invoices to restore access."
 				} else if user.Tenant.SuspendedReason != "" {
 					reason = fmt.Sprintf("Tenant account is suspended: %s", user.Tenant.SuspendedReason)
 				}
 
 				c.AbortWithStatusJSON(403, gin.H{
-					"message":      reason,
-					"is_suspended": user.Tenant.IsSuspended,
-					"is_canceled":  isCanceled,
-					"reason":       user.Tenant.SuspendedReason,
+					"message":       reason,
+					"is_suspended":  user.Tenant.IsSuspended,
+					"is_canceled":   isCanceled,
+					"is_non_active": isNonActive,
+					"is_past_due":   isPastDue,
+					"reason":        user.Tenant.SuspendedReason,
 				})
 				return
 			}

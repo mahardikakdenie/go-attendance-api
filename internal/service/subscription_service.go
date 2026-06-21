@@ -174,6 +174,10 @@ func (s *subscriptionService) UpgradeSubscription(ctx context.Context, tenantID 
 	}
 	sub.NextBillingDate = utils.Now().AddDate(0, 0, duration)
 
+	if req.BillingCycle != "" {
+		sub.BillingCycle = model.BillingCycle(req.BillingCycle)
+	}
+
 	if err := s.repo.Update(ctx, sub); err != nil {
 		return err
 	}

@@ -93,10 +93,9 @@ func RegisterSupportRoutes(rg *gin.RouterGroup, h handler.SupportHandler) {
 
 func RegisterSubscriptionRoutes(rg *gin.RouterGroup, h handler.SubscriptionHandler) {
 	subs := rg.Group("/subscriptions")
-	subs.Use(middleware.RequireBaseRole(model.BaseRoleSuperAdmin, model.BaseRoleAdmin, model.BaseRoleFinance, model.BaseRoleHR))
 	{
 		subs.GET("/me", h.GetMySubscription)
-		subs.POST("/upgrade", h.UpgradeSubscription)
+		subs.POST("/upgrade", middleware.RequireBaseRole(model.BaseRoleSuperAdmin, model.BaseRoleAdmin, model.BaseRoleFinance, model.BaseRoleHR), h.UpgradeSubscription)
 		subs.GET("/plans", h.GetAllPlans) // Added for non-superadmin access to plan list
 	}
 }

@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"strconv"
 
+	modelDto "go-attendance-api/internal/dto"
 	"go-attendance-api/internal/service"
 	"go-attendance-api/internal/utils"
 
@@ -14,6 +15,8 @@ import (
 type BillingHandler interface {
 	GetInvoices(c *gin.Context)
 	DownloadInvoicePDF(c *gin.Context)
+	UploadTransferProof(c *gin.Context)
+	VerifyInvoice(c *gin.Context)
 }
 
 type billingHandler struct {
@@ -74,4 +77,52 @@ func (h *billingHandler) DownloadInvoicePDF(c *gin.Context) {
 
 	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=invoice-%s.pdf", invoiceID))
 	c.Data(http.StatusOK, "application/pdf", pdfBytes)
+}
+
+// @Summary Upload Transfer Proof
+// @Description Upload proof of payment transfer for a specific invoice
+// @Tags Billing
+// @Security BearerAuth
+// @Param id path string true "Invoice ID"
+// @Param body body modelDto.UploadProofRequest true "Transfer Proof Data"
+// @Success 200 {object} utils.APIResponse
+// @Router /api/v1/billing/invoices/{id}/proof [post]
+// @Router /api/v1/billing/invoices/{id}/proof [put]
+func (h *billingHandler) UploadTransferProof(c *gin.Context) {
+	tenantID := c.MustGet("tenant_id").(uint)
+	userID := c.MustGet("user_id").(uint)
+	invoiceID := c.Param("id")
+
+	var req modelDto.UploadProofRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, utils.BuildErrorResponse("Invalid request", 400, "error", err.Error()))
+		return
+	}
+
+	err := h.service.UploadTransferProof(c.Request.Context(), tenantID, userID, invoiceID, req.TransferProofURL)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, utils.BuildErrorResponse("Failed to save transfer proof", 500, "error", err.Error()))
+		return
+	}
+
+	c.JSON(http.StatusOK, utils.BuildResponse("Transfer proof uploaded successfully", 200, "success", nil))
+}
+
+// @Summary Verify Invoice Payment
+// @Description Verify payment proof and activate subscription
+// @Tags Superadmin Billing
+// @Security BearerAuth
+// @Param id path string true "Invoice ID"
+// @Success 200 {object} utils.APIResponse
+// @Router /api/v1/superadmin/billing/invoices/{id}/verify [post]
+func (h *billingHandler) VerifyInvoice(c *gin.Context) {
+	invoiceID := c.Param("id")
+
+	err := h.service.VerifyInvoice(c.Request.Context(), invoiceID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, utils.BuildErrorResponse("Failed to verify payment proof", 500, "error", err.Error()))
+		return
+	}
+
+	c.JSON(http.StatusOK, utils.BuildResponse("Invoice verified successfully, subscription reactivated", 200, "success", nil))
 }

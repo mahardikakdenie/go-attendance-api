@@ -94,6 +94,10 @@ func (s *authService) Login(req model.LoginRequest, ip, ua, device string) (stri
 		return "", model.UserResponse{}, errors.New("invalid email or password")
 	}
 
+	if !user.IsActive {
+		return "", model.UserResponse{}, errors.New("your account is deactivated, please contact your administrator")
+	}
+
 	// 🆕 Logic removed: Login is allowed even if suspended, handled by middleware/FE
 
 	secret := os.Getenv("JWT_SECRET")
@@ -175,6 +179,7 @@ func (s *authService) Login(req model.LoginRequest, ip, ua, device string) (stri
 		CreatedAt:          user.CreatedAt,
 		IsSystemCreated:    user.IsSystemCreated,
 		MustChangePassword: user.MustChangePassword,
+		IsActive:           user.IsActive,
 		PlanFeatures:       planFeatures,
 		Subscription:       subContext,
 	}
@@ -314,6 +319,7 @@ func (s *authService) GetMe(token string) (model.UserResponse, error) {
 		CreatedAt:          user.CreatedAt,
 		IsSystemCreated:    user.IsSystemCreated,
 		MustChangePassword: user.MustChangePassword,
+		IsActive:           user.IsActive,
 		PlanFeatures:       planFeatures,
 		Subscription:       subContext,
 	}

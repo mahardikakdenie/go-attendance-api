@@ -10,7 +10,9 @@ import (
 type InvoiceRepository interface {
 	FindAllByTenant(ctx context.Context, tenantID uint, page, limit int, status string) ([]model.Invoice, int64, error)
 	FindByIDAndTenant(ctx context.Context, id string, tenantID uint) (*model.Invoice, error)
+	FindByID(ctx context.Context, id string) (*model.Invoice, error)
 	Create(ctx context.Context, invoice *model.Invoice) error
+	Update(ctx context.Context, invoice *model.Invoice) error
 }
 
 type invoiceRepository struct {
@@ -44,7 +46,16 @@ func (r *invoiceRepository) FindAllByTenant(ctx context.Context, tenantID uint, 
 
 func (r *invoiceRepository) FindByIDAndTenant(ctx context.Context, id string, tenantID uint) (*model.Invoice, error) {
 	var invoice model.Invoice
-	err := r.db.WithContext(ctx).Where("id = ? AND tenant_id = ?", id, tenantID).First(&invoice).Error
+	err := r.db.WithContext(ctx).Preload("Tenant").Where("id = ? AND tenant_id = ?", id, tenantID).First(&invoice).Error
+	if err != nil {
+		return nil, err
+	}
+	return &invoice, nil
+}
+
+func (r *invoiceRepository) FindByID(ctx context.Context, id string) (*model.Invoice, error) {
+	var invoice model.Invoice
+	err := r.db.WithContext(ctx).Preload("Tenant").Where("id = ?", id).First(&invoice).Error
 	if err != nil {
 		return nil, err
 	}
@@ -53,4 +64,8 @@ func (r *invoiceRepository) FindByIDAndTenant(ctx context.Context, id string, te
 
 func (r *invoiceRepository) Create(ctx context.Context, invoice *model.Invoice) error {
 	return r.db.WithContext(ctx).Create(invoice).Error
+}
+
+func (r *invoiceRepository) Update(ctx context.Context, invoice *model.Invoice) error {
+	return r.db.WithContext(ctx).Save(invoice).Error
 }

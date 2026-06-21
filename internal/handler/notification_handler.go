@@ -63,6 +63,9 @@ func (h *notificationHandler) Stream(c *gin.Context) {
 
 	// Last-Event-ID reconnection: replay missed notifications
 	lastEventID := c.GetHeader("Last-Event-ID")
+	if lastEventID == "" {
+		lastEventID = c.Query("Last-Event-ID")
+	}
 	if lastEventID != "" {
 		if sinceID, err := strconv.ParseUint(lastEventID, 10, 64); err == nil {
 			missed, err := h.service.GetNotificationsSince(ctx, userID, uint(sinceID))

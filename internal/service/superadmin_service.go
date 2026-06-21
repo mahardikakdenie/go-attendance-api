@@ -262,6 +262,7 @@ func (s *superadminService) ListAllPermissions(ctx context.Context, scope string
 		"performance":  "Performance & Goals",
 		"analytics":    "Analytics & Reports",
 		"schedule":     "Work Schedules",
+		"superadmin":   "Platform Administration",
 	}
 
 	// Scope filtering logic
@@ -272,6 +273,7 @@ func (s *superadminService) ListAllPermissions(ctx context.Context, scope string
 		"role":         true,
 		"user":         true, // Superadmin needs to manage platform accounts
 		"analytics":    true,
+		"superadmin":   true,
 	}
 
 	tenantModules := map[string]bool{

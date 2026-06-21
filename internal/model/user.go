@@ -56,16 +56,17 @@ type User struct {
 }
 
 type UserFilter struct {
-	IDs            []uint
-	RequesterID    uint
-	Name           string
-	Email          string
-	RoleID         uint
-	BaseRole       BaseRole
-	AllowedRoleIDs []uint
-	TenantID       uint
-	EmployeeID     string
-	PositionID     *uint
+	IDs               []uint
+	RequesterID       uint
+	Name              string
+	Email             string
+	RoleID            uint
+	BaseRole          BaseRole
+	AllowedRoleIDs    []uint
+	TenantID          uint
+	EmployeeID        string
+	PositionID        *uint
+	ExcludeSuperAdmin bool
 
 	OrderBy string
 	Sort    string

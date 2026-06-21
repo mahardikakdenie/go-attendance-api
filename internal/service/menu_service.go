@@ -311,10 +311,10 @@ func (s *menuService) GetAllMenus(ctx context.Context) ([]model.MenuResponse, er
 }
 
 func (s *menuService) GetMyMenus(ctx context.Context, userID uint, roleID uint, baseRole string, planFeatures []string, isRestricted bool) ([]model.MenuResponse, error) {
-	cacheKey := fmt.Sprintf("user_nav:%d", userID)
+	cacheKey := fmt.Sprintf("user_nav:%d:%t", userID, isRestricted)
 	_ = roleID
 	// roleID used in filterMenus for direct role visibility
-	// cache key remains user-based
+	// cache key remains user-based and restriction-based
 
 
 	// 1. Try fetching from Redis
@@ -418,6 +418,7 @@ func (s *menuService) filterMenus(allMenus []model.Menu, roleID uint, baseRole s
 					"governance-group":        true,
 					"personal-group":          true,
 					"support-desk":            true,
+					"my-support":              true,
 				}
 				if !allowedRestrictedKeys[m.Key] {
 					fmt.Printf("[DEBUG MENU] Restricted user, skip menu: key=%s label=%s\n", m.Key, m.Label)
@@ -463,6 +464,10 @@ func (s *menuService) filterMenus(allMenus []model.Menu, roleID uint, baseRole s
 						moduleAllowed = true
 						break
 					}
+				}
+				// Always allow support/helpdesk menus even if module is not in plan features (e.g., during inactive subscription)
+				if m.Key == "my-support" || m.Key == "support-desk" {
+					moduleAllowed = true
 				}
 				if !moduleAllowed {
 					fmt.Printf("[DEBUG MENU] Rule B (module) skip: key=%s label=%s module=%s planFeats=%v\n", m.Key, m.Label, m.Module, planFeatures)
