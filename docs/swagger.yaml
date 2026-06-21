@@ -32,6 +32,45 @@ definitions:
     - child_role_ids
     - parent_role_id
     type: object
+  handler.TenantSettingResponse:
+    properties:
+      allow_multiple_check:
+        type: boolean
+      allow_remote:
+        type: boolean
+      clock_in_end_time:
+        type: string
+      clock_in_start_time:
+        type: string
+      clock_out_end_time:
+        type: string
+      clock_out_start_time:
+        type: string
+      created_at:
+        type: string
+      id:
+        type: integer
+      late_after_minute:
+        type: integer
+      max_radius_meter:
+        type: number
+      office_latitude:
+        type: number
+      office_longitude:
+        type: number
+      require_location:
+        type: boolean
+      require_selfie:
+        type: boolean
+      tenant:
+        $ref: '#/definitions/model.TenantResponse'
+      tenant_id:
+        type: integer
+      tenant_logo:
+        type: string
+      updated_at:
+        type: string
+    type: object
   handler.UpdateProfilePhotoRequest:
     properties:
       media_url:
@@ -637,6 +676,26 @@ definitions:
     - ProvisioningTicketStatusExecuting
     - ProvisioningTicketStatusCompleted
     - ProvisioningTicketStatusFailed
+  model.PtkpStatus:
+    enum:
+    - TK/0
+    - TK/1
+    - TK/2
+    - TK/3
+    - K/0
+    - K/1
+    - K/2
+    - K/3
+    type: string
+    x-enum-varnames:
+    - PtkpTK0
+    - PtkpTK1
+    - PtkpTK2
+    - PtkpTK3
+    - PtkpK0
+    - PtkpK1
+    - PtkpK2
+    - PtkpK3
   model.RecentActivity:
     properties:
       action:
@@ -727,6 +786,8 @@ definitions:
         type: string
       id:
         type: integer
+      is_editable:
+        type: boolean
       is_immutable:
         type: boolean
       is_system:
@@ -751,6 +812,8 @@ definitions:
         type: string
       id:
         type: integer
+      is_editable:
+        type: boolean
       is_immutable:
         type: boolean
       is_system:
@@ -801,8 +864,6 @@ definitions:
         type: integer
       next_billing_date:
         type: string
-      plan:
-        $ref: '#/definitions/model.SubscriptionPlan'
       plan_id:
         type: integer
       status:
@@ -814,10 +875,20 @@ definitions:
       updated_at:
         type: string
     type: object
+  model.SubscriptionContext:
+    properties:
+      plan:
+        type: string
+      status:
+        type: string
+    type: object
   model.SubscriptionPlan:
     properties:
       created_at:
         type: string
+      days:
+        description: Duration in days (e.g., 30 for monthly)
+        type: integer
       features:
         description: List of allowed modules
         items:
@@ -833,18 +904,22 @@ definitions:
       name:
         description: Trial, Starter, Business, Enterprise
         type: string
+      price:
+        type: number
       updated_at:
         type: string
     type: object
   model.SubscriptionStatus:
     enum:
     - Active
+    - Non-Active
     - Past Due
     - Canceled
     - Trial
     type: string
     x-enum-varnames:
     - SubscriptionStatusActive
+    - SubscriptionStatusNonActive
     - SubscriptionStatusPastDue
     - SubscriptionStatusCanceled
     - SubscriptionStatusTrial
@@ -853,23 +928,41 @@ definitions:
     - TECHNICAL
     - BILLING
     - FEATURE
+    - ACCOUNT
+    - INTEGRATION
     - OTHER
     type: string
     x-enum-varnames:
     - SupportCategoryTechnical
     - SupportCategoryBilling
     - SupportCategoryFeature
+    - SupportCategoryAccount
+    - SupportCategoryIntegration
     - SupportCategoryOther
+  model.SupportPriority:
+    enum:
+    - LOW
+    - MEDIUM
+    - HIGH
+    - URGENT
+    type: string
+    x-enum-varnames:
+    - SupportPriorityLow
+    - SupportPriorityMedium
+    - SupportPriorityHigh
+    - SupportPriorityUrgent
   model.SupportStatus:
     enum:
     - PENDING
     - IN_PROGRESS
     - RESOLVED
+    - CLOSED
     type: string
     x-enum-varnames:
     - SupportStatusPending
     - SupportStatusInProgress
     - SupportStatusResolved
+    - SupportStatusClosed
   model.Tenant:
     properties:
       code:
@@ -882,9 +975,8 @@ definitions:
         type: boolean
       name:
         type: string
-      plan:
-        description: Basic, Pro, Enterprise
-        type: string
+      subscription:
+        $ref: '#/definitions/model.Subscription'
       suspended_reason:
         type: string
       tenant_settings:
@@ -901,7 +993,11 @@ definitions:
       name:
         type: string
       plan:
+        description: This will be populated from Subscription relation in service
+          layer
         type: string
+      subscription:
+        $ref: '#/definitions/model.Subscription'
       suspended_reason:
         type: string
       tenant_settings:
@@ -1011,6 +1107,10 @@ definitions:
         type: boolean
       is_system_created:
         type: boolean
+      leave_balances:
+        items:
+          $ref: '#/definitions/model.LeaveBalance'
+        type: array
       manager:
         $ref: '#/definitions/model.User'
       manager_id:
@@ -1026,6 +1126,8 @@ definitions:
         maxLength: 100
         minLength: 3
         type: string
+      payroll_profile:
+        $ref: '#/definitions/model.UserPayrollProfile'
       phone_number:
         example: "08123456789"
         type: string
@@ -1086,14 +1188,53 @@ definitions:
     type: object
   model.UserChangeRequestStatus:
     enum:
+    - draft
     - pending
     - approved
     - rejected
+    - cancelled
     type: string
     x-enum-varnames:
+    - StatusDraft
     - StatusPending
     - StatusApproved
     - StatusRejected
+    - StatusCancelled
+  model.UserPayrollProfile:
+    properties:
+      bank_account_holder:
+        type: string
+      bank_account_number:
+        type: string
+      bank_name:
+        type: string
+      basic_salary:
+        type: number
+      bpjs_employment_number:
+        type: string
+      bpjs_health_number:
+        type: string
+      created_at:
+        type: string
+      daily_meal_allowance:
+        type: number
+      daily_transport_allowance:
+        type: number
+      fixed_allowance:
+        type: number
+      id:
+        type: integer
+      npwp_number:
+        type: string
+      ptkp_status:
+        $ref: '#/definitions/model.PtkpStatus'
+      updated_at:
+        type: string
+      user:
+        $ref: '#/definitions/model.User'
+      user_id:
+        type: integer
+    type: object
   model.UserResponse:
     properties:
       address:
@@ -1129,6 +1270,10 @@ definitions:
         type: boolean
       is_system_created:
         type: boolean
+      leave_balances:
+        items:
+          $ref: '#/definitions/model.LeaveBalance'
+        type: array
       manager_id:
         type: integer
       media_url:
@@ -1139,6 +1284,8 @@ definitions:
       name:
         example: Budi Santoso
         type: string
+      payroll_profile:
+        $ref: '#/definitions/model.UserPayrollProfile'
       permissions:
         items:
           type: string
@@ -1162,6 +1309,8 @@ definitions:
         $ref: '#/definitions/model.RoleResponse'
       shift:
         $ref: '#/definitions/model.WorkShiftResponse'
+      subscription:
+        $ref: '#/definitions/model.SubscriptionContext'
       tenant:
         $ref: '#/definitions/model.TenantResponse'
       tenant_id:
@@ -1186,6 +1335,13 @@ definitions:
         type: string
       type:
         $ref: '#/definitions/model.ShiftType'
+    type: object
+  modelDto.AssignSupportAgentRequest:
+    properties:
+      agent_id:
+        type: integer
+    required:
+    - agent_id
     type: object
   modelDto.AttendanceHistoryItem:
     properties:
@@ -1218,6 +1374,46 @@ definitions:
       data: {}
       meta:
         $ref: '#/definitions/modelDto.Meta'
+    type: object
+  modelDto.BulkAssignResponse:
+    properties:
+      failed:
+        type: integer
+      updated:
+        type: integer
+    type: object
+  modelDto.BulkAssignSupportRequest:
+    properties:
+      agent_id:
+        type: integer
+      ids:
+        items:
+          type: string
+        minItems: 1
+        type: array
+    required:
+    - agent_id
+    - ids
+    type: object
+  modelDto.BulkSupportInboxRequest:
+    properties:
+      action:
+        enum:
+        - MARK_READ
+        - MARK_UNREAD
+        - RESOLVE
+        - ASSIGN
+        type: string
+      assign_to_id:
+        type: integer
+      ids:
+        items:
+          type: string
+        minItems: 1
+        type: array
+    required:
+    - action
+    - ids
     type: object
   modelDto.CreateCalendarEventRequest:
     properties:
@@ -1309,6 +1505,8 @@ definitions:
     type: object
   modelDto.CreatePlanRequest:
     properties:
+      days:
+        type: integer
       features:
         items:
           type: string
@@ -1317,22 +1515,35 @@ definitions:
         type: integer
       name:
         type: string
+      price:
+        type: number
     required:
     - features
     - name
     type: object
   modelDto.CreateSupportMessageRequest:
     properties:
+      attachment_url:
+        type: string
       category:
         $ref: '#/definitions/model.SupportCategory'
       message:
         type: string
+      priority:
+        $ref: '#/definitions/model.SupportPriority'
       subject:
         type: string
     required:
     - category
     - message
     - subject
+    type: object
+  modelDto.CreateSupportReplyRequest:
+    properties:
+      message:
+        type: string
+    required:
+    - message
     type: object
   modelDto.CreateTrialRequestRequest:
     properties:
@@ -1449,6 +1660,8 @@ definitions:
         type: string
       plan:
         type: string
+      remaining_employees_limit:
+        type: integer
       status:
         $ref: '#/definitions/model.SubscriptionStatus'
       tenant_code:
@@ -1486,16 +1699,40 @@ definitions:
       total:
         type: integer
     type: object
+  modelDto.SupportAssigneeResponse:
+    properties:
+      id:
+        type: integer
+      name:
+        type: string
+    type: object
+  modelDto.SupportCategoryInfo:
+    properties:
+      description:
+        type: string
+      id:
+        type: string
+      label:
+        type: string
+    type: object
   modelDto.SupportMessageResponse:
     properties:
+      assigned_to:
+        $ref: '#/definitions/modelDto.SupportAssigneeResponse'
+      attachment_url:
+        type: string
       category:
         $ref: '#/definitions/model.SupportCategory'
       created_at:
         type: string
       id:
         type: string
+      is_read:
+        type: boolean
       message:
         type: string
+      priority:
+        $ref: '#/definitions/model.SupportPriority'
       status:
         $ref: '#/definitions/model.SupportStatus'
       subject:
@@ -1504,6 +1741,30 @@ definitions:
         $ref: '#/definitions/model.TenantResponse'
       tenant_id:
         type: integer
+      user:
+        $ref: '#/definitions/model.UserResponse'
+      user_id:
+        type: integer
+    type: object
+  modelDto.SupportPriorityInfo:
+    properties:
+      color:
+        type: string
+      id:
+        type: string
+      label:
+        type: string
+    type: object
+  modelDto.SupportReplyResponse:
+    properties:
+      created_at:
+        type: string
+      id:
+        type: string
+      message:
+        type: string
+      message_id:
+        type: string
       user:
         $ref: '#/definitions/model.UserResponse'
       user_id:
@@ -1581,6 +1842,8 @@ definitions:
     type: object
   modelDto.UpdatePlanRequest:
     properties:
+      days:
+        type: integer
       features:
         items:
           type: string
@@ -1591,6 +1854,8 @@ definitions:
         type: integer
       name:
         type: string
+      price:
+        type: number
     type: object
   modelDto.UpdateQuotaRequest:
     properties:
@@ -1605,6 +1870,13 @@ definitions:
         $ref: '#/definitions/model.SupportStatus'
     required:
     - status
+    type: object
+  modelDto.UpdateSupportReadStateRequest:
+    properties:
+      is_read:
+        type: boolean
+    required:
+    - is_read
     type: object
   modelDto.UpdateTenantSubscriptionRequest:
     properties:
@@ -1629,8 +1901,50 @@ definitions:
     properties:
       plan:
         type: string
+      plan_id:
+        type: integer
+    type: object
+  modelDto.UserReplySupportRequest:
+    properties:
+      message:
+        type: string
     required:
-    - plan
+    - message
+    type: object
+  modelDto.UserSupportHistoryResponse:
+    properties:
+      category:
+        $ref: '#/definitions/model.SupportCategory'
+      created_at:
+        type: string
+      id:
+        type: string
+      message:
+        type: string
+      priority:
+        $ref: '#/definitions/model.SupportPriority'
+      replies:
+        items:
+          $ref: '#/definitions/modelDto.UserSupportReplyItemResponse'
+        type: array
+      status:
+        $ref: '#/definitions/model.SupportStatus'
+      subject:
+        type: string
+    type: object
+  modelDto.UserSupportReplyItemResponse:
+    properties:
+      created_at:
+        type: string
+      id:
+        type: string
+      message:
+        type: string
+      sender_name:
+        type: string
+      sender_type:
+        description: '"ADMIN" or "USER"'
+        type: string
     type: object
   service.CreateRoleRequest:
     properties:
@@ -1644,6 +1958,8 @@ definitions:
         items:
           type: string
         type: array
+      tenant_id:
+        type: integer
     required:
     - base_role
     - name
@@ -1658,6 +1974,8 @@ definitions:
         items:
           type: string
         type: array
+      tenant_id:
+        type: integer
     type: object
   utils.APIResponse:
     properties:
@@ -1929,6 +2247,57 @@ paths:
       summary: Reject Attendance Correction
       tags:
       - AttendanceCorrections
+  /api/v1/attendance/group:
+    get:
+      description: Get attendance list for the requester's tenant with hierarchical
+        scoping
+      parameters:
+      - description: Status
+        in: query
+        name: status
+        type: string
+      - description: Start date (YYYY-MM-DD)
+        in: query
+        name: date_from
+        type: string
+      - description: End date (YYYY-MM-DD)
+        in: query
+        name: date_to
+        type: string
+      - description: 'Page number (default: 1)'
+        in: query
+        name: page
+        type: integer
+      - description: 'Items per page (default: 10)'
+        in: query
+        name: limit
+        type: integer
+      - description: 'Relations: user,tenant,setting'
+        in: query
+        name: include
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/modelDto.AttendanceListResponse'
+              type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/utils.APIResponse'
+      security:
+      - BearerAuth: []
+      - CookieAuth: []
+      summary: Get Group Attendance
+      tags:
+      - Attendance
   /api/v1/attendance/history:
     get:
       description: Get attendance history with specific format for dashboard
@@ -2184,6 +2553,51 @@ paths:
       summary: Get active sessions
       tags:
       - Auth
+  /api/v1/billing/invoices:
+    get:
+      description: Get paginated list of invoices for current tenant
+      parameters:
+      - description: Page number
+        in: query
+        name: page
+        type: integer
+      - description: Limit per page
+        in: query
+        name: limit
+        type: integer
+      - description: Filter by status
+        in: query
+        name: status
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/utils.APIResponse'
+      security:
+      - BearerAuth: []
+      summary: Get Invoices
+      tags:
+      - Billing
+  /api/v1/billing/invoices/{id}/pdf:
+    get:
+      description: Download PDF version of a specific invoice
+      parameters:
+      - description: Invoice ID
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: file
+      security:
+      - BearerAuth: []
+      summary: Download Invoice PDF
+      tags:
+      - Billing
   /api/v1/dashboards/admin:
     get:
       produces:
@@ -3411,6 +3825,25 @@ paths:
       summary: Update Tenant Subscription
       tags:
       - Subscription
+  /api/v1/superadmin/subscriptions/{id}/reactivate:
+    post:
+      description: Restore a canceled subscription (Superadmin only)
+      parameters:
+      - description: Subscription ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/utils.APIResponse'
+      security:
+      - BearerAuth: []
+      summary: Reactivate Subscription
+      tags:
+      - Subscription
   /api/v1/superadmin/subscriptions/{id}/remind:
     post:
       description: Send payment reminder to tenant owner
@@ -3601,7 +4034,7 @@ paths:
             - $ref: '#/definitions/utils.APIResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/model.TenantSetting'
+                  $ref: '#/definitions/handler.TenantSettingResponse'
               type: object
         "404":
           description: Not Found
@@ -3634,7 +4067,7 @@ paths:
             - $ref: '#/definitions/utils.APIResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/model.TenantSetting'
+                  $ref: '#/definitions/handler.TenantSettingResponse'
               type: object
         "400":
           description: Bad Request
@@ -3905,6 +4338,38 @@ paths:
       summary: Approve Change Request
       tags:
       - UserChangeRequests
+  /api/v1/users/change-requests:
+    get:
+      description: Get all change requests for the tenant (filtered by status)
+      parameters:
+      - description: Filter by status
+        in: query
+        name: status
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.APIResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/model.UserChangeRequestResponse'
+                  type: array
+              type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/utils.APIResponse'
+      security:
+      - BearerAuth: []
+      - CookieAuth: []
+      summary: Get Change Requests
+      tags:
+      - UserChangeRequests
   /api/v1/users/me:
     get:
       description: Get authenticated user profile from token with optional includes
@@ -3970,9 +4435,9 @@ paths:
       summary: Get user's recent activities
       tags:
       - Users
-  /api/v1/users/pending-changes:
+  /api/v1/users/me/change-requests:
     get:
-      description: Get all pending change requests for the tenant
+      description: Get all change requests for the current user
       produces:
       - application/json
       responses:
@@ -3994,7 +4459,33 @@ paths:
       security:
       - BearerAuth: []
       - CookieAuth: []
-      summary: Get Pending Change Requests
+      summary: Get My Change Requests
+      tags:
+      - UserChangeRequests
+  /api/v1/users/me/change-requests/{id}/cancel:
+    patch:
+      description: Cancel a pending or draft change request
+      parameters:
+      - description: Request ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/utils.APIResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/utils.APIResponse'
+      security:
+      - BearerAuth: []
+      - CookieAuth: []
+      summary: Cancel Change Request
       tags:
       - UserChangeRequests
   /api/v1/users/profile-photo:
@@ -4106,9 +4597,52 @@ paths:
       summary: Create User Change Request
       tags:
       - UserChangeRequests
+  /v1/admin/support/agents:
+    get:
+      description: List all assignable support agents (active HQ users)
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.APIResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/model.UserResponse'
+                  type: array
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Get Assignable Support Agents
+      tags:
+      - Support
   /v1/admin/support/inbox:
     get:
-      description: List all inbound support messages
+      description: List all inbound support messages with server-side filters
+      parameters:
+      - description: Search subject/message/sender/tenant
+        in: query
+        name: search
+        type: string
+      - description: TECHNICAL|BILLING|FEATURE|OTHER
+        in: query
+        name: category
+        type: string
+      - description: PENDING|IN_PROGRESS|RESOLVED|CLOSED
+        in: query
+        name: status
+        type: string
+      - description: Pagination limit
+        in: query
+        name: limit
+        type: integer
+      - description: Pagination offset
+        in: query
+        name: offset
+        type: integer
       produces:
       - application/json
       responses:
@@ -4155,6 +4689,122 @@ paths:
       security:
       - BearerAuth: []
       summary: Update Support Status
+      tags:
+      - Support
+  /v1/admin/support/inbox/{id}/assign:
+    patch:
+      consumes:
+      - application/json
+      description: Assign agent to support ticket
+      parameters:
+      - description: Message ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Assign payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/modelDto.AssignSupportAgentRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/modelDto.SupportMessageResponse'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Assign Support Agent
+      tags:
+      - Support
+  /v1/admin/support/inbox/{id}/read-state:
+    patch:
+      consumes:
+      - application/json
+      description: Mark ticket read/unread
+      parameters:
+      - description: Message ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Read state payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/modelDto.UpdateSupportReadStateRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/utils.APIResponse'
+      security:
+      - BearerAuth: []
+      summary: Update Support Read State
+      tags:
+      - Support
+  /v1/admin/support/inbox/bulk:
+    patch:
+      consumes:
+      - application/json
+      description: Bulk actions for support inbox (mark read/unread, resolve, assign)
+      parameters:
+      - description: Bulk Action Payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/modelDto.BulkSupportInboxRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/utils.APIResponse'
+      security:
+      - BearerAuth: []
+      summary: Bulk Update Support Inbox
+      tags:
+      - Support
+  /v1/admin/support/inbox/bulk-assign:
+    patch:
+      consumes:
+      - application/json
+      description: Assign multiple support tickets to a specific agent
+      parameters:
+      - description: Bulk Assign Payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/modelDto.BulkAssignSupportRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/modelDto.BulkAssignResponse'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Bulk Assign Support Tickets
       tags:
       - Support
   /v1/admin/support/provisioning:
@@ -4278,6 +4928,45 @@ paths:
       summary: Create Trial Request
       tags:
       - Public
+  /v1/support/history:
+    get:
+      description: List all support tickets sent by the logged-in user
+      parameters:
+      - description: Search subject/message
+        in: query
+        name: search
+        type: string
+      - description: PENDING|IN_PROGRESS|RESOLVED|CLOSED
+        in: query
+        name: status
+        type: string
+      - description: Pagination limit
+        in: query
+        name: limit
+        type: integer
+      - description: Pagination offset
+        in: query
+        name: offset
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.APIResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/modelDto.UserSupportHistoryResponse'
+                  type: array
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Get User Support History
+      tags:
+      - Support
   /v1/support/message:
     post:
       consumes:
@@ -4305,6 +4994,142 @@ paths:
       security:
       - BearerAuth: []
       summary: Create Support Message
+      tags:
+      - Support
+  /v1/support/message/{id}/replies:
+    get:
+      description: List all replies for a support ticket
+      parameters:
+      - description: Message ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.APIResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/modelDto.SupportReplyResponse'
+                  type: array
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Get Replies for Message
+      tags:
+      - Support
+  /v1/support/message/{id}/reply:
+    post:
+      consumes:
+      - application/json
+      description: Send a reply to a support ticket
+      parameters:
+      - description: Message ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Reply Payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/modelDto.CreateSupportReplyRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/modelDto.SupportReplyResponse'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Reply to Support Message
+      tags:
+      - Support
+  /v1/support/tickets/{id}/reply:
+    post:
+      consumes:
+      - application/json
+      description: Allow user to reply to their own active support ticket
+      parameters:
+      - description: Ticket ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Reply Payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/modelDto.UserReplySupportRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/modelDto.SupportReplyResponse'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Reply to Ticket (User)
+      tags:
+      - Support
+  /v1/tickets/categories:
+    get:
+      description: List of available categories and priorities for support tickets
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.APIResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/modelDto.SupportCategoryInfo'
+                  type: array
+              type: object
+      summary: Get Support Ticket Categories
+      tags:
+      - Support
+  /v1/tickets/priorities:
+    get:
+      description: List of available priority levels for support tickets
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/utils.APIResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/modelDto.SupportPriorityInfo'
+                  type: array
+              type: object
+      summary: Get Support Ticket Priorities
       tags:
       - Support
 securityDefinitions:

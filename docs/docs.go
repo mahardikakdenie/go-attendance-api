@@ -395,6 +395,90 @@ const docTemplate = `{
                 "responses": {}
             }
         },
+        "/api/v1/attendance/group": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    },
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "description": "Get attendance list for the requester's tenant with hierarchical scoping",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Attendance"
+                ],
+                "summary": "Get Group Attendance",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Status",
+                        "name": "status",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Start date (YYYY-MM-DD)",
+                        "name": "date_from",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "End date (YYYY-MM-DD)",
+                        "name": "date_to",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Page number (default: 1)",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Items per page (default: 10)",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Relations: user,tenant,setting",
+                        "name": "include",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/utils.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/modelDto.AttendanceListResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/utils.APIResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/attendance/history": {
             "get": {
                 "security": [
@@ -824,6 +908,79 @@ const docTemplate = `{
                                     }
                                 }
                             ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/billing/invoices": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Get paginated list of invoices for current tenant",
+                "tags": [
+                    "Billing"
+                ],
+                "summary": "Get Invoices",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Page number",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Limit per page",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by status",
+                        "name": "status",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/utils.APIResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/billing/invoices/{id}/pdf": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Download PDF version of a specific invoice",
+                "tags": [
+                    "Billing"
+                ],
+                "summary": "Download Invoice PDF",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Invoice ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "file"
                         }
                     }
                 }
@@ -2898,6 +3055,37 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/superadmin/subscriptions/{id}/reactivate": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Restore a canceled subscription (Superadmin only)",
+                "tags": [
+                    "Subscription"
+                ],
+                "summary": "Reactivate Subscription",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Subscription ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/utils.APIResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/superadmin/subscriptions/{id}/remind": {
             "post": {
                 "security": [
@@ -3228,7 +3416,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/model.TenantSetting"
+                                            "$ref": "#/definitions/handler.TenantSettingResponse"
                                         }
                                     }
                                 }
@@ -3286,7 +3474,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/model.TenantSetting"
+                                            "$ref": "#/definitions/handler.TenantSettingResponse"
                                         }
                                     }
                                 }
@@ -3676,6 +3864,63 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/users/change-requests": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    },
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "description": "Get all change requests for the tenant (filtered by status)",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "UserChangeRequests"
+                ],
+                "summary": "Get Change Requests",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Filter by status",
+                        "name": "status",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/utils.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/model.UserChangeRequestResponse"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/utils.APIResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/users/me": {
             "get": {
                 "security": [
@@ -3791,7 +4036,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/users/pending-changes": {
+        "/api/v1/users/me/change-requests": {
             "get": {
                 "security": [
                     {
@@ -3801,14 +4046,14 @@ const docTemplate = `{
                         "CookieAuth": []
                     }
                 ],
-                "description": "Get all pending change requests for the tenant",
+                "description": "Get all change requests for the current user",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "UserChangeRequests"
                 ],
-                "summary": "Get Pending Change Requests",
+                "summary": "Get My Change Requests",
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -3829,6 +4074,49 @@ const docTemplate = `{
                                     }
                                 }
                             ]
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/utils.APIResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/users/me/change-requests/{id}/cancel": {
+            "patch": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    },
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "description": "Cancel a pending or draft change request",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "UserChangeRequests"
+                ],
+                "summary": "Cancel Change Request",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Request ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/utils.APIResponse"
                         }
                     },
                     "500": {
@@ -4088,6 +4376,46 @@ const docTemplate = `{
                 }
             }
         },
+        "/v1/admin/support/agents": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "List all assignable support agents (active HQ users)",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Support"
+                ],
+                "summary": "Get Assignable Support Agents",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/utils.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/model.UserResponse"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
         "/v1/admin/support/inbox": {
             "get": {
                 "security": [
@@ -4095,7 +4423,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "List all inbound support messages",
+                "description": "List all inbound support messages with server-side filters",
                 "produces": [
                     "application/json"
                 ],
@@ -4103,6 +4431,38 @@ const docTemplate = `{
                     "Support"
                 ],
                 "summary": "Get All Support Messages",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Search subject/message/sender/tenant",
+                        "name": "search",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "TECHNICAL|BILLING|FEATURE|OTHER",
+                        "name": "category",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "PENDING|IN_PROGRESS|RESOLVED|CLOSED",
+                        "name": "status",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Pagination limit",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Pagination offset",
+                        "name": "offset",
+                        "in": "query"
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -4119,6 +4479,96 @@ const docTemplate = `{
                                             "items": {
                                                 "$ref": "#/definitions/modelDto.SupportMessageResponse"
                                             }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/admin/support/inbox/bulk": {
+            "patch": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Bulk actions for support inbox (mark read/unread, resolve, assign)",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Support"
+                ],
+                "summary": "Bulk Update Support Inbox",
+                "parameters": [
+                    {
+                        "description": "Bulk Action Payload",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/modelDto.BulkSupportInboxRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/utils.APIResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/admin/support/inbox/bulk-assign": {
+            "patch": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Assign multiple support tickets to a specific agent",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Support"
+                ],
+                "summary": "Bulk Assign Support Tickets",
+                "parameters": [
+                    {
+                        "description": "Bulk Assign Payload",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/modelDto.BulkAssignSupportRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/utils.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/modelDto.BulkAssignResponse"
                                         }
                                     }
                                 }
@@ -4161,6 +4611,110 @@ const docTemplate = `{
                         "required": true,
                         "schema": {
                             "$ref": "#/definitions/modelDto.UpdateSupportMessageStatusRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/utils.APIResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/admin/support/inbox/{id}/assign": {
+            "patch": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Assign agent to support ticket",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Support"
+                ],
+                "summary": "Assign Support Agent",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Message ID (UUID)",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Assign payload",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/modelDto.AssignSupportAgentRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/utils.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/modelDto.SupportMessageResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/admin/support/inbox/{id}/read-state": {
+            "patch": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Mark ticket read/unread",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Support"
+                ],
+                "summary": "Update Support Read State",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Message ID (UUID)",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Read state payload",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/modelDto.UpdateSupportReadStateRequest"
                         }
                     }
                 ],
@@ -4380,6 +4934,72 @@ const docTemplate = `{
                 }
             }
         },
+        "/v1/support/history": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "List all support tickets sent by the logged-in user",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Support"
+                ],
+                "summary": "Get User Support History",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Search subject/message",
+                        "name": "search",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "PENDING|IN_PROGRESS|RESOLVED|CLOSED",
+                        "name": "status",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Pagination limit",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Pagination offset",
+                        "name": "offset",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/utils.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/modelDto.UserSupportHistoryResponse"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
         "/v1/support/message": {
             "post": {
                 "security": [
@@ -4422,6 +5042,241 @@ const docTemplate = `{
                                     "properties": {
                                         "data": {
                                             "$ref": "#/definitions/modelDto.SupportMessageResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/support/message/{id}/replies": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "List all replies for a support ticket",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Support"
+                ],
+                "summary": "Get Replies for Message",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Message ID (UUID)",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/utils.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/modelDto.SupportReplyResponse"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/support/message/{id}/reply": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Send a reply to a support ticket",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Support"
+                ],
+                "summary": "Reply to Support Message",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Message ID (UUID)",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Reply Payload",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/modelDto.CreateSupportReplyRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/utils.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/modelDto.SupportReplyResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/support/tickets/{id}/reply": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Allow user to reply to their own active support ticket",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Support"
+                ],
+                "summary": "Reply to Ticket (User)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Ticket ID (UUID)",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Reply Payload",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/modelDto.UserReplySupportRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/utils.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/modelDto.SupportReplyResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/tickets/categories": {
+            "get": {
+                "description": "List of available categories and priorities for support tickets",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Support"
+                ],
+                "summary": "Get Support Ticket Categories",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/utils.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/modelDto.SupportCategoryInfo"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/tickets/priorities": {
+            "get": {
+                "description": "List of available priority levels for support tickets",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Support"
+                ],
+                "summary": "Get Support Ticket Priorities",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/utils.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/modelDto.SupportPriorityInfo"
+                                            }
                                         }
                                     }
                                 }
@@ -4478,6 +5333,65 @@ const docTemplate = `{
                 },
                 "parent_role_id": {
                     "type": "integer"
+                }
+            }
+        },
+        "handler.TenantSettingResponse": {
+            "type": "object",
+            "properties": {
+                "allow_multiple_check": {
+                    "type": "boolean"
+                },
+                "allow_remote": {
+                    "type": "boolean"
+                },
+                "clock_in_end_time": {
+                    "type": "string"
+                },
+                "clock_in_start_time": {
+                    "type": "string"
+                },
+                "clock_out_end_time": {
+                    "type": "string"
+                },
+                "clock_out_start_time": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "late_after_minute": {
+                    "type": "integer"
+                },
+                "max_radius_meter": {
+                    "type": "number"
+                },
+                "office_latitude": {
+                    "type": "number"
+                },
+                "office_longitude": {
+                    "type": "number"
+                },
+                "require_location": {
+                    "type": "boolean"
+                },
+                "require_selfie": {
+                    "type": "boolean"
+                },
+                "tenant": {
+                    "$ref": "#/definitions/model.TenantResponse"
+                },
+                "tenant_id": {
+                    "type": "integer"
+                },
+                "tenant_logo": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
                 }
             }
         },
@@ -5347,6 +6261,29 @@ const docTemplate = `{
                 "ProvisioningTicketStatusFailed"
             ]
         },
+        "model.PtkpStatus": {
+            "type": "string",
+            "enum": [
+                "TK/0",
+                "TK/1",
+                "TK/2",
+                "TK/3",
+                "K/0",
+                "K/1",
+                "K/2",
+                "K/3"
+            ],
+            "x-enum-varnames": [
+                "PtkpTK0",
+                "PtkpTK1",
+                "PtkpTK2",
+                "PtkpTK3",
+                "PtkpK0",
+                "PtkpK1",
+                "PtkpK2",
+                "PtkpK3"
+            ]
+        },
         "model.RecentActivity": {
             "type": "object",
             "properties": {
@@ -5477,6 +6414,9 @@ const docTemplate = `{
                 "id": {
                     "type": "integer"
                 },
+                "is_editable": {
+                    "type": "boolean"
+                },
                 "is_immutable": {
                     "type": "boolean"
                 },
@@ -5512,6 +6452,9 @@ const docTemplate = `{
                 },
                 "id": {
                     "type": "integer"
+                },
+                "is_editable": {
+                    "type": "boolean"
                 },
                 "is_immutable": {
                     "type": "boolean"
@@ -5587,9 +6530,6 @@ const docTemplate = `{
                 "next_billing_date": {
                     "type": "string"
                 },
-                "plan": {
-                    "$ref": "#/definitions/model.SubscriptionPlan"
-                },
                 "plan_id": {
                     "type": "integer"
                 },
@@ -5607,11 +6547,26 @@ const docTemplate = `{
                 }
             }
         },
+        "model.SubscriptionContext": {
+            "type": "object",
+            "properties": {
+                "plan": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                }
+            }
+        },
         "model.SubscriptionPlan": {
             "type": "object",
             "properties": {
                 "created_at": {
                     "type": "string"
+                },
+                "days": {
+                    "description": "Duration in days (e.g., 30 for monthly)",
+                    "type": "integer"
                 },
                 "features": {
                     "description": "List of allowed modules",
@@ -5634,6 +6589,9 @@ const docTemplate = `{
                     "description": "Trial, Starter, Business, Enterprise",
                     "type": "string"
                 },
+                "price": {
+                    "type": "number"
+                },
                 "updated_at": {
                     "type": "string"
                 }
@@ -5643,12 +6601,14 @@ const docTemplate = `{
             "type": "string",
             "enum": [
                 "Active",
+                "Non-Active",
                 "Past Due",
                 "Canceled",
                 "Trial"
             ],
             "x-enum-varnames": [
                 "SubscriptionStatusActive",
+                "SubscriptionStatusNonActive",
                 "SubscriptionStatusPastDue",
                 "SubscriptionStatusCanceled",
                 "SubscriptionStatusTrial"
@@ -5660,13 +6620,32 @@ const docTemplate = `{
                 "TECHNICAL",
                 "BILLING",
                 "FEATURE",
+                "ACCOUNT",
+                "INTEGRATION",
                 "OTHER"
             ],
             "x-enum-varnames": [
                 "SupportCategoryTechnical",
                 "SupportCategoryBilling",
                 "SupportCategoryFeature",
+                "SupportCategoryAccount",
+                "SupportCategoryIntegration",
                 "SupportCategoryOther"
+            ]
+        },
+        "model.SupportPriority": {
+            "type": "string",
+            "enum": [
+                "LOW",
+                "MEDIUM",
+                "HIGH",
+                "URGENT"
+            ],
+            "x-enum-varnames": [
+                "SupportPriorityLow",
+                "SupportPriorityMedium",
+                "SupportPriorityHigh",
+                "SupportPriorityUrgent"
             ]
         },
         "model.SupportStatus": {
@@ -5674,12 +6653,14 @@ const docTemplate = `{
             "enum": [
                 "PENDING",
                 "IN_PROGRESS",
-                "RESOLVED"
+                "RESOLVED",
+                "CLOSED"
             ],
             "x-enum-varnames": [
                 "SupportStatusPending",
                 "SupportStatusInProgress",
-                "SupportStatusResolved"
+                "SupportStatusResolved",
+                "SupportStatusClosed"
             ]
         },
         "model.Tenant": {
@@ -5700,9 +6681,8 @@ const docTemplate = `{
                 "name": {
                     "type": "string"
                 },
-                "plan": {
-                    "description": "Basic, Pro, Enterprise",
-                    "type": "string"
+                "subscription": {
+                    "$ref": "#/definitions/model.Subscription"
                 },
                 "suspended_reason": {
                     "type": "string"
@@ -5728,7 +6708,11 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "plan": {
+                    "description": "This will be populated from Subscription relation in service layer",
                     "type": "string"
+                },
+                "subscription": {
+                    "$ref": "#/definitions/model.Subscription"
                 },
                 "suspended_reason": {
                     "type": "string"
@@ -5884,6 +6868,12 @@ const docTemplate = `{
                 "is_system_created": {
                     "type": "boolean"
                 },
+                "leave_balances": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.LeaveBalance"
+                    }
+                },
                 "manager": {
                     "$ref": "#/definitions/model.User"
                 },
@@ -5903,6 +6893,9 @@ const docTemplate = `{
                     "maxLength": 100,
                     "minLength": 3,
                     "example": "Budi Santoso"
+                },
+                "payroll_profile": {
+                    "$ref": "#/definitions/model.UserPayrollProfile"
                 },
                 "phone_number": {
                     "type": "string",
@@ -5988,15 +6981,72 @@ const docTemplate = `{
         "model.UserChangeRequestStatus": {
             "type": "string",
             "enum": [
+                "draft",
                 "pending",
                 "approved",
-                "rejected"
+                "rejected",
+                "cancelled"
             ],
             "x-enum-varnames": [
+                "StatusDraft",
                 "StatusPending",
                 "StatusApproved",
-                "StatusRejected"
+                "StatusRejected",
+                "StatusCancelled"
             ]
+        },
+        "model.UserPayrollProfile": {
+            "type": "object",
+            "properties": {
+                "bank_account_holder": {
+                    "type": "string"
+                },
+                "bank_account_number": {
+                    "type": "string"
+                },
+                "bank_name": {
+                    "type": "string"
+                },
+                "basic_salary": {
+                    "type": "number"
+                },
+                "bpjs_employment_number": {
+                    "type": "string"
+                },
+                "bpjs_health_number": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "daily_meal_allowance": {
+                    "type": "number"
+                },
+                "daily_transport_allowance": {
+                    "type": "number"
+                },
+                "fixed_allowance": {
+                    "type": "number"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "npwp_number": {
+                    "type": "string"
+                },
+                "ptkp_status": {
+                    "$ref": "#/definitions/model.PtkpStatus"
+                },
+                "updated_at": {
+                    "type": "string"
+                },
+                "user": {
+                    "$ref": "#/definitions/model.User"
+                },
+                "user_id": {
+                    "type": "integer"
+                }
+            }
         },
         "model.UserResponse": {
             "type": "object",
@@ -6048,6 +7098,12 @@ const docTemplate = `{
                 "is_system_created": {
                     "type": "boolean"
                 },
+                "leave_balances": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.LeaveBalance"
+                    }
+                },
                 "manager_id": {
                     "type": "integer"
                 },
@@ -6061,6 +7117,9 @@ const docTemplate = `{
                 "name": {
                     "type": "string",
                     "example": "Budi Santoso"
+                },
+                "payroll_profile": {
+                    "$ref": "#/definitions/model.UserPayrollProfile"
                 },
                 "permissions": {
                     "type": "array",
@@ -6095,6 +7154,9 @@ const docTemplate = `{
                 },
                 "shift": {
                     "$ref": "#/definitions/model.WorkShiftResponse"
+                },
+                "subscription": {
+                    "$ref": "#/definitions/model.SubscriptionContext"
                 },
                 "tenant": {
                     "$ref": "#/definitions/model.TenantResponse"
@@ -6131,6 +7193,17 @@ const docTemplate = `{
                 },
                 "type": {
                     "$ref": "#/definitions/model.ShiftType"
+                }
+            }
+        },
+        "modelDto.AssignSupportAgentRequest": {
+            "type": "object",
+            "required": [
+                "agent_id"
+            ],
+            "properties": {
+                "agent_id": {
+                    "type": "integer"
                 }
             }
         },
@@ -6180,6 +7253,64 @@ const docTemplate = `{
                 "data": {},
                 "meta": {
                     "$ref": "#/definitions/modelDto.Meta"
+                }
+            }
+        },
+        "modelDto.BulkAssignResponse": {
+            "type": "object",
+            "properties": {
+                "failed": {
+                    "type": "integer"
+                },
+                "updated": {
+                    "type": "integer"
+                }
+            }
+        },
+        "modelDto.BulkAssignSupportRequest": {
+            "type": "object",
+            "required": [
+                "agent_id",
+                "ids"
+            ],
+            "properties": {
+                "agent_id": {
+                    "type": "integer"
+                },
+                "ids": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "modelDto.BulkSupportInboxRequest": {
+            "type": "object",
+            "required": [
+                "action",
+                "ids"
+            ],
+            "properties": {
+                "action": {
+                    "type": "string",
+                    "enum": [
+                        "MARK_READ",
+                        "MARK_UNREAD",
+                        "RESOLVE",
+                        "ASSIGN"
+                    ]
+                },
+                "assign_to_id": {
+                    "type": "integer"
+                },
+                "ids": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                        "type": "string"
+                    }
                 }
             }
         },
@@ -6318,6 +7449,9 @@ const docTemplate = `{
                 "name"
             ],
             "properties": {
+                "days": {
+                    "type": "integer"
+                },
                 "features": {
                     "type": "array",
                     "items": {
@@ -6329,6 +7463,9 @@ const docTemplate = `{
                 },
                 "name": {
                     "type": "string"
+                },
+                "price": {
+                    "type": "number"
                 }
             }
         },
@@ -6340,13 +7477,30 @@ const docTemplate = `{
                 "subject"
             ],
             "properties": {
+                "attachment_url": {
+                    "type": "string"
+                },
                 "category": {
                     "$ref": "#/definitions/model.SupportCategory"
                 },
                 "message": {
                     "type": "string"
                 },
+                "priority": {
+                    "$ref": "#/definitions/model.SupportPriority"
+                },
                 "subject": {
+                    "type": "string"
+                }
+            }
+        },
+        "modelDto.CreateSupportReplyRequest": {
+            "type": "object",
+            "required": [
+                "message"
+            ],
+            "properties": {
+                "message": {
                     "type": "string"
                 }
             }
@@ -6524,6 +7678,9 @@ const docTemplate = `{
                 "plan": {
                     "type": "string"
                 },
+                "remaining_employees_limit": {
+                    "type": "integer"
+                },
                 "status": {
                     "$ref": "#/definitions/model.SubscriptionStatus"
                 },
@@ -6581,9 +7738,40 @@ const docTemplate = `{
                 }
             }
         },
+        "modelDto.SupportAssigneeResponse": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "modelDto.SupportCategoryInfo": {
+            "type": "object",
+            "properties": {
+                "description": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "label": {
+                    "type": "string"
+                }
+            }
+        },
         "modelDto.SupportMessageResponse": {
             "type": "object",
             "properties": {
+                "assigned_to": {
+                    "$ref": "#/definitions/modelDto.SupportAssigneeResponse"
+                },
+                "attachment_url": {
+                    "type": "string"
+                },
                 "category": {
                     "$ref": "#/definitions/model.SupportCategory"
                 },
@@ -6593,8 +7781,14 @@ const docTemplate = `{
                 "id": {
                     "type": "string"
                 },
+                "is_read": {
+                    "type": "boolean"
+                },
                 "message": {
                     "type": "string"
+                },
+                "priority": {
+                    "$ref": "#/definitions/model.SupportPriority"
                 },
                 "status": {
                     "$ref": "#/definitions/model.SupportStatus"
@@ -6607,6 +7801,43 @@ const docTemplate = `{
                 },
                 "tenant_id": {
                     "type": "integer"
+                },
+                "user": {
+                    "$ref": "#/definitions/model.UserResponse"
+                },
+                "user_id": {
+                    "type": "integer"
+                }
+            }
+        },
+        "modelDto.SupportPriorityInfo": {
+            "type": "object",
+            "properties": {
+                "color": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "label": {
+                    "type": "string"
+                }
+            }
+        },
+        "modelDto.SupportReplyResponse": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "message": {
+                    "type": "string"
+                },
+                "message_id": {
+                    "type": "string"
                 },
                 "user": {
                     "$ref": "#/definitions/model.UserResponse"
@@ -6727,6 +7958,9 @@ const docTemplate = `{
         "modelDto.UpdatePlanRequest": {
             "type": "object",
             "properties": {
+                "days": {
+                    "type": "integer"
+                },
                 "features": {
                     "type": "array",
                     "items": {
@@ -6741,6 +7975,9 @@ const docTemplate = `{
                 },
                 "name": {
                     "type": "string"
+                },
+                "price": {
+                    "type": "number"
                 }
             }
         },
@@ -6763,6 +8000,17 @@ const docTemplate = `{
             "properties": {
                 "status": {
                     "$ref": "#/definitions/model.SupportStatus"
+                }
+            }
+        },
+        "modelDto.UpdateSupportReadStateRequest": {
+            "type": "object",
+            "required": [
+                "is_read"
+            ],
+            "properties": {
+                "is_read": {
+                    "type": "boolean"
                 }
             }
         },
@@ -6797,11 +8045,75 @@ const docTemplate = `{
         },
         "modelDto.UpgradeRequest": {
             "type": "object",
-            "required": [
-                "plan"
-            ],
             "properties": {
                 "plan": {
+                    "type": "string"
+                },
+                "plan_id": {
+                    "type": "integer"
+                }
+            }
+        },
+        "modelDto.UserReplySupportRequest": {
+            "type": "object",
+            "required": [
+                "message"
+            ],
+            "properties": {
+                "message": {
+                    "type": "string"
+                }
+            }
+        },
+        "modelDto.UserSupportHistoryResponse": {
+            "type": "object",
+            "properties": {
+                "category": {
+                    "$ref": "#/definitions/model.SupportCategory"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "message": {
+                    "type": "string"
+                },
+                "priority": {
+                    "$ref": "#/definitions/model.SupportPriority"
+                },
+                "replies": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/modelDto.UserSupportReplyItemResponse"
+                    }
+                },
+                "status": {
+                    "$ref": "#/definitions/model.SupportStatus"
+                },
+                "subject": {
+                    "type": "string"
+                }
+            }
+        },
+        "modelDto.UserSupportReplyItemResponse": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "message": {
+                    "type": "string"
+                },
+                "sender_name": {
+                    "type": "string"
+                },
+                "sender_type": {
+                    "description": "\"ADMIN\" or \"USER\"",
                     "type": "string"
                 }
             }
@@ -6827,6 +8139,9 @@ const docTemplate = `{
                     "items": {
                         "type": "string"
                     }
+                },
+                "tenant_id": {
+                    "type": "integer"
                 }
             }
         },
@@ -6844,6 +8159,9 @@ const docTemplate = `{
                     "items": {
                         "type": "string"
                     }
+                },
+                "tenant_id": {
+                    "type": "integer"
                 }
             }
         },

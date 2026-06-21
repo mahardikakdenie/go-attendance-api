@@ -5,13 +5,13 @@ import "time"
 type BaseRole string
 
 const (
-	BaseRoleSuperAdmin BaseRole = "SUPERADMIN"
-	BaseRoleSupport    BaseRole = "SUPPORT"
-	BaseRoleEngineer   BaseRole = "ENGINEER"
-	BaseRoleAdmin      BaseRole = "ADMIN"
-	BaseRoleHR         BaseRole = "HR"
-	BaseRoleFinance    BaseRole = "FINANCE"
-	BaseRoleEmployee   BaseRole = "EMPLOYEE"
+	BaseRoleSuperAdmin BaseRole = "superadmin"
+	BaseRoleSupport    BaseRole = "support"
+	BaseRoleEngineer   BaseRole = "engineer"
+	BaseRoleAdmin      BaseRole = "admin"
+	BaseRoleHR         BaseRole = "hr"
+	BaseRoleFinance    BaseRole = "finance"
+	BaseRoleEmployee   BaseRole = "employee"
 )
 
 type Role struct {
@@ -19,7 +19,7 @@ type Role struct {
 	TenantID    *uint     `gorm:"index" json:"tenant_id"`
 	Name        string    `gorm:"type:varchar(50);not null" json:"name" example:"admin"`
 	Description string    `gorm:"type:text" json:"description"`
-	BaseRole    BaseRole  `gorm:"type:varchar(20);not null;default:'EMPLOYEE'" json:"base_role"`
+	BaseRole    BaseRole  `gorm:"type:varchar(20);not null;default:'employee'" json:"base_role"`
 	IsSystem    bool      `gorm:"default:false" json:"is_system"`
 	IsImmutable bool      `gorm:"default:false" json:"is_immutable"`
 	IsEditable  bool      `gorm:"default:true" json:"is_editable"`
@@ -27,6 +27,7 @@ type Role struct {
 	UpdatedAt   time.Time `json:"updated_at"`
 
 	Permissions []Permission `gorm:"many2many:role_permissions;" json:"permissions,omitempty"`
+	Menus       []Menu       `gorm:"many2many:role_menu_visibility;" json:"menus,omitempty"`
 }
 
 type RoleResponse struct {

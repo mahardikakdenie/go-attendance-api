@@ -28,6 +28,7 @@ type CreateSystemRoleRequest struct {
 	Description   string   `json:"description"`
 	BaseRole      string   `json:"base_role"`
 	PermissionIDs []string `json:"permission_ids"`
+	Permissions   []string `json:"permissions"` // Alias: frontend sends "permissions"
 }
 
 type UpdateSystemRoleRequest struct {
@@ -76,9 +77,9 @@ type GrowthChartData struct {
 }
 
 type TenantStatusData struct {
-	Label string `json:label`
-	Value int64  `json:value`
-	Color string `json:color`
+	Label string `json:"label"`
+	Value int64  `json:"value"`
+	Color string `json:"color"`
 }
 
 type TenantFullDetailsResponse struct {

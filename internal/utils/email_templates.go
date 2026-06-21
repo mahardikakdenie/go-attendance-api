@@ -474,6 +474,41 @@ func GetTrialConfirmationEmailTemplate(name, company string) string {
 `, name, company)
 }
 
+func GetSupportTicketAssignedEmailTemplate(agentName, subject, tenantName string) string {
+	return fmt.Sprintf(`
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; background-color: #f4f7f9; }
+        .container { max-width: 600px; margin: 20px auto; background: #fff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        .header { background: linear-gradient(135deg, #7C3AED 0%%, #5B21B6 100%%); color: #fff; padding: 30px 20px; text-align: center; }
+        .content { padding: 24px; }
+        .box { background-color: #F5F3FF; border-left: 4px solid #7C3AED; padding: 16px; margin: 16px 0; border-radius: 4px; }
+        .footer { background-color: #f4f7f9; color: #777; padding: 16px; text-align: center; font-size: 12px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header"><h1>New Support Assignment</h1></div>
+        <div class="content">
+            <p>Hello %s,</p>
+            <p>You have been assigned a support ticket that needs your action.</p>
+            <div class="box">
+                <p><strong>Tenant:</strong> %s</p>
+                <p><strong>Subject:</strong> %s</p>
+            </div>
+            <p>Please open Support Desk to review and respond.</p>
+        </div>
+        <div class="footer">&copy; 2026 Attendance API. This is an automated message.</div>
+    </div>
+</body>
+</html>
+`, agentName, tenantName, subject)
+}
+
 func GetCalendarEventReminderTemplate(userName, eventName, eventDate, eventType, description string) string {
 	return fmt.Sprintf(`
 <!DOCTYPE html>

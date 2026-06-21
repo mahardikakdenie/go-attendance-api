@@ -79,6 +79,7 @@ func InitDB() *gorm.DB {
 	// Stage 2: Hierarchies and User (Depends on Stage 1)
 	err = db.AutoMigrate(
 		&model.RolePermission{},
+		&model.RoleMenuVisibility{},
 		&model.RoleHierarchy{},
 		&model.User{},
 		&model.UserPayrollProfile{},
@@ -131,6 +132,7 @@ func InitDB() *gorm.DB {
 	// Data Backfill
 	backfillSubscriptions(db)
 	backfillPayrollProfiles(db)
+	backfillRoleMenuVisibility(db)
 
 	// Register Tenant Plugin
 	if err := db.Use(&TenantPlugin{}); err != nil {
@@ -192,4 +194,31 @@ func backfillPayrollProfiles(db *gorm.DB) {
 	} else if result.RowsAffected > 0 {
 		log.Printf("✅ Successfully backfilled %d user payroll profiles\n", result.RowsAffected)
 	}
+}
+
+func backfillRoleMenuVisibility(db *gorm.DB) {
+	log.Println("🔄 Backfilling role_menu_visibility from required_permission...")
+
+	// This join finds which roles have the permission required by a menu
+	// and inserts that mapping into the new role_menu_visibility table.
+	// It handles both system roles (tenant_id IS NULL) and tenant roles.
+	result := db.Exec(`
+		INSERT INTO role_menu_visibility (menu_id, role_id)
+		SELECT m.id, rp.role_id
+		FROM menus m
+		JOIN role_permissions rp ON m.required_permission = rp.permission_id
+		WHERE m.required_permission IS NOT NULL AND m.required_permission != ''
+		ON CONFLICT (menu_id, role_id) DO NOTHING
+	`)
+
+	if result.Error != nil {
+		log.Printf("⚠️ Warning during role_menu_visibility backfill: %v\n", result.Error)
+	} else if result.RowsAffected > 0 {
+		log.Printf("✅ Successfully backfilled %d role-menu visibility mappings\n", result.RowsAffected)
+	}
+
+	// Also handle menus that have no required_permission (public/dashboard)
+	// Usually these should be visible to all roles.
+	// For safety, we only backfill if the table is mostly empty or for specific important keys if needed.
+	// But according to the task, we primarily want to migrate existing permission-based visibility.
 }

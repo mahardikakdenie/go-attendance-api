@@ -62,8 +62,9 @@ func (r *roleRepository) FindByTenantID(ctx context.Context, tenantID uint) ([]m
 func (r *roleRepository) FindSystemRoles(ctx context.Context) ([]model.Role, error) {
 	var roles []model.Role
 	err := r.db.WithContext(ctx).
-		Where("tenant_id IS NULL").
+		Where("tenant_id IS NULL AND is_system = true").
 		Preload("Permissions").
+		Preload("Menus").
 		Find(&roles).Error
 	return roles, err
 }

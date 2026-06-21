@@ -48,22 +48,72 @@ type ProvisioningTicketResponse struct {
 
 // Support Message DTOs
 type CreateSupportMessageRequest struct {
-	Subject  string                `json:"subject" binding:"required"`
-	Message  string                `json:"message" binding:"required"`
-	Category model.SupportCategory `json:"category" binding:"required"`
+	Subject       string                `json:"subject" binding:"required"`
+	Message       string                `json:"message" binding:"required"`
+	Category      model.SupportCategory `json:"category" binding:"required"`
+	Priority      model.SupportPriority `json:"priority"`
+	AttachmentURL string                `json:"attachment_url"`
 }
 
 type SupportMessageResponse struct {
-	ID        uuid.UUID             `json:"id"`
-	TenantID  uint                  `json:"tenant_id"`
-	UserID    uint                  `json:"user_id"`
-	Subject   string                `json:"subject"`
-	Message   string                `json:"message"`
-	Category  model.SupportCategory `json:"category"`
-	Status    model.SupportStatus   `json:"status"`
-	CreatedAt time.Time             `json:"created_at"`
-	Tenant    *model.TenantResponse `json:"tenant,omitempty"`
-	User      *model.UserResponse   `json:"user,omitempty"`
+	ID            uuid.UUID               `json:"id"`
+	TenantID      uint                    `json:"tenant_id"`
+	UserID        uint                    `json:"user_id"`
+	Subject       string                  `json:"subject"`
+	Message       string                  `json:"message"`
+	Category      model.SupportCategory   `json:"category"`
+	Priority      model.SupportPriority   `json:"priority"`
+	Status        model.SupportStatus     `json:"status"`
+	IsRead        bool                    `json:"is_read"`
+	AttachmentURL string                  `json:"attachment_url,omitempty"`
+	CreatedAt     time.Time               `json:"created_at"`
+	Tenant        *model.TenantResponse   `json:"tenant,omitempty"`
+	User          *model.UserResponse     `json:"user,omitempty"`
+	AssignedTo    *SupportAssigneeResponse `json:"assigned_to,omitempty"`
+}
+
+type SupportAssigneeResponse struct {
+	ID   uint   `json:"id"`
+	Name string `json:"name"`
+}
+
+type SupportInboxFilterRequest struct {
+	Search   string               `form:"search"`
+	Category model.SupportCategory `form:"category"`
+	Status   model.SupportStatus   `form:"status"`
+	Limit    int                  `form:"limit"`
+	Offset   int                  `form:"offset"`
+}
+
+type BulkSupportInboxRequest struct {
+	IDs        []uuid.UUID          `json:"ids" binding:"required,min=1"`
+	Action     string               `json:"action" binding:"required,oneof=MARK_READ MARK_UNREAD RESOLVE ASSIGN"`
+	AssignToID *uint                `json:"assign_to_id,omitempty"`
+}
+
+type UpdateSupportReadStateRequest struct {
+	IsRead bool `json:"is_read" binding:"required"`
+}
+
+type AssignSupportAgentRequest struct {
+	AgentID uint `json:"agent_id" binding:"required"`
+}
+
+type BulkAssignSupportRequest struct {
+	IDs     []uuid.UUID `json:"ids" binding:"required,min=1"`
+	AgentID uint        `json:"agent_id" binding:"required"`
+}
+
+type BulkAssignResponse struct {
+	Updated int `json:"updated"`
+	Failed  int `json:"failed"`
+}
+
+type SupportAgentResponse struct {
+	ID       uint   `json:"id"`
+	Name     string `json:"name"`
+	Email    string `json:"email"`
+	IsActive bool   `json:"is_active"`
 }
 
 type UpdateSupportMessageStatusRequest struct {
@@ -81,4 +131,48 @@ type SupportReplyResponse struct {
 	Message   string              `json:"message"`
 	CreatedAt time.Time           `json:"created_at"`
 	User      *model.UserResponse `json:"user,omitempty"`
+}
+
+// User Support History (BE-006) DTOs
+type UserSupportReplyItemResponse struct {
+	ID         uuid.UUID `json:"id"`
+	SenderType string    `json:"sender_type"` // "ADMIN" or "USER"
+	SenderName string    `json:"sender_name"`
+	Message    string    `json:"message"`
+	CreatedAt  time.Time `json:"created_at"`
+}
+
+type UserSupportHistoryResponse struct {
+	ID        uuid.UUID                       `json:"id"`
+	Subject   string                          `json:"subject"`
+	Category  model.SupportCategory           `json:"category"`
+	Priority  model.SupportPriority           `json:"priority"`
+	Status    model.SupportStatus             `json:"status"`
+	Message   string                          `json:"message"`
+	CreatedAt time.Time                       `json:"created_at"`
+	Replies   []UserSupportReplyItemResponse  `json:"replies"`
+}
+
+type UserSupportHistoryFilterRequest struct {
+	Search   string              `form:"search"`
+	Status   model.SupportStatus `form:"status"`
+	Priority model.SupportPriority `form:"priority"`
+	Limit    int                 `form:"limit"`
+	Offset   int                 `form:"offset"`
+}
+
+type UserReplySupportRequest struct {
+	Message string `json:"message" binding:"required"`
+}
+
+type SupportCategoryInfo struct {
+	ID          string `json:"id"`
+	Label       string `json:"label"`
+	Description string `json:"description"`
+}
+
+type SupportPriorityInfo struct {
+	ID    string `json:"id"`
+	Label string `json:"label"`
+	Color string `json:"color"`
 }

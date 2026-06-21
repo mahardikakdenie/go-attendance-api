@@ -4,14 +4,15 @@ import (
 	"context"
 	modelDto "go-attendance-api/internal/dto"
 	"go-attendance-api/internal/model"
+	"strings"
 	"time"
 
 	"gorm.io/gorm"
 )
 
 type SuperadminRepository interface {
-	GetOwnersWithStats(ctx context.Context, limit, offset int) ([]modelDto.OwnerWithStatsResponse, int64, error)
-	GetPlatformAccounts(ctx context.Context, search string, limit, offset int) ([]model.User, int64, error)
+	GetOwnersWithStats(ctx context.Context, limit, offset int, search, status, plan string) ([]modelDto.OwnerWithStatsResponse, int64, error)
+	GetPlatformAccounts(ctx context.Context, search string, baseRole string, limit, offset int) ([]model.User, int64, error)
 	GetAnalyticsDashboard(ctx context.Context, period string) (*modelDto.AnalyticsDashboardResponse, error)
 	GetTenantFullDetails(ctx context.Context, tenantID uint) (*modelDto.TenantFullDetailsResponse, error)
 }
@@ -24,24 +25,83 @@ func NewSuperadminRepository(db *gorm.DB) SuperadminRepository {
 	return &superadminRepository{db: db}
 }
 
-func (r *superadminRepository) GetOwnersWithStats(ctx context.Context, limit, offset int) ([]modelDto.OwnerWithStatsResponse, int64, error) {
+func (r *superadminRepository) GetOwnersWithStats(ctx context.Context, limit, offset int, search, status, plan string) ([]modelDto.OwnerWithStatsResponse, int64, error) {
 	var results []modelDto.OwnerWithStatsResponse
 	var total int64
 
-	// Count total tenants
-	err := r.db.WithContext(ctx).Model(&model.Tenant{}).Count(&total).Error
+	// Build filter clauses and params
+	filterClause := ""
+	var filterParams []interface{}
+
+	// Search filter
+	if search != "" {
+		escaped := strings.ReplaceAll(search, "\\", "\\\\")
+		escaped = strings.ReplaceAll(escaped, "%", "\\%")
+		escaped = strings.ReplaceAll(escaped, "_", "\\_")
+		searchPattern := "%" + escaped + "%"
+
+		filterClause += `
+			AND (
+				LOWER(t.name) LIKE LOWER(?)
+				OR LOWER(t.code) LIKE LOWER(?)
+				OR LOWER(u_search.name) LIKE LOWER(?)
+			)
+		`
+		filterParams = append(filterParams, searchPattern, searchPattern, searchPattern)
+	}
+
+	// Status filter
+	switch status {
+	case "Active":
+		filterClause += ` AND t.is_suspended = false`
+	case "Suspended":
+		filterClause += ` AND t.is_suspended = true`
+	}
+
+	// Plan filter
+	if plan != "" {
+		filterClause += ` AND LOWER(sp_filter.name) = LOWER(?)`
+		filterParams = append(filterParams, plan)
+	}
+
+	// Plan join clause — only needed when plan filter is active
+	planJoinClause := ""
+	if plan != "" {
+		planJoinClause = `
+			JOIN subscriptions s_filter ON t.id = s_filter.tenant_id
+			JOIN subscription_plans sp_filter ON s_filter.plan_id = sp_filter.id
+		`
+	}
+
+	// Count total tenants matching filters
+	countQuery := `
+		SELECT COUNT(*)
+		FROM tenants t
+		LEFT JOIN LATERAL (
+			SELECT u2.name
+			FROM users u2
+			JOIN roles r2 ON u2.role_id = r2.id
+			WHERE u2.tenant_id = t.id
+			AND r2.base_role IN ('admin', 'superadmin')
+			ORDER BY u2.created_at ASC
+			LIMIT 1
+		) u_search ON true
+	` + planJoinClause + `
+		WHERE 1=1
+	` + filterClause
+
+	err := r.db.WithContext(ctx).Raw(countQuery, filterParams...).Scan(&total).Error
 	if err != nil {
 		return nil, 0, err
 	}
 
 	// Fetch tenants with pagination and join with owner info (if any)
-	// We pick the first user with ADMIN/SUPERADMIN role as the "owner" for display
-	query := `
-		SELECT 
-			t.id as tenant_id, t.name as tenant_name, t.code as tenant_code, 
+	dataQuery := `
+		SELECT
+			t.id as tenant_id, t.name as tenant_name, t.code as tenant_code,
 			t.is_suspended as is_suspended,
 			t.created_at as created_at,
-			CASE 
+			CASE
 				WHEN t.is_suspended THEN 'Suspended'
 				WHEN s.status IS NOT NULL THEN s.status
 				ELSE 'No Subscription'
@@ -57,21 +117,25 @@ func (r *superadminRepository) GetOwnersWithStats(ctx context.Context, limit, of
 			(SELECT COUNT(*) FROM expenses WHERE tenant_id = t.id) as expense_count
 		FROM tenants t
 		LEFT JOIN LATERAL (
-			SELECT u2.id, u2.name, u2.email 
+			SELECT u2.id, u2.name, u2.email
 			FROM users u2
 			JOIN roles r2 ON u2.role_id = r2.id
-			WHERE u2.tenant_id = t.id 
-			AND r2.base_role IN ('ADMIN', 'SUPERADMIN')
+			WHERE u2.tenant_id = t.id
+			AND r2.base_role IN ('admin', 'superadmin')
 			ORDER BY u2.created_at ASC
 			LIMIT 1
 		) u ON true
 		LEFT JOIN subscriptions s ON t.id = s.tenant_id
 		LEFT JOIN subscription_plans sp ON s.plan_id = sp.id
+	` + planJoinClause + `
+		WHERE 1=1
+	` + filterClause + `
 		ORDER BY t.created_at DESC
 		LIMIT ? OFFSET ?
 	`
 
-	err = r.db.WithContext(ctx).Raw(query, limit, offset).Scan(&results).Error
+	dataParams := append(filterParams, limit, offset)
+	err = r.db.WithContext(ctx).Raw(dataQuery, dataParams...).Scan(&results).Error
 	if err != nil {
 		return nil, 0, err
 	}
@@ -79,13 +143,18 @@ func (r *superadminRepository) GetOwnersWithStats(ctx context.Context, limit, of
 	return results, total, nil
 }
 
-func (r *superadminRepository) GetPlatformAccounts(ctx context.Context, search string, limit, offset int) ([]model.User, int64, error) {
+func (r *superadminRepository) GetPlatformAccounts(ctx context.Context, search string, baseRole string, limit, offset int) ([]model.User, int64, error) {
 	var users []model.User
 	var total int64
 
 	query := r.db.WithContext(ctx).Model(&model.User{}).
-		Joins("JOIN roles ON users.role_id = roles.id").
-		Where("roles.base_role IN ?", []model.BaseRole{model.BaseRoleSuperAdmin, model.BaseRoleSupport, model.BaseRoleEngineer})
+		Joins("JOIN roles ON users.role_id = roles.id")
+
+	if baseRole != "" {
+		query = query.Where("roles.base_role = ?", baseRole)
+	} else {
+		query = query.Where("roles.base_role IN ?", []model.BaseRole{model.BaseRoleSuperAdmin, model.BaseRoleSupport})
+	}
 
 	if search != "" {
 		query = query.Where("users.name ILIKE ? OR users.email ILIKE ?", "%"+search+"%", "%"+search+"%")

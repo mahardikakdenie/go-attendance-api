@@ -204,14 +204,16 @@ func SecureAuth(authService service.AuthService) gin.HandlerFunc {
 		c.Set("plan_features", user.PlanFeatures)
 		c.Set("is_restricted", isRestricted) // 🆕 Pass restriction status
 
-		// Set role name string for RequireRole middleware
-		if user.Role != nil {
-			c.Set("role", user.Role.Name)
-			c.Set("base_role", user.Role.BaseRole)
-		} else {
-			c.Set("role", "")
-			c.Set("base_role", "")
-		}
+			// Set role info for middleware and context consumers
+			if user.Role != nil {
+				c.Set("role", user.Role.Name)
+				c.Set("base_role", user.Role.BaseRole)
+				c.Set("role_id", user.Role.ID)
+			} else {
+				c.Set("role", "")
+				c.Set("base_role", "")
+				c.Set("role_id", uint(0))
+			}
 
 		c.Next()
 	}

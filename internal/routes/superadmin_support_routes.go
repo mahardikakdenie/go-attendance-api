@@ -61,8 +61,13 @@ func RegisterSupportRoutes(rg *gin.RouterGroup, h handler.SupportHandler) {
 	support := rg.Group("/admin/support")
 	support.Use(middleware.RequireTenant(1)) // HQ only
 	{
+		support.GET("/agents", middleware.HasPermission("support.manage"), h.GetSupportAgents)
 		support.GET("/inbox", middleware.HasPermission("support.manage"), h.GetAllSupportMessages)
+		support.PATCH("/inbox/bulk", middleware.HasPermission("support.manage"), h.BulkUpdateSupportMessages)
+		support.PATCH("/inbox/bulk-assign", middleware.HasPermission("support.manage"), h.BulkAssignSupport)
 		support.PATCH("/inbox/:id", middleware.HasPermission("support.manage"), h.UpdateSupportStatus)
+		support.PATCH("/inbox/:id/read-state", middleware.HasPermission("support.manage"), h.UpdateSupportReadState)
+		support.PATCH("/inbox/:id/assign", middleware.HasPermission("support.manage"), h.AssignSupportAgent)
 		support.GET("/trials", middleware.HasPermission("support.manage"), h.GetAllTrialRequests)
 		support.PATCH("/trials/:id", middleware.HasPermission("support.manage"), h.UpdateTrialStatus)
 
@@ -71,6 +76,17 @@ func RegisterSupportRoutes(rg *gin.RouterGroup, h handler.SupportHandler) {
 	}
 
 	rg.POST("/support/message", h.CreateSupportMessage)
+	rg.GET("/support/history", h.GetUserSupportHistory)
+	rg.POST("/support/tickets/:id/reply", h.ReplyToTicketByUser)
+
+	// BE-009: /tickets endpoints (preferred)
+	rg.POST("/tickets", h.CreateSupportMessage)
+	rg.GET("/tickets/categories", h.GetSupportCategories)
+	rg.GET("/tickets/priorities", h.GetSupportPriorities)
+	rg.GET("/tickets/history", h.GetUserSupportHistory)
+	rg.POST("/tickets/:id/reply", h.ReplyToTicketByUser)
+
+	// Backward-compatible endpoints
 	rg.POST("/support/message/:id/reply", h.CreateReply)
 	rg.GET("/support/message/:id/replies", h.GetReplies)
 }

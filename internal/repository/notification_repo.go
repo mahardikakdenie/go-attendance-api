@@ -11,6 +11,8 @@ type NotificationRepository interface {
 	Create(ctx context.Context, notification *model.Notification) error
 	FindAllByUser(ctx context.Context, userID uint, limit int) ([]model.Notification, error)
 	FindUnreadByUser(ctx context.Context, userID uint) ([]model.Notification, error)
+	CountUnreadByUser(ctx context.Context, userID uint) (int64, error)
+	FindSinceID(ctx context.Context, userID uint, sinceID uint, limit int) ([]model.Notification, error)
 	MarkAsRead(ctx context.Context, id uint, userID uint) error
 	MarkAllAsRead(ctx context.Context, userID uint) error
 }
@@ -58,4 +60,23 @@ func (r *notificationRepository) MarkAllAsRead(ctx context.Context, userID uint)
 		Model(&model.Notification{}).
 		Where("user_id = ? AND is_read = ?", userID, false).
 		Update("is_read", true).Error
+}
+
+func (r *notificationRepository) CountUnreadByUser(ctx context.Context, userID uint) (int64, error) {
+	var count int64
+	err := r.db.WithContext(ctx).
+		Model(&model.Notification{}).
+		Where("user_id = ? AND is_read = ?", userID, false).
+		Count(&count).Error
+	return count, err
+}
+
+func (r *notificationRepository) FindSinceID(ctx context.Context, userID uint, sinceID uint, limit int) ([]model.Notification, error) {
+	var notifications []model.Notification
+	err := r.db.WithContext(ctx).
+		Where("user_id = ? AND id > ?", userID, sinceID).
+		Order("id ASC").
+		Limit(limit).
+		Find(&notifications).Error
+	return notifications, err
 }

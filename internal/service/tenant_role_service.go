@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"errors"
+	"go-attendance-api/internal/events"
 	"go-attendance-api/internal/model"
 	"go-attendance-api/internal/repository"
 )
@@ -92,6 +93,12 @@ func (s *tenantRoleService) CreateRole(ctx context.Context, tenantID uint, baseR
 		}
 	}
 
+	// Dispatch event for real-time update
+	events.GetDispatcher().Dispatch(ctx, events.Event{
+		Type: events.RolePermissionsChanged,
+		Data: role,
+	})
+
 	return s.roleRepo.FindByID(ctx, role.ID)
 }
 
@@ -133,6 +140,12 @@ func (s *tenantRoleService) UpdateRole(ctx context.Context, tenantID uint, baseR
 		}
 	}
 
+	// Dispatch event for real-time update
+	events.GetDispatcher().Dispatch(ctx, events.Event{
+		Type: events.RolePermissionsChanged,
+		Data: role,
+	})
+
 	return s.roleRepo.FindByID(ctx, role.ID)
 }
 
@@ -150,7 +163,17 @@ func (s *tenantRoleService) DeleteRole(ctx context.Context, tenantID uint, roleI
 		return errors.New("forbidden: not your tenant role")
 	}
 
-	return s.roleRepo.Delete(ctx, roleID)
+	if err := s.roleRepo.Delete(ctx, roleID); err != nil {
+		return err
+	}
+
+	// Dispatch event for real-time update
+	events.GetDispatcher().Dispatch(ctx, events.Event{
+		Type: events.RolePermissionsChanged,
+		Data: roleID,
+	})
+
+	return nil
 }
 
 func (s *tenantRoleService) GetHierarchy(ctx context.Context, roleID uint) ([]model.RoleHierarchy, error) {

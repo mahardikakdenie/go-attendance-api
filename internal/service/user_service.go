@@ -54,16 +54,18 @@ func NewUserService(
 }
 
 var allowedIncludes = map[string]bool{
-	"tenant":                 true,
-	"tenant.tenant_settings": true,
-	"tenant_setting":         true,
-	"attendances":            true,
-	"attendances.user":       true,
-	"role":                   true,
-	"role.permissions":       true,
-	"recent_activities":      true,
-	"leave_balances":         true,
-	"payroll_profile":        true,
+	"tenant":                    true,
+	"tenant.tenant_settings":    true,
+	"tenant_setting":            true,
+	"attendances":               true,
+	"attendances.user":          true,
+	"role":                      true,
+	"role.permissions":          true,
+	"recent_activities":         true,
+	"leave_balances":            true,
+	"payroll_profile":           true,
+	"tenant.subscription":       true,
+	"tenant.subscription.plan":  true,
 }
 
 func filterIncludes(includes []string) []string {

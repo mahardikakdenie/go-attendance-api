@@ -4,7 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	modelDto "go-attendance-api/internal/dto"
+	"go-attendance-api/internal/events"
 	"go-attendance-api/internal/model"
 	"go-attendance-api/internal/repository"
 	"strings"
@@ -14,26 +16,92 @@ import (
 )
 
 type MenuService interface {
-	GetMyMenus(ctx context.Context, baseRole string, permissions []string, planFeatures []string, isRestricted bool) ([]model.MenuResponse, error)
+	GetMyMenus(ctx context.Context, userID uint, roleID uint, baseRole string, planFeatures []string, isRestricted bool) ([]model.MenuResponse, error)
 	GetRolesMenuOverview(ctx context.Context, tenantID uint) ([]model.RoleMenuOverview, error)
-	GetAllMenus(ctx context.Context) ([]model.Menu, error)
-	UpdateMenu(ctx context.Context, id uint, req modelDto.UpdateMenuRequest) (*model.Menu, error)
+	GetAllMenus(ctx context.Context) ([]model.MenuResponse, error)
+	CreateMenu(ctx context.Context, req modelDto.CreateMenuRequest) (*model.Menu, error)
+	UpdateMenu(ctx context.Context, id uint, req modelDto.UpdateMenuRequest) (*model.MenuResponse, error)
 	InvalidateMenuCache(ctx context.Context)
+	InvalidateAllNavCaches(ctx context.Context)
 }
 
 type menuService struct {
-	repo     repository.MenuRepository
-	roleRepo repository.RoleRepository
-	subRepo  repository.SubscriptionRepository
-	redis    *redis.Client
+	repo           repository.MenuRepository
+	roleRepo       repository.RoleRepository
+	subRepo        repository.SubscriptionRepository
+	permissionRepo repository.PermissionRepository
+	redis          *redis.Client
 }
 
-func NewMenuService(repo repository.MenuRepository, roleRepo repository.RoleRepository, subRepo repository.SubscriptionRepository, rdb *redis.Client) MenuService {
-	return &menuService{repo: repo, roleRepo: roleRepo, subRepo: subRepo, redis: rdb}
+func NewMenuService(repo repository.MenuRepository, roleRepo repository.RoleRepository, subRepo repository.SubscriptionRepository, permissionRepo repository.PermissionRepository, rdb *redis.Client) MenuService {
+	return &menuService{repo: repo, roleRepo: roleRepo, subRepo: subRepo, permissionRepo: permissionRepo, redis: rdb}
 }
 
-func (s *menuService) UpdateMenu(ctx context.Context, id uint, req modelDto.UpdateMenuRequest) (*model.Menu, error) {
-	allMenus, err := s.repo.FindAll(ctx) // Don't use getRawMenus here as we want a fresh copy from DB to avoid pointer issues with cache
+func (s *menuService) CreateMenu(ctx context.Context, req modelDto.CreateMenuRequest) (*model.Menu, error) {
+	// 1. Validate ParentID
+	if req.ParentID != nil {
+		allMenus, err := s.repo.FindAll(ctx)
+		if err != nil {
+			return nil, err
+		}
+		found := false
+		for _, m := range allMenus {
+			if m.ID == *req.ParentID {
+				found = true
+				break
+			}
+		}
+		if !found {
+			return nil, errors.New("parent menu not found")
+		}
+	}
+
+	// 2. Generate Key if not provided
+	key := req.Key
+	if key == "" {
+		key = strings.ToLower(strings.ReplaceAll(req.Label, " ", "-"))
+	}
+
+	menu := &model.Menu{
+		Key:       key,
+		Label:     req.Label,
+		Icon:      req.Icon,
+		Path:      req.Path,
+		SortOrder: req.SortOrder,
+		IsSystem:  req.IsSystem,
+		ParentID:  req.ParentID,
+	}
+
+	if req.RequiredPermission != "" {
+		menu.RequiredPermission = &req.RequiredPermission
+	}
+
+	// Use repository to create with many2many roles if provided
+	var err error
+	if len(req.AllowedRoles) > 0 {
+		err = s.repo.UpdateWithRoles(ctx, menu, req.AllowedRoles)
+	} else {
+		err = s.repo.Create(ctx, menu)
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	s.InvalidateMenuCache(ctx)
+	s.InvalidateAllNavCaches(ctx)
+
+	// Dispatch event for real-time update
+	events.GetDispatcher().Dispatch(ctx, events.Event{
+		Type: events.MenuChangedEvent,
+		Data: menu,
+	})
+
+	return menu, nil
+}
+
+func (s *menuService) UpdateMenu(ctx context.Context, id uint, req modelDto.UpdateMenuRequest) (*model.MenuResponse, error) {
+	allMenus, err := s.repo.FindAllWithRoles(ctx) // Preload roles for update
 	if err != nil {
 		return nil, err
 	}
@@ -56,8 +124,12 @@ func (s *menuService) UpdateMenu(ctx context.Context, id uint, req modelDto.Upda
 	if req.Icon != nil {
 		menu.Icon = *req.Icon
 	}
-	if req.AllowedRoles != nil {
-		menu.AllowedRoles = req.AllowedRoles
+	if req.RequiredPermission != nil {
+		if *req.RequiredPermission == "" {
+			menu.RequiredPermission = nil
+		} else {
+			menu.RequiredPermission = req.RequiredPermission
+		}
 	}
 	if req.SortOrder != nil {
 		menu.SortOrder = *req.SortOrder
@@ -66,13 +138,93 @@ func (s *menuService) UpdateMenu(ctx context.Context, id uint, req modelDto.Upda
 		menu.IsSystem = *req.IsSystem
 	}
 
-	err = s.repo.Update(ctx, menu)
+	// Update roles if provided
+	if req.AllowedRoles != nil {
+		err = s.repo.UpdateWithRoles(ctx, menu, req.AllowedRoles)
+	} else {
+		err = s.repo.Update(ctx, menu)
+	}
+
 	if err != nil {
 		return nil, err
 	}
 
+	// Re-fetch updated menu with roles
+	updated, err := s.repo.FindAllWithRoles(ctx)
+	if err != nil {
+		// best-effort: return in-memory data
+		roleIDs := make([]uint, len(menu.Roles))
+		for j, r := range menu.Roles {
+			roleIDs[j] = r.ID
+		}
+		s.InvalidateMenuCache(ctx)
+		s.InvalidateAllNavCaches(ctx)
+		return &model.MenuResponse{
+			ID:           menu.ID,
+			ParentID:     menu.ParentID,
+			Key:          menu.Key,
+			Label:        menu.Label,
+			Icon:         menu.Icon,
+			Path:         menu.Path,
+			Module:       menu.Module,
+			SortOrder:    menu.SortOrder,
+			IsSystem:     menu.IsSystem,
+			AllowedRoles: roleIDs,
+		}, nil
+	}
+
+	var item *model.MenuResponse
+	for _, u := range updated {
+		if u.ID == id {
+			roleIDs := make([]uint, len(u.Roles))
+			for j, r := range u.Roles {
+				roleIDs[j] = r.ID
+			}
+			item = &model.MenuResponse{
+				ID:           u.ID,
+				ParentID:     u.ParentID,
+				Key:          u.Key,
+				Label:        u.Label,
+				Icon:         u.Icon,
+				Path:         u.Path,
+				Module:       u.Module,
+				SortOrder:    u.SortOrder,
+				IsSystem:     u.IsSystem,
+				AllowedRoles: roleIDs,
+			}
+			break
+		}
+	}
+
+	if item == nil {
+		roleIDs := make([]uint, len(menu.Roles))
+		for j, r := range menu.Roles {
+			roleIDs[j] = r.ID
+		}
+		item = &model.MenuResponse{
+			ID:           menu.ID,
+			ParentID:     menu.ParentID,
+			Key:          menu.Key,
+			Label:        menu.Label,
+			Icon:         menu.Icon,
+			Path:         menu.Path,
+			Module:       menu.Module,
+			SortOrder:    menu.SortOrder,
+			IsSystem:     menu.IsSystem,
+			AllowedRoles: roleIDs,
+		}
+	}
+
 	s.InvalidateMenuCache(ctx)
-	return menu, nil
+	s.InvalidateAllNavCaches(ctx)
+
+	// Dispatch event for real-time update
+	events.GetDispatcher().Dispatch(ctx, events.Event{
+		Type: events.MenuChangedEvent,
+		Data: menu,
+	})
+
+	return item, nil
 }
 
 func (s *menuService) getRawMenus(ctx context.Context) ([]model.Menu, error) {
@@ -87,8 +239,10 @@ func (s *menuService) getRawMenus(ctx context.Context) ([]model.Menu, error) {
 		}
 	}
 
-	// 2. Fetch from DB if cache miss
-	allMenus, err := s.repo.FindAll(ctx)
+	// 2. Fetch from DB if cache miss (Preload Roles many2many)
+	allMenus, err := s.repo.FindAllWithRoles(ctx)
+
+	println("ALLMENUS : ", allMenus)
 	if err != nil {
 		return nil, err
 	}
@@ -102,20 +256,94 @@ func (s *menuService) getRawMenus(ctx context.Context) ([]model.Menu, error) {
 }
 
 func (s *menuService) InvalidateMenuCache(ctx context.Context) {
-	s.redis.Del(ctx, "cache:menus:all")
+	if s.redis != nil {
+		s.redis.Del(ctx, "cache:menus:all")
+	}
 }
 
-func (s *menuService) GetAllMenus(ctx context.Context) ([]model.Menu, error) {
-	return s.getRawMenus(ctx)
+func (s *menuService) InvalidateAllNavCaches(ctx context.Context) {
+	if s.redis != nil {
+		// Use SCAN to find all user_nav:* keys and delete them
+		var cursor uint64
+		for {
+			var keys []string
+			var err error
+			keys, cursor, err = s.redis.Scan(ctx, cursor, "user_nav:*", 100).Result()
+			if err != nil {
+				break
+			}
+			if len(keys) > 0 {
+				s.redis.Del(ctx, keys...)
+			}
+			if cursor == 0 {
+				break
+			}
+		}
+	}
 }
 
-func (s *menuService) GetMyMenus(ctx context.Context, baseRole string, permissions []string, planFeatures []string, isRestricted bool) ([]model.MenuResponse, error) {
+func (s *menuService) GetAllMenus(ctx context.Context) ([]model.MenuResponse, error) {
 	allMenus, err := s.getRawMenus(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	return s.filterMenus(allMenus, baseRole, permissions, planFeatures, isRestricted), nil
+	res := make([]model.MenuResponse, len(allMenus))
+	for i, m := range allMenus {
+		roleIDs := make([]uint, len(m.Roles))
+		for j, r := range m.Roles {
+			roleIDs[j] = r.ID
+		}
+		res[i] = model.MenuResponse{
+			ID:           m.ID,
+			ParentID:     m.ParentID,
+			Key:          m.Key,
+			Label:        m.Label,
+			Icon:         m.Icon,
+			Path:         m.Path,
+			Module:       m.Module,
+			SortOrder:    m.SortOrder,
+			IsSystem:     m.IsSystem,
+			AllowedRoles: roleIDs,
+		}
+	}
+	return res, nil
+}
+
+func (s *menuService) GetMyMenus(ctx context.Context, userID uint, roleID uint, baseRole string, planFeatures []string, isRestricted bool) ([]model.MenuResponse, error) {
+	cacheKey := fmt.Sprintf("user_nav:%d", userID)
+	_ = roleID
+	// roleID used in filterMenus for direct role visibility
+	// cache key remains user-based
+
+
+	// 1. Try fetching from Redis
+	if s.redis != nil {
+		val, err := s.redis.Get(ctx, cacheKey).Result()
+		if err == nil && val != "" {
+			var menus []model.MenuResponse
+			if err := json.Unmarshal([]byte(val), &menus); err == nil {
+				return menus, nil
+			}
+		}
+	}
+
+	// 2. Fetch raw and filter if cache miss
+	allMenus, err := s.getRawMenus(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	filtered := s.filterMenus(allMenus, roleID, baseRole, planFeatures, isRestricted)
+
+	// 3. Save to Redis (Cache for 1 hour, or until invalidated)
+	if s.redis != nil {
+		if payload, err := json.Marshal(filtered); err == nil {
+			s.redis.Set(ctx, cacheKey, payload, 1*time.Hour)
+		}
+	}
+
+	return filtered, nil
 }
 
 func (s *menuService) GetRolesMenuOverview(ctx context.Context, tenantID uint) ([]model.RoleMenuOverview, error) {
@@ -156,7 +384,7 @@ func (s *menuService) GetRolesMenuOverview(ctx context.Context, tenantID uint) (
 			perms[i] = p.ID
 		}
 
-		roleMenus := s.filterMenus(allMenus, string(r.BaseRole), perms, planFeatures, false)
+		roleMenus := s.filterMenus(allMenus, r.ID, string(r.BaseRole), planFeatures, false)
 		overview = append(overview, model.RoleMenuOverview{
 			RoleName: r.Name,
 			BaseRole: string(r.BaseRole),
@@ -167,28 +395,32 @@ func (s *menuService) GetRolesMenuOverview(ctx context.Context, tenantID uint) (
 	return overview, nil
 }
 
-func (s *menuService) filterMenus(allMenus []model.Menu, baseRole string, permissions []string, planFeatures []string, isRestricted bool) []model.MenuResponse {
-	isSuperAdmin := baseRole == "SUPERADMIN"
+func (s *menuService) filterMenus(allMenus []model.Menu, roleID uint, baseRole string, planFeatures []string, isRestricted bool) []model.MenuResponse {
+	isSuperAdmin := strings.ToLower(baseRole) == string(model.BaseRoleSuperAdmin)
 
 	// 1. Filter menus in a flat list
 	var filtered []model.Menu
 	for _, m := range allMenus {
-		// 🆕 RESTRICTION CHECK: If tenant is suspended/canceled
+		// RESTRICTION CHECK: If tenant is suspended/canceled
 		if isRestricted {
 			if isSuperAdmin {
-				// Superadmin in restricted state can ONLY see Platform/System menus
-				if !m.IsSystem {
+				isPlatformRelated := m.IsSystem
+				if m.Key == "platform-group" || (m.ParentID != nil && s.isPlatformChild(allMenus, m)) {
+					isPlatformRelated = true
+				}
+				if !isPlatformRelated {
+					fmt.Printf("[DEBUG MENU] Restricted superadmin, skip non-platform menu: key=%s label=%s\n", m.Key, m.Label)
 					continue
 				}
 			} else {
-				// Normal users/admins in restricted state can ONLY see Billing/Settings
 				allowedRestrictedKeys := map[string]bool{
 					"tenant-settings-billing": true,
-					"governance-group":        true, // Group container
-					"personal-group":          true, // Group container
+					"governance-group":        true,
+					"personal-group":          true,
 					"support-desk":            true,
 				}
 				if !allowedRestrictedKeys[m.Key] {
+					fmt.Printf("[DEBUG MENU] Restricted user, skip menu: key=%s label=%s\n", m.Key, m.Label)
 					continue
 				}
 			}
@@ -196,45 +428,52 @@ func (s *menuService) filterMenus(allMenus []model.Menu, baseRole string, permis
 
 		// Rule A: System check
 		if m.IsSystem && !isSuperAdmin {
+			fmt.Printf("[DEBUG MENU] Rule A (system) skip: key=%s label=%s\n", m.Key, m.Label)
 			continue
 		}
 
-		// Rule B: Role check
-		roleMatch := false
-		for _, r := range m.AllowedRoles {
-			if strings.ToUpper(r) == baseRole {
-				roleMatch = true
-				break
-			}
-		}
-		if !roleMatch && !isSuperAdmin {
-			continue
-		}
-
-		// Rule C: Module (Plan Feature) check
-		if m.Module != "" && !isSuperAdmin {
-			moduleAllowed := false
-			for _, f := range planFeatures {
-				if f == "*" || f == m.Module {
-					moduleAllowed = true
+		// Role-based visibility check (Primary)
+		roleMapped := len(m.Roles) > 0
+		hasRoleAccess := false
+		if isSuperAdmin {
+			hasRoleAccess = true
+		} else if roleMapped {
+			for _, r := range m.Roles {
+				if r.ID == roleID {
+					hasRoleAccess = true
 					break
 				}
 			}
-			if !moduleAllowed {
+		}
+
+		// If role is explicitly mapped and user has it, we show it (overriding module/permission)
+		// If role is mapped but user doesn't have it, we skip it
+		if roleMapped {
+			if !hasRoleAccess {
+				fmt.Printf("[DEBUG MENU] Role-mapped skip (no match): key=%s label=%s roleID=%d\n", m.Key, m.Label, roleID)
 				continue
 			}
-		}
-
-		// Rule D: Permission check
-		if m.Permission != "" && !isSuperAdmin {
-			hasPerm := false
-			for _, p := range permissions {
-				if p == m.Permission {
-					hasPerm = true
-					break
+		} else {
+			// Not role-mapped: check old rules
+			// Rule B: Module (Plan Feature) check
+			if m.Module != "" && !isSuperAdmin {
+				moduleAllowed := false
+				for _, f := range planFeatures {
+					if f == "*" || f == m.Module {
+						moduleAllowed = true
+						break
+					}
+				}
+				if !moduleAllowed {
+					fmt.Printf("[DEBUG MENU] Rule B (module) skip: key=%s label=%s module=%s planFeats=%v\n", m.Key, m.Label, m.Module, planFeatures)
+					continue
 				}
 			}
-			if !hasPerm {
+
+			// Rule C: Fallback to old permission-based check for unmapped menus
+			if m.RequiredPermission != nil && *m.RequiredPermission != "" && !isSuperAdmin {
+				// No explicit role mapping and permission is set — skip for now as we transition
+				// (Or you can keep existing permission check here if still needed)
 				continue
 			}
 		}
@@ -249,7 +488,6 @@ func (s *menuService) filterMenus(allMenus []model.Menu, baseRole string, permis
 func buildMenuTree(menus []model.Menu, parentID *uint) []model.MenuResponse {
 	var res []model.MenuResponse
 	for _, m := range menus {
-		// Match parentID
 		match := false
 		if parentID == nil && m.ParentID == nil {
 			match = true
@@ -260,23 +498,50 @@ func buildMenuTree(menus []model.Menu, parentID *uint) []model.MenuResponse {
 		if match {
 			children := buildMenuTree(menus, &m.ID)
 
-			// If it's a group (path empty) but has no allowed children, skip the group
 			if m.Path == "" && len(children) == 0 {
 				continue
 			}
 
+			// Collect role IDs for the response
+			roleIDs := make([]uint, len(m.Roles))
+			for i, r := range m.Roles {
+				roleIDs[i] = r.ID
+			}
+
 			item := model.MenuResponse{
-				ID:         m.ID,
-				Key:        m.Key,
-				Label:      m.Label,
-				Icon:       m.Icon,
-				Path:       m.Path,
-				Module:     m.Module,
-				Permission: m.Permission,
-				Children:   children,
+				ID:           m.ID,
+				ParentID:     m.ParentID,
+				Key:          m.Key,
+				Label:        m.Label,
+				Icon:         m.Icon,
+				Path:         m.Path,
+				Module:       m.Module,
+				SortOrder:    m.SortOrder,
+				IsSystem:     m.IsSystem,
+				AllowedRoles: roleIDs,
+				Children:     children,
 			}
 			res = append(res, item)
 		}
 	}
 	return res
+}
+
+func (s *menuService) isPlatformChild(allMenus []model.Menu, m model.Menu) bool {
+	// Base case: if it has no parent, it's not a platform child (unless it's the platform-group itself handled elsewhere)
+	if m.ParentID == nil {
+		return false
+	}
+
+	// Find parent
+	for _, p := range allMenus {
+		if p.ID == *m.ParentID {
+			if p.Key == "platform-group" {
+				return true
+			}
+			// Recursive check for deeper nesting if needed
+			return s.isPlatformChild(allMenus, p)
+		}
+	}
+	return false
 }

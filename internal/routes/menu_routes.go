@@ -19,6 +19,7 @@ func RegisterMenuRoutes(rg *gin.RouterGroup, h handler.MenuHandler) {
 	superadmin.Use(middleware.RequireBaseRole(model.BaseRoleSuperAdmin))
 	{
 		superadmin.GET("", h.GetAllMenus)
+		superadmin.POST("", h.CreateMenu)
 		superadmin.PUT("/:id", h.UpdateMenu)
 	}
 }

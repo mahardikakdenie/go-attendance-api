@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	modelDto "go-attendance-api/internal/dto"
+	"go-attendance-api/internal/events"
 	"go-attendance-api/internal/model"
 	"go-attendance-api/internal/repository"
 	"go-attendance-api/internal/utils"
@@ -16,8 +17,8 @@ import (
 )
 
 type SuperadminService interface {
-	GetOwnersWithStats(ctx context.Context, limit, offset int) ([]modelDto.OwnerWithStatsResponse, int64, error)
-	GetPlatformAccounts(ctx context.Context, search string, limit, offset int) ([]model.UserResponse, int64, error)
+	GetOwnersWithStats(ctx context.Context, limit, offset int, search, status, plan string) ([]modelDto.OwnerWithStatsResponse, int64, error)
+	GetPlatformAccounts(ctx context.Context, search string, baseRole string, limit, offset int) ([]model.UserResponse, int64, error)
 	CreatePlatformAccount(ctx context.Context, req model.CreateUserRequest, performerID uint) (model.UserResponse, error)
 	UpdatePlatformAccount(ctx context.Context, id uint, req model.CreateUserRequest, performerID uint) (model.UserResponse, error)
 	TogglePlatformAccountStatus(ctx context.Context, id uint, isActive bool) error
@@ -82,19 +83,19 @@ func (s *superadminService) isSystemRole(baseRole model.BaseRole) bool {
 	return baseRole == model.BaseRoleSuperAdmin || baseRole == model.BaseRoleSupport || baseRole == model.BaseRoleEngineer
 }
 
-func (s *superadminService) GetOwnersWithStats(ctx context.Context, limit, offset int) ([]modelDto.OwnerWithStatsResponse, int64, error) {
+func (s *superadminService) GetOwnersWithStats(ctx context.Context, limit, offset int, search, status, plan string) ([]modelDto.OwnerWithStatsResponse, int64, error) {
 	if limit <= 0 {
 		limit = 10
 	}
-	return s.repo.GetOwnersWithStats(ctx, limit, offset)
+	return s.repo.GetOwnersWithStats(ctx, limit, offset, search, status, plan)
 }
 
-func (s *superadminService) GetPlatformAccounts(ctx context.Context, search string, limit, offset int) ([]model.UserResponse, int64, error) {
+func (s *superadminService) GetPlatformAccounts(ctx context.Context, search string, baseRole string, limit, offset int) ([]model.UserResponse, int64, error) {
 	if limit <= 0 {
 		limit = 10
 	}
 
-	users, total, err := s.repo.GetPlatformAccounts(ctx, search, limit, offset)
+	users, total, err := s.repo.GetPlatformAccounts(ctx, search, baseRole, limit, offset)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -346,8 +347,20 @@ func (s *superadminService) CreateSystemRole(ctx context.Context, req modelDto.C
 		role.BaseRole = model.BaseRoleEmployee
 	}
 
+	// Merge both possible permission field keys (permission_ids and permissions)
+	allPermIDs := append(req.PermissionIDs, req.Permissions...)
+	// Deduplicate
+	seen := map[string]bool{}
+	dedupedPerms := []string{}
+	for _, p := range allPermIDs {
+		if !seen[p] {
+			seen[p] = true
+			dedupedPerms = append(dedupedPerms, p)
+		}
+	}
+
 	// ISSUE-006: Use transactional method
-	if err := s.roleRepo.CreateWithPermissions(ctx, role, req.PermissionIDs); err != nil {
+	if err := s.roleRepo.CreateWithPermissions(ctx, role, dedupedPerms); err != nil {
 		return model.Role{}, err
 	}
 
@@ -370,11 +383,30 @@ func (s *superadminService) CreateSystemRole(ctx context.Context, req modelDto.C
 func (s *superadminService) UpdateSystemRole(ctx context.Context, id uint, req modelDto.CreateSystemRoleRequest, performerID uint) (model.Role, error) {
 	role, err := s.roleRepo.FindByID(ctx, id)
 	if err != nil {
-		return model.Role{}, errors.New("role not found")
+		return model.Role{}, utils.NewNotFoundError("role not found")
 	}
 
+	// Protection: Immutable system roles cannot be fully replaced via PUT
 	if role.IsImmutable {
-		return model.Role{}, errors.New("this system role is immutable and cannot be modified")
+		// Allow permission changes only — do not allow renaming or changing base_role of immutable roles
+		// Merge both possible permission field keys
+		allPermIDs := append(req.PermissionIDs, req.Permissions...)
+		seen := map[string]bool{}
+		dedupedPerms := []string{}
+		for _, p := range allPermIDs {
+			if !seen[p] {
+				seen[p] = true
+				dedupedPerms = append(dedupedPerms, p)
+			}
+		}
+		if err := s.roleRepo.UpdateWithPermissions(ctx, role, dedupedPerms); err != nil {
+			return model.Role{}, utils.NewInternalError("failed to update system role permissions", err)
+		}
+		updatedRole, _ := s.roleRepo.FindByID(ctx, role.ID)
+		if updatedRole != nil {
+			return *updatedRole, nil
+		}
+		return *role, nil
 	}
 
 	role.Name = req.Name
@@ -393,10 +425,27 @@ func (s *superadminService) UpdateSystemRole(ctx context.Context, id uint, req m
 		role.IsEditable = false
 	}
 
-	// ISSUE-006: Use transactional method
-	if err := s.roleRepo.UpdateWithPermissions(ctx, role, req.PermissionIDs); err != nil {
-		return model.Role{}, err
+	// Merge both possible permission field keys
+	allPermIDs := append(req.PermissionIDs, req.Permissions...)
+	seen := map[string]bool{}
+	dedupedPerms := []string{}
+	for _, p := range allPermIDs {
+		if !seen[p] {
+			seen[p] = true
+			dedupedPerms = append(dedupedPerms, p)
+		}
 	}
+
+	// ISSUE-006: Use transactional method
+	if err := s.roleRepo.UpdateWithPermissions(ctx, role, dedupedPerms); err != nil {
+		return model.Role{}, utils.NewInternalError("failed to update system role with permissions", err)
+	}
+
+	// Dispatch event for real-time update
+	events.GetDispatcher().Dispatch(ctx, events.Event{
+		Type: events.RolePermissionsChanged,
+		Data: role,
+	})
 
 	// Audit Log
 	_ = s.activityRepo.Create(ctx, &model.RecentActivity{
@@ -417,44 +466,58 @@ func (s *superadminService) UpdateSystemRole(ctx context.Context, id uint, req m
 func (s *superadminService) PatchSystemRole(ctx context.Context, id uint, req modelDto.UpdateSystemRoleRequest, performerID uint) (model.Role, error) {
 	role, err := s.roleRepo.FindByID(ctx, id)
 	if err != nil {
-		return model.Role{}, errors.New("role not found")
+		return model.Role{}, utils.NewNotFoundError("role not found")
 	}
 
-	if role.IsImmutable {
-		return model.Role{}, errors.New("this system role is immutable and cannot be modified")
+	// Protection: Immutable roles lock name/base_role — only permissions can change
+	if !role.IsImmutable {
+		if req.Name != nil {
+			role.Name = *req.Name
+		}
+		if req.Description != nil {
+			role.Description = *req.Description
+		}
+		if req.BaseRole != nil {
+			role.BaseRole = model.BaseRole(*req.BaseRole)
+		}
+		if req.TenantID != nil {
+			role.TenantID = req.TenantID
+			role.IsSystem = false
+			role.IsEditable = true
+		}
+	} else {
+		// For immutable roles: only allow description changes (non-structural)
+		if req.Description != nil {
+			role.Description = *req.Description
+		}
 	}
 
-	if req.Name != nil {
-		role.Name = *req.Name
-	}
-	if req.Description != nil {
-		role.Description = *req.Description
-	}
-	if req.BaseRole != nil {
-		role.BaseRole = model.BaseRole(*req.BaseRole)
-	}
-
-	if req.TenantID != nil {
-		role.TenantID = req.TenantID
-		role.IsSystem = false
-		role.IsEditable = true
+	// Merge both possible permission field keys (permissions + permission_ids)
+	allPermIDs := append(req.PermissionIDs, req.PermissionIDsAlt...)
+	seen := map[string]bool{}
+	dedupedPerms := []string{}
+	for _, p := range allPermIDs {
+		if !seen[p] {
+			seen[p] = true
+			dedupedPerms = append(dedupedPerms, p)
+		}
 	}
 
-	// Logic for permissions: user's payload uses "permissions"
-	targetPerms := req.PermissionIDs
-	if len(targetPerms) == 0 && len(req.PermissionIDsAlt) > 0 {
-		targetPerms = req.PermissionIDsAlt
-	}
-
-	if len(targetPerms) > 0 {
-		if err := s.roleRepo.UpdateWithPermissions(ctx, role, targetPerms); err != nil {
-			return model.Role{}, err
+	if len(dedupedPerms) > 0 {
+		if err := s.roleRepo.UpdateWithPermissions(ctx, role, dedupedPerms); err != nil {
+			return model.Role{}, utils.NewInternalError("failed to patch system role permissions", err)
 		}
 	} else {
 		if err := s.roleRepo.Update(ctx, role); err != nil {
-			return model.Role{}, err
+			return model.Role{}, utils.NewInternalError("failed to update system role", err)
 		}
 	}
+
+	// Dispatch event for real-time update
+	events.GetDispatcher().Dispatch(ctx, events.Event{
+		Type: events.RolePermissionsChanged,
+		Data: role,
+	})
 
 	// Audit Log
 	_ = s.activityRepo.Create(ctx, &model.RecentActivity{
@@ -475,28 +538,34 @@ func (s *superadminService) PatchSystemRole(ctx context.Context, id uint, req mo
 func (s *superadminService) DeleteSystemRole(ctx context.Context, id uint, performerID uint) error {
 	role, err := s.roleRepo.FindByID(ctx, id)
 	if err != nil {
-		return errors.New("role not found")
+		return utils.NewNotFoundError("role not found")
 	}
 
 	if role.TenantID != nil {
-		return errors.New("cannot delete tenant role via system role API")
+		return utils.NewForbiddenError("cannot delete tenant role via system role API")
 	}
 
-	if role.IsImmutable {
-		return errors.New("cannot delete immutable system role")
+	if role.IsImmutable || id == 1 {
+		return utils.NewForbiddenError("this system role is strictly immutable and cannot be deleted")
 	}
 
 	inUse, err := s.roleRepo.CheckRoleInUse(ctx, id)
 	if err != nil {
-		return err
+		return utils.NewInternalError("failed to check role usage", err)
 	}
 	if inUse {
-		return errors.New("cannot delete role that is currently in use by users")
+		return utils.NewValidationError("cannot delete role that is currently in use by users", nil)
 	}
 
 	if err := s.roleRepo.Delete(ctx, id); err != nil {
-		return err
+		return utils.NewInternalError("failed to delete role", err)
 	}
+
+	// Dispatch event for real-time update
+	events.GetDispatcher().Dispatch(ctx, events.Event{
+		Type: events.RolePermissionsChanged,
+		Data: id,
+	})
 
 	// Audit Log
 	_ = s.activityRepo.Create(ctx, &model.RecentActivity{

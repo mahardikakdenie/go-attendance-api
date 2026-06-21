@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"errors"
 	"strconv"
 
 	modelDto "go-attendance-api/internal/dto"
@@ -39,14 +40,32 @@ func NewSuperadminHandler(service service.SuperadminService) SuperadminHandler {
 	return &superadminHandler{service: service}
 }
 
+func (h *superadminHandler) handleError(c *gin.Context, message string, err error) {
+	var appErr *utils.AppError
+	if errors.As(err, &appErr) {
+		c.JSON(appErr.Code, utils.BuildErrorResponse(appErr.Message, appErr.Code, "error", appErr.Details))
+		return
+	}
+	c.JSON(500, utils.BuildErrorResponse(message, 500, "error", err.Error()))
+}
+
 // @Summary Get Owners with Stats
 func (h *superadminHandler) GetOwnersWithStats(c *gin.Context) {
 	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "10"))
 	offset, _ := strconv.Atoi(c.DefaultQuery("offset", "0"))
+	search := c.Query("search")
+	status := c.Query("status")
+	plan := c.Query("plan")
 
-	results, total, err := h.service.GetOwnersWithStats(c.Request.Context(), limit, offset)
+	// Validate status param if provided
+	if status != "" && status != "Active" && status != "Suspended" {
+		c.JSON(400, utils.BuildErrorResponse("Invalid status filter. Allowed values: Active, Suspended", 400, "error", nil))
+		return
+	}
+
+	results, total, err := h.service.GetOwnersWithStats(c.Request.Context(), limit, offset, search, status, plan)
 	if err != nil {
-		c.JSON(500, utils.BuildErrorResponse("Failed to fetch owners statistics", 500, "error", err.Error()))
+		h.handleError(c, "Failed to fetch owners statistics", err)
 		return
 	}
 
@@ -63,12 +82,16 @@ func (h *superadminHandler) GetOwnersWithStats(c *gin.Context) {
 // @Summary Get Platform Accounts
 func (h *superadminHandler) GetPlatformAccounts(c *gin.Context) {
 	search := c.Query("search")
+	role := c.Query("role")
+	if role == "" {
+		role = c.Query("base_role")
+	}
 	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "10"))
 	offset, _ := strconv.Atoi(c.DefaultQuery("offset", "0"))
 
-	results, total, err := h.service.GetPlatformAccounts(c.Request.Context(), search, limit, offset)
+	results, total, err := h.service.GetPlatformAccounts(c.Request.Context(), search, role, limit, offset)
 	if err != nil {
-		c.JSON(500, utils.BuildErrorResponse("Failed to fetch platform accounts", 500, "error", err.Error()))
+		h.handleError(c, "Failed to fetch platform accounts", err)
 		return
 	}
 
@@ -93,7 +116,7 @@ func (h *superadminHandler) CreatePlatformAccount(c *gin.Context) {
 
 	res, err := h.service.CreatePlatformAccount(c.Request.Context(), req, userID)
 	if err != nil {
-		c.JSON(500, utils.BuildErrorResponse("Failed to create account", 500, "error", err.Error()))
+		h.handleError(c, "Failed to create account", err)
 		return
 	}
 
@@ -112,7 +135,7 @@ func (h *superadminHandler) UpdatePlatformAccount(c *gin.Context) {
 
 	res, err := h.service.UpdatePlatformAccount(c.Request.Context(), uint(id), req, userID)
 	if err != nil {
-		c.JSON(500, utils.BuildErrorResponse("Failed to update account", 500, "error", err.Error()))
+		h.handleError(c, "Failed to update account", err)
 		return
 	}
 
@@ -133,7 +156,7 @@ func (h *superadminHandler) TogglePlatformAccountStatus(c *gin.Context) {
 	isActive := req.Status == "active"
 	err := h.service.TogglePlatformAccountStatus(c.Request.Context(), uint(id), isActive)
 	if err != nil {
-		c.JSON(500, utils.BuildErrorResponse("Failed to update status", 500, "error", err.Error()))
+		h.handleError(c, "Failed to update status", err)
 		return
 	}
 
@@ -144,7 +167,7 @@ func (h *superadminHandler) TogglePlatformAccountStatus(c *gin.Context) {
 func (h *superadminHandler) ListSystemRoles(c *gin.Context) {
 	roles, err := h.service.ListSystemRoles(c.Request.Context())
 	if err != nil {
-		c.JSON(500, utils.BuildErrorResponse("Failed to list system roles", 500, "error", err.Error()))
+		h.handleError(c, "Failed to list system roles", err)
 		return
 	}
 
@@ -156,7 +179,7 @@ func (h *superadminHandler) ListAllPermissions(c *gin.Context) {
 	scope := c.DefaultQuery("scope", "system") // Default to system for superadmin
 	permissions, err := h.service.ListAllPermissions(c.Request.Context(), scope)
 	if err != nil {
-		c.JSON(500, utils.BuildErrorResponse("Failed to list permissions", 500, "error", err.Error()))
+		h.handleError(c, "Failed to list permissions", err)
 		return
 	}
 
@@ -167,7 +190,7 @@ func (h *superadminHandler) ListAllPermissions(c *gin.Context) {
 func (h *superadminHandler) ListTenantModules(c *gin.Context) {
 	permissions, err := h.service.ListAllPermissions(c.Request.Context(), "tenant")
 	if err != nil {
-		c.JSON(500, utils.BuildErrorResponse("Failed to list tenant modules", 500, "error", err.Error()))
+		h.handleError(c, "Failed to list tenant modules", err)
 		return
 	}
 
@@ -185,7 +208,7 @@ func (h *superadminHandler) CreateSystemRole(c *gin.Context) {
 
 	role, err := h.service.CreateSystemRole(c.Request.Context(), req, userID)
 	if err != nil {
-		c.JSON(500, utils.BuildErrorResponse("Failed to create system role", 500, "error", err.Error()))
+		h.handleError(c, "Failed to create system role", err)
 		return
 	}
 
@@ -204,7 +227,7 @@ func (h *superadminHandler) UpdateSystemRole(c *gin.Context) {
 
 	role, err := h.service.UpdateSystemRole(c.Request.Context(), uint(id), req, userID)
 	if err != nil {
-		c.JSON(500, utils.BuildErrorResponse("Failed to update system role", 500, "error", err.Error()))
+		h.handleError(c, "Failed to update system role", err)
 		return
 	}
 
@@ -222,7 +245,7 @@ func (h *superadminHandler) PatchSystemRole(c *gin.Context) {
 
 	role, err := h.service.PatchSystemRole(c.Request.Context(), uint(id), req, userID)
 	if err != nil {
-		c.JSON(500, utils.BuildErrorResponse("Failed to patch system role", 500, "error", err.Error()))
+		h.handleError(c, "Failed to patch system role", err)
 		return
 	}
 
@@ -235,7 +258,7 @@ func (h *superadminHandler) DeleteSystemRole(c *gin.Context) {
 	id, _ := strconv.Atoi(c.Param("id"))
 	err := h.service.DeleteSystemRole(c.Request.Context(), uint(id), userID)
 	if err != nil {
-		c.JSON(500, utils.BuildErrorResponse("Failed to delete system role", 500, "error", err.Error()))
+		h.handleError(c, "Failed to delete system role", err)
 		return
 	}
 
@@ -247,7 +270,7 @@ func (h *superadminHandler) GetAnalyticsDashboard(c *gin.Context) {
 	period := c.DefaultQuery("period", "this_year")
 	res, err := h.service.GetAnalyticsDashboard(c.Request.Context(), period)
 	if err != nil {
-		c.JSON(500, utils.BuildErrorResponse("Failed to fetch analytics dashboard", 500, "error", err.Error()))
+		h.handleError(c, "Failed to fetch analytics dashboard", err)
 		return
 	}
 
@@ -264,7 +287,7 @@ func (h *superadminHandler) GetTenantDetails(c *gin.Context) {
 
 	res, err := h.service.GetTenantFullDetails(c.Request.Context(), uint(id))
 	if err != nil {
-		c.JSON(500, utils.BuildErrorResponse("Failed to fetch tenant details", 500, "error", err.Error()))
+		h.handleError(c, "Failed to fetch tenant details", err)
 		return
 	}
 

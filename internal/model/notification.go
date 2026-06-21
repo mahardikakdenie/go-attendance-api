@@ -40,3 +40,13 @@ type NotificationResponse struct {
 	IsRead    bool             `json:"is_read"`
 	CreatedAt time.Time        `json:"created_at"`
 }
+
+// SSEEvent is the envelope for all Server-Sent Events on the notification stream.
+// Type determines what the FE should do: render toast, update badge, or confirm connection.
+type SSEEvent struct {
+	Type        string      `json:"type"`                // "connected" | "notification" | "unread_count" | "RELOAD_NAV"
+	UnreadCount *int64      `json:"unread_count,omitempty"` // present for badge sync
+	Data        interface{} `json:"data,omitempty"`     // payload for the event
+	EventID     string      `json:"event_id,omitempty"` // notification ID as string, for Last-Event-ID
+	Timestamp   int64       `json:"timestamp"`           // unix seconds, Asia/Jakarta
+}

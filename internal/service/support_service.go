@@ -24,8 +24,15 @@ type SupportService interface {
 	GetAllTrialRequests(ctx context.Context) ([]modelDto.TrialRequestResponse, error)
 	UpdateTrialStatus(ctx context.Context, id uuid.UUID, status model.TrialRequestStatus) error
 
-	GetAllSupportMessages(ctx context.Context) ([]modelDto.SupportMessageResponse, error)
+	GetAllSupportMessages(ctx context.Context, filter model.SupportMessageFilter) ([]modelDto.SupportMessageResponse, int64, error)
+	GetUserSupportHistory(ctx context.Context, userID uint, filter model.SupportMessageFilter) ([]modelDto.UserSupportHistoryResponse, int64, error)
+	GetSupportAgents(ctx context.Context, search string, limit, offset int) ([]model.UserResponse, int64, error)
 	UpdateSupportStatus(ctx context.Context, id uuid.UUID, status model.SupportStatus) error
+	BulkUpdateSupportMessages(ctx context.Context, req modelDto.BulkSupportInboxRequest) error
+	BulkAssignSupport(ctx context.Context, req modelDto.BulkAssignSupportRequest) (modelDto.BulkAssignResponse, error)
+	UpdateSupportReadState(ctx context.Context, id uuid.UUID, isRead bool) error
+	AssignSupportAgent(ctx context.Context, id uuid.UUID, agentID uint) (modelDto.SupportMessageResponse, error)
+	ReplyToTicketByUser(ctx context.Context, userID uint, ticketID uuid.UUID, message string) (modelDto.SupportReplyResponse, error)
 
 	// Superadmin Only
 	GetAllProvisioningTickets(ctx context.Context) ([]modelDto.ProvisioningTicketResponse, error)
@@ -35,10 +42,13 @@ type SupportService interface {
 	CreateSupportMessage(ctx context.Context, tenantID uint, userID uint, req modelDto.CreateSupportMessageRequest) (modelDto.SupportMessageResponse, error)
 	CreateReply(ctx context.Context, userID uint, messageID uuid.UUID, message string) (modelDto.SupportReplyResponse, error)
 	GetReplies(ctx context.Context, messageID uuid.UUID) ([]modelDto.SupportReplyResponse, error)
+	GetSupportCategories(ctx context.Context) []modelDto.SupportCategoryInfo
+	GetSupportPriorities(ctx context.Context) []modelDto.SupportPriorityInfo
 }
 
 type supportService struct {
 	repo              repository.SupportRepository
+	superadminRepo    repository.SuperadminRepository
 	tenantRepo        repository.TenantRepository
 	userRepo          repository.UserRepository
 	roleRepo          repository.RoleRepository
@@ -50,6 +60,7 @@ type supportService struct {
 
 func NewSupportService(
 	repo repository.SupportRepository,
+	superadminRepo repository.SuperadminRepository,
 	tenantRepo repository.TenantRepository,
 	userRepo repository.UserRepository,
 	roleRepo repository.RoleRepository,
@@ -60,6 +71,7 @@ func NewSupportService(
 ) SupportService {
 	return &supportService{
 		repo:              repo,
+		superadminRepo:    superadminRepo,
 		tenantRepo:        tenantRepo,
 		userRepo:          userRepo,
 		roleRepo:          roleRepo,
@@ -150,17 +162,183 @@ func (s *supportService) UpdateTrialStatus(ctx context.Context, id uuid.UUID, st
 	return err
 }
 
-func (s *supportService) GetAllSupportMessages(ctx context.Context) ([]modelDto.SupportMessageResponse, error) {
-	messages, err := s.repo.FindAllSupportMessages(ctx, []string{"tenant", "user"})
+func (s *supportService) GetAllSupportMessages(ctx context.Context, filter model.SupportMessageFilter) ([]modelDto.SupportMessageResponse, int64, error) {
+	messages, total, err := s.repo.FindAllSupportMessages(ctx, filter, []string{"tenant", "user", "assigned_to"})
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 
 	var responses []modelDto.SupportMessageResponse
 	for _, m := range messages {
 		responses = append(responses, mapToSupportMessageResponse(&m))
 	}
-	return responses, nil
+	return responses, total, nil
+}
+
+func (s *supportService) toUserResponse(user model.User) model.UserResponse {
+	resp := model.UserResponse{
+		ID:        user.ID,
+		Name:      user.Name,
+		Email:     user.Email,
+		TenantID:  user.TenantID,
+		IsActive:  user.IsActive,
+		CreatedAt: user.CreatedAt,
+		BaseRole:  user.Role.BaseRole,
+	}
+	if user.Role.ID != 0 {
+		resp.Role = &model.RoleResponse{
+			ID:       user.Role.ID,
+			Name:     user.Role.Name,
+			BaseRole: user.Role.BaseRole,
+		}
+	}
+	return resp
+}
+
+func (s *supportService) GetSupportAgents(ctx context.Context, search string, limit, offset int) ([]model.UserResponse, int64, error) {
+	if limit <= 0 {
+		limit = 10
+	}
+
+	users, total, err := s.superadminRepo.GetPlatformAccounts(ctx, search, "", limit, offset)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	// ISSUE-002: Pre-allocate with capacity and ensure it's not nil
+	responses := make([]model.UserResponse, 0, len(users))
+	for _, user := range users {
+		responses = append(responses, s.toUserResponse(user))
+	}
+
+	return responses, total, nil
+}
+
+func (s *supportService) BulkAssignSupport(ctx context.Context, req modelDto.BulkAssignSupportRequest) (modelDto.BulkAssignResponse, error) {
+	if len(req.IDs) == 0 {
+		return modelDto.BulkAssignResponse{}, errors.New("no ticket ids provided")
+	}
+	if req.AgentID == 0 {
+		return modelDto.BulkAssignResponse{}, errors.New("invalid agent_id")
+	}
+
+	// Verify agent exists and belongs to HQ
+	agent, err := s.userRepo.FindByID(ctx, req.AgentID, nil)
+	if err != nil {
+		return modelDto.BulkAssignResponse{}, fmt.Errorf("agent user not found: %w", err)
+	}
+	if agent.TenantID != 1 {
+		return modelDto.BulkAssignResponse{}, errors.New("can only assign tickets to HQ members (Tenant 1)")
+	}
+
+	updates := map[string]interface{}{
+		"assigned_to_id": req.AgentID,
+	}
+
+	if err := s.repo.BulkUpdateSupportMessages(ctx, req.IDs, updates); err != nil {
+		return modelDto.BulkAssignResponse{}, err
+	}
+
+	// Notify assigned agent once for all tickets
+	title := "Support Tickets Assigned"
+	notifMessage := fmt.Sprintf("You have been assigned %d support ticket(s).", len(req.IDs))
+	s.notifService.SendNotification(ctx, agent.TenantID, agent.ID, title, notifMessage, model.NotificationTypeSupport)
+
+	// Email agent (async)
+	go func(agentName, agentEmail string, count int) {
+		emailCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
+		subject := fmt.Sprintf("[Support Desk] %d Ticket(s) Assigned to You", count)
+		html := utils.GetSupportTicketAssignedEmailTemplate(agentName, fmt.Sprintf("%d tickets assigned to you", count), "Multiple Tenants")
+		_ = utils.SendEmail(emailCtx, []string{agentEmail}, subject, html)
+	}(agent.Name, agent.Email, len(req.IDs))
+
+	return modelDto.BulkAssignResponse{
+		Updated: len(req.IDs),
+		Failed:  0,
+	}, nil
+}
+
+func (s *supportService) BulkUpdateSupportMessages(ctx context.Context, req modelDto.BulkSupportInboxRequest) error {
+	if len(req.IDs) == 0 {
+		return errors.New("no ticket ids provided")
+	}
+
+	updates := make(map[string]interface{})
+	switch req.Action {
+	case "MARK_READ":
+		updates["is_read"] = true
+	case "MARK_UNREAD":
+		updates["is_read"] = false
+	case "RESOLVE":
+		updates["status"] = model.SupportStatusResolved
+	case "ASSIGN":
+		if req.AssignToID == nil {
+			return errors.New("assign_to_id is required for ASSIGN action")
+		}
+		// Verify agent exists and belongs to HQ
+		agent, err := s.userRepo.FindByID(ctx, *req.AssignToID, nil)
+		if err != nil {
+			return fmt.Errorf("agent user not found: %w", err)
+		}
+		if agent.TenantID != 1 {
+			return errors.New("can only assign tickets to HQ members (Tenant 1)")
+		}
+		updates["assigned_to_id"] = *req.AssignToID
+	default:
+		return errors.New("invalid action")
+	}
+
+	return s.repo.BulkUpdateSupportMessages(ctx, req.IDs, updates)
+}
+
+func (s *supportService) UpdateSupportReadState(ctx context.Context, id uuid.UUID, isRead bool) error {
+	msg, err := s.repo.FindSupportMessageByID(ctx, id, []string{})
+	if err != nil {
+		return err
+	}
+	msg.IsRead = isRead
+	return s.repo.UpdateSupportMessage(ctx, msg)
+}
+
+func (s *supportService) AssignSupportAgent(ctx context.Context, id uuid.UUID, agentID uint) (modelDto.SupportMessageResponse, error) {
+	msg, err := s.repo.FindSupportMessageByID(ctx, id, []string{"tenant", "user", "assigned_to"})
+	if err != nil {
+		return modelDto.SupportMessageResponse{}, err
+	}
+
+	// Verify agent exists and belongs to HQ
+	agent, err := s.userRepo.FindByID(ctx, agentID, nil)
+	if err != nil {
+		return modelDto.SupportMessageResponse{}, fmt.Errorf("agent user not found: %w", err)
+	}
+	if agent.TenantID != 1 {
+		return modelDto.SupportMessageResponse{}, errors.New("can only assign tickets to HQ members (Tenant 1)")
+	}
+
+	msg.AssignedToID = &agentID
+
+	// Temporarily attach agent object so mapToSupportMessageResponse includes it immediately
+	msg.AssignedTo = agent
+
+	if err := s.repo.UpdateSupportMessage(ctx, msg); err != nil {
+		return modelDto.SupportMessageResponse{}, err
+	}
+
+	// Notify assigned agent in-app
+	title := "New Support Assignment"
+	notifMessage := fmt.Sprintf("You are assigned ticket: %s", msg.Subject)
+	s.notifService.SendNotification(ctx, agent.TenantID, agent.ID, title, notifMessage, model.NotificationTypeSupport)
+
+	// Send email to assigned agent (async, non-blocking)
+	go func(agentName, agentEmail, subject, tenantName string) {
+		emailCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
+		html := utils.GetSupportTicketAssignedEmailTemplate(agentName, subject, tenantName)
+		_ = utils.SendEmail(emailCtx, []string{agentEmail}, "[Support Desk] New Ticket Assigned", html)
+	}(agent.Name, agent.Email, msg.Subject, msg.Tenant.Name)
+
+	return mapToSupportMessageResponse(msg), nil
 }
 
 func (s *supportService) UpdateSupportStatus(ctx context.Context, id uuid.UUID, status model.SupportStatus) error {
@@ -323,13 +501,20 @@ func (s *supportService) ExecuteProvisioning(ctx context.Context, ticketID uuid.
 }
 
 func (s *supportService) CreateSupportMessage(ctx context.Context, tenantID uint, userID uint, req modelDto.CreateSupportMessageRequest) (modelDto.SupportMessageResponse, error) {
+	priority := req.Priority
+	if priority == "" {
+		priority = model.SupportPriorityMedium
+	}
+
 	message := &model.SupportMessage{
-		TenantID: tenantID,
-		UserID:   userID,
-		Subject:  req.Subject,
-		Message:  req.Message,
-		Category: req.Category,
-		Status:   model.SupportStatusPending,
+		TenantID:      tenantID,
+		UserID:        userID,
+		Subject:       req.Subject,
+		Message:       req.Message,
+		Category:      req.Category,
+		Priority:      priority,
+		AttachmentURL: req.AttachmentURL,
+		Status:        model.SupportStatusPending,
 	}
 
 	if err := s.repo.CreateSupportMessage(ctx, message); err != nil {
@@ -399,6 +584,107 @@ func (s *supportService) GetReplies(ctx context.Context, messageID uuid.UUID) ([
 	return responses, nil
 }
 
+func (s *supportService) GetUserSupportHistory(ctx context.Context, userID uint, filter model.SupportMessageFilter) ([]modelDto.UserSupportHistoryResponse, int64, error) {
+	messages, total, err := s.repo.FindAllUserSupportMessages(ctx, userID, filter, []string{})
+	if err != nil {
+		return nil, 0, err
+	}
+
+	var responses []modelDto.UserSupportHistoryResponse
+	for _, m := range messages {
+		history := modelDto.UserSupportHistoryResponse{
+			ID:        m.ID,
+			Subject:   m.Subject,
+			Category:  m.Category,
+			Priority:  m.Priority,
+			Status:    m.Status,
+			Message:   m.Message,
+			CreatedAt: m.CreatedAt,
+			Replies:   make([]modelDto.UserSupportReplyItemResponse, 0, len(m.Replies)),
+		}
+
+		for _, r := range m.Replies {
+			senderType := "USER"
+			if r.User.TenantID == 1 {
+				senderType = "ADMIN"
+			}
+			history.Replies = append(history.Replies, modelDto.UserSupportReplyItemResponse{
+				ID:         r.ID,
+				SenderType: senderType,
+				SenderName: r.User.Name,
+				Message:    r.Message,
+				CreatedAt:  r.CreatedAt,
+			})
+		}
+
+		responses = append(responses, history)
+	}
+	return responses, total, nil
+}
+
+func (s *supportService) ReplyToTicketByUser(ctx context.Context, userID uint, ticketID uuid.UUID, message string) (modelDto.SupportReplyResponse, error) {
+	ticket, err := s.repo.FindSupportMessageByID(ctx, ticketID, []string{"user"})
+	if err != nil {
+		return modelDto.SupportReplyResponse{}, err
+	}
+
+	// Validate ownership
+	if ticket.UserID != userID {
+		return modelDto.SupportReplyResponse{}, errors.New("you do not have permission to reply to this ticket")
+	}
+
+	// Validate status
+	if ticket.Status == model.SupportStatusClosed {
+		return modelDto.SupportReplyResponse{}, errors.New("this ticket has been closed and cannot be replied to")
+	}
+
+	reply := &model.SupportReply{
+		MessageID: ticketID,
+		UserID:    userID,
+		Message:   message,
+	}
+
+	if err := s.repo.CreateReply(ctx, reply); err != nil {
+		return modelDto.SupportReplyResponse{}, err
+	}
+
+	// Update status if RESOLVED -> PENDING
+	if ticket.Status == model.SupportStatusResolved {
+		ticket.Status = model.SupportStatusPending
+		_ = s.repo.UpdateSupportMessage(ctx, ticket)
+	}
+
+	// Notify HQ Admins (Tenant 1) that user replied
+	hqAdmins, _, _ := s.userRepo.FindAll(ctx, model.UserFilter{TenantID: 1}, nil)
+	for _, admin := range hqAdmins {
+		if admin.Role != nil && (admin.Role.BaseRole == model.BaseRoleAdmin || admin.Role.BaseRole == model.BaseRoleSuperAdmin) {
+			s.notifService.SendNotification(ctx, 1, admin.ID, "Support Ticket Reply", fmt.Sprintf("User replied to ticket: %s", ticket.Subject), model.NotificationTypeSupport)
+		}
+	}
+
+	return mapToSupportReplyResponse(reply), nil
+}
+
+func (s *supportService) GetSupportCategories(ctx context.Context) []modelDto.SupportCategoryInfo {
+	return []modelDto.SupportCategoryInfo{
+		{ID: string(model.SupportCategoryTechnical), Label: "Technical/Bug"},
+		{ID: string(model.SupportCategoryBilling), Label: "Billing & Subscription"},
+		{ID: string(model.SupportCategoryFeature), Label: "Feature Request"},
+		{ID: string(model.SupportCategoryAccount), Label: "Account & Login"},
+		{ID: string(model.SupportCategoryIntegration), Label: "Integration/API"},
+		{ID: string(model.SupportCategoryOther), Label: "Other"},
+	}
+}
+
+func (s *supportService) GetSupportPriorities(ctx context.Context) []modelDto.SupportPriorityInfo {
+	return []modelDto.SupportPriorityInfo{
+		{ID: string(model.SupportPriorityLow), Label: "Low", Color: "gray"},
+		{ID: string(model.SupportPriorityMedium), Label: "Medium", Color: "blue"},
+		{ID: string(model.SupportPriorityHigh), Label: "High", Color: "orange"},
+		{ID: string(model.SupportPriorityUrgent), Label: "Urgent", Color: "red"},
+	}
+}
+
 // Helpers
 func mapToSupportReplyResponse(r *model.SupportReply) modelDto.SupportReplyResponse {
 	res := modelDto.SupportReplyResponse{
@@ -452,14 +738,17 @@ func mapToProvisioningTicketResponse(t *model.ProvisioningTicket) modelDto.Provi
 
 func mapToSupportMessageResponse(m *model.SupportMessage) modelDto.SupportMessageResponse {
 	res := modelDto.SupportMessageResponse{
-		ID:        m.ID,
-		TenantID:  m.TenantID,
-		UserID:    m.UserID,
-		Subject:   m.Subject,
-		Message:   m.Message,
-		Category:  m.Category,
-		Status:    m.Status,
-		CreatedAt: m.CreatedAt,
+		ID:            m.ID,
+		TenantID:      m.TenantID,
+		UserID:        m.UserID,
+		Subject:       m.Subject,
+		Message:       m.Message,
+		Category:      m.Category,
+		Priority:      m.Priority,
+		Status:        m.Status,
+		IsRead:        m.IsRead,
+		AttachmentURL: m.AttachmentURL,
+		CreatedAt:     m.CreatedAt,
 	}
 	if m.Tenant.ID != 0 {
 		res.Tenant = &model.TenantResponse{
@@ -472,6 +761,12 @@ func mapToSupportMessageResponse(m *model.SupportMessage) modelDto.SupportMessag
 			ID:    m.User.ID,
 			Name:  m.User.Name,
 			Email: m.User.Email,
+		}
+	}
+	if m.AssignedToID != nil && m.AssignedTo != nil && m.AssignedTo.ID != 0 {
+		res.AssignedTo = &modelDto.SupportAssigneeResponse{
+			ID:   m.AssignedTo.ID,
+			Name: m.AssignedTo.Name,
 		}
 	}
 	return res

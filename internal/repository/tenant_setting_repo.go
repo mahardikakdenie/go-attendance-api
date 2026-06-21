@@ -34,7 +34,7 @@ func (r *tenantSettingRepository) FindByTenantID(ctx context.Context, tenantID u
 	var setting model.TenantSetting
 
 	err := r.db.WithContext(ctx).
-		Preload("Tenant").
+		Preload("Tenant.Subscription.Plan").
 		Where("tenant_id = ?", tenantID).
 		First(&setting).Error
 

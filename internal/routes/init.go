@@ -2,6 +2,7 @@ package routes
 
 import (
 	"context"
+	"go-attendance-api/internal/events"
 	"go-attendance-api/internal/handler"
 	"go-attendance-api/internal/repository"
 	"go-attendance-api/internal/service"
@@ -87,7 +88,7 @@ func initHandlers(db *gorm.DB, rdb *redis.Client) (*Handlers, service.CalendarCr
 	payrollService := service.NewPayrollService(payrollRepo, userRepo, tenantRepo, tenantSettingRepo, attendanceRepo, leaveRepo, userPayrollProfileRepo, overtimeRepo, hrOpsRepo, notificationService)
 	dashboardService := service.NewDashboardService(tenantRepo, userRepo, attendanceRepo, leaveRepo, overtimeRepo, timesheetRepo, rdb)
 	tenantRoleService := service.NewTenantRoleService(roleRepo, permissionRepo, hierarchyRepo)
-	supportService := service.NewSupportService(supportRepo, tenantRepo, userRepo, roleRepo, subscriptionRepo, tenantSettingRepo, userPayrollProfileRepo, notificationService)
+	supportService := service.NewSupportService(supportRepo, superadminRepo, tenantRepo, userRepo, roleRepo, subscriptionRepo, tenantSettingRepo, userPayrollProfileRepo, notificationService)
 	timesheetService := service.NewTimesheetService(timesheetRepo, userRepo)
 	correctionService := service.NewAttendanceCorrectionService(correctionRepo, attendanceRepo, userRepo, activityRepo)
 	performanceService := service.NewPerformanceService(performanceRepo, userRepo)
@@ -97,8 +98,11 @@ func initHandlers(db *gorm.DB, rdb *redis.Client) (*Handlers, service.CalendarCr
 	hrOpsService := service.NewHrOpsService(hrOpsRepo, userRepo, leaveRepo, tenantSettingRepo)
 	billingService := service.NewBillingService(invoiceRepo, subscriptionRepo)
 	allowancePresetService := service.NewAllowancePresetService(allowancePresetRepo)
-	menuService := service.NewMenuService(menuRepo, roleRepo, subscriptionRepo, rdb)
+	menuService := service.NewMenuService(menuRepo, roleRepo, subscriptionRepo, permissionRepo, rdb)
 	calendarCronService := service.NewCalendarCronService(hrOpsRepo, userRepo, billingService)
+
+	// Register Event Handlers
+	events.RegisterHandlers(menuService, notificationService)
 
 	// Handlers
 	handlers := &Handlers{
