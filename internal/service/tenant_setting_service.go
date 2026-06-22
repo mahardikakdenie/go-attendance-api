@@ -65,6 +65,8 @@ func (s *tenantSettingService) UpdateSetting(ctx context.Context, tenantID uint,
 	setting.RequireSelfie = req.RequireSelfie
 	setting.AllowMultipleCheck = req.AllowMultipleCheck
 	setting.TenantLogo = req.TenantLogo
+	setting.BpjsHealthMaxBasis = req.BpjsHealthMaxBasis
+	setting.BpjsJpMaxBasis = req.BpjsJpMaxBasis
 
 	err = s.repo.Update(ctx, setting)
 	if err != nil {

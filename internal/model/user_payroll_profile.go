@@ -29,6 +29,8 @@ type UserPayrollProfile struct {
 	FixedAllowance          float64    `gorm:"type:decimal(15,2);default:0" json:"fixed_allowance"`
 	DailyMealAllowance      float64    `gorm:"type:decimal(15,2);default:0" json:"daily_meal_allowance"`
 	DailyTransportAllowance float64    `gorm:"type:decimal(15,2);default:0" json:"daily_transport_allowance"`
+	MealAllowanceType       string     `gorm:"type:varchar(20);default:'variable'" json:"meal_allowance_type"`
+	TransportAllowanceType  string     `gorm:"type:varchar(20);default:'variable'" json:"transport_allowance_type"`
 	CreatedAt               time.Time  `json:"created_at"`
 	UpdatedAt               time.Time  `json:"updated_at"`
 

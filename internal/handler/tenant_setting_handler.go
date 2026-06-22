@@ -41,6 +41,8 @@ type TenantSettingResponse struct {
 	RequireSelfie      bool                 `json:"require_selfie"`
 	AllowMultipleCheck bool                 `json:"allow_multiple_check"`
 	TenantLogo         string               `json:"tenant_logo"`
+	BpjsHealthMaxBasis float64              `json:"bpjs_health_max_basis"`
+	BpjsJpMaxBasis     float64              `json:"bpjs_jp_max_basis"`
 	CreatedAt          time.Time            `json:"created_at"`
 	UpdatedAt          time.Time            `json:"updated_at"`
 }
@@ -67,6 +69,8 @@ func toTenantSettingResponse(s *model.TenantSetting) TenantSettingResponse {
 		RequireSelfie:     s.RequireSelfie,
 		AllowMultipleCheck: s.AllowMultipleCheck,
 		TenantLogo:         s.TenantLogo,
+		BpjsHealthMaxBasis: s.BpjsHealthMaxBasis,
+		BpjsJpMaxBasis:     s.BpjsJpMaxBasis,
 		CreatedAt:          s.CreatedAt,
 		UpdatedAt:          s.UpdatedAt,
 		Tenant: model.TenantResponse{

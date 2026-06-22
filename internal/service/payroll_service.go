@@ -41,6 +41,8 @@ type PayrollRequest struct {
 	FixedAllowances          float64                 `json:"fixed_allowances"`
 	DailyMealAllowance       float64                 `json:"daily_meal_allowance"`
 	DailyTransportAllowance  float64                 `json:"daily_transport_allowance"`
+	MealAllowanceType        string                  `json:"meal_allowance_type"`
+	TransportAllowanceType   string                  `json:"transport_allowance_type"`
 	VariableAllowances       float64                 `json:"variable_allowances"`
 	CustomVariableAllowances []model.CustomAllowance `json:"custom_variable_allowances"`
 	Incentives               float64                 `json:"incentives"`
@@ -52,6 +54,7 @@ type PayrollRequest struct {
 	OvertimeHours            float64                 `json:"overtime_hours"`
 	UnpaidLeaveDays          int                     `json:"unpaid_leave_days"`
 	PTKPStatus               string                  `json:"ptkp_status"`
+	Period                   string                  `json:"period"`
 }
 
 func (s *payrollService) BulkGeneratePayroll(ctx context.Context, tenantID uint, req BulkGenerateRequest) (int, error) {
@@ -89,12 +92,20 @@ func (s *payrollService) BulkGeneratePayroll(ctx context.Context, tenantID uint,
 		meal := 0.0
 		transport := 0.0
 
+		mealType := "variable"
+		transportType := "variable"
 		if profile != nil {
 			ptkp = string(profile.PtkpStatus)
 			basic = profile.BasicSalary
 			fixed = profile.FixedAllowance
 			meal = profile.DailyMealAllowance
 			transport = profile.DailyTransportAllowance
+			if profile.MealAllowanceType != "" {
+				mealType = profile.MealAllowanceType
+			}
+			if profile.TransportAllowanceType != "" {
+				transportType = profile.TransportAllowanceType
+			}
 		}
 
 		// Calculate Payroll
@@ -106,6 +117,8 @@ func (s *payrollService) BulkGeneratePayroll(ctx context.Context, tenantID uint,
 			FixedAllowances:          fixed,
 			DailyMealAllowance:       meal,
 			DailyTransportAllowance:  transport,
+			MealAllowanceType:        mealType,
+			TransportAllowanceType:   transportType,
 			Incentives:               req.Incentives,
 			Bonus:                    req.Bonus,
 			CustomVariableAllowances: req.CustomVariableAllowances,
@@ -115,6 +128,7 @@ func (s *payrollService) BulkGeneratePayroll(ctx context.Context, tenantID uint,
 			UnpaidLeaveDays:          sync.UnpaidLeaveDays,
 			OvertimeHours:            sync.OvertimeHours,
 			PTKPStatus:               ptkp,
+			Period:                   req.Period,
 		})
 		if err != nil {
 			continue
@@ -281,6 +295,8 @@ type SaveIndividualPayrollRequest struct {
 	FixedAllowances          float64                 `json:"fixed_allowances"`
 	DailyMealAllowance       float64                 `json:"daily_meal_allowance"`
 	DailyTransportAllowance  float64                 `json:"daily_transport_allowance"`
+	MealAllowanceType        string                  `json:"meal_allowance_type"`
+	TransportAllowanceType   string                  `json:"transport_allowance_type"`
 	VariableAllowances       float64                 `json:"variable_allowances"`
 	CustomVariableAllowances []model.CustomAllowance `json:"custom_variable_allowances"`
 	Incentives               float64                 `json:"incentives"`
@@ -306,6 +322,8 @@ type UpdateUserPayrollProfileRequest struct {
 	FixedAllowance          float64          `json:"fixed_allowance"`
 	DailyMealAllowance      float64          `json:"daily_meal_allowance"`
 	DailyTransportAllowance float64          `json:"daily_transport_allowance"`
+	MealAllowanceType       string           `json:"meal_allowance_type"`
+	TransportAllowanceType  string           `json:"transport_allowance_type"`
 }
 
 type payrollService struct {
@@ -390,6 +408,7 @@ func (s *payrollService) Calculate(ctx context.Context, req PayrollRequest) (Pay
 
 	// If profile exists, use it as baseline
 	var joinDate time.Time
+	var tenantSettings *model.TenantSetting
 	if req.UserID != 0 {
 		user, _ := s.userRepo.FindByID(ctx, req.UserID, []string{"tenant.tenant_settings", "position"})
 		if user != nil {
@@ -397,9 +416,10 @@ func (s *payrollService) Calculate(ctx context.Context, req PayrollRequest) (Pay
 			if req.BasicSalary == 0 {
 				req.BasicSalary = user.BaseSalary
 			}
-
+ 
 			// 🆕 Populate Response Context
 			if user.Tenant != nil {
+				tenantSettings = user.Tenant.TenantSettings
 				res.CompanyContext.Name = user.Tenant.Name
 				if user.Tenant.TenantSettings != nil {
 					res.CompanyContext.LogoURL = user.Tenant.TenantSettings.TenantLogo
@@ -433,12 +453,34 @@ func (s *payrollService) Calculate(ctx context.Context, req PayrollRequest) (Pay
 			if req.DailyTransportAllowance == 0 {
 				req.DailyTransportAllowance = profile.DailyTransportAllowance
 			}
+			if req.MealAllowanceType == "" {
+				req.MealAllowanceType = profile.MealAllowanceType
+			}
+			if req.TransportAllowanceType == "" {
+				req.TransportAllowanceType = profile.TransportAllowanceType
+			}
 
 			// 🆕 Populate Bank & PTKP Info
 			res.User.BankName = profile.BankName
 			res.User.BankAccountNumber = profile.BankAccountNumber
 			res.User.PTKPStatus = string(profile.PtkpStatus)
 		}
+	}
+
+	if req.MealAllowanceType == "" {
+		req.MealAllowanceType = "variable"
+	}
+	if req.TransportAllowanceType == "" {
+		req.TransportAllowanceType = "variable"
+	}
+
+	if req.MealAllowanceType == "fixed" {
+		req.FixedAllowances += req.DailyMealAllowance
+		req.DailyMealAllowance = 0
+	}
+	if req.TransportAllowanceType == "fixed" {
+		req.FixedAllowances += req.DailyTransportAllowance
+		req.DailyTransportAllowance = 0
 	}
 
 	// 1. Determine base components based on RunType
@@ -527,8 +569,19 @@ func (s *payrollService) Calculate(ctx context.Context, req PayrollRequest) (Pay
 
 	// 5. BPJS Calculation (Only for Regular components)
 	bpjsBasis := proratedBasic + proratedFixedAllowance
-	healthBasis := math.Min(bpjsBasis, MaxHealthBasis)
-	jpBasis := math.Min(bpjsBasis, MaxJPBasis)
+	healthMaxBasis := MaxHealthBasis
+	jpMaxBasis := MaxJPBasis
+	if tenantSettings != nil {
+		if tenantSettings.BpjsHealthMaxBasis > 0 {
+			healthMaxBasis = tenantSettings.BpjsHealthMaxBasis
+		}
+		if tenantSettings.BpjsJpMaxBasis > 0 {
+			jpMaxBasis = tenantSettings.BpjsJpMaxBasis
+		}
+	}
+
+	healthBasis := math.Min(bpjsBasis, healthMaxBasis)
+	jpBasis := math.Min(bpjsBasis, jpMaxBasis)
 
 	res.Breakdown.Earnings.BasicSalary = proratedBasic
 	res.Breakdown.Earnings.FixedAllowances = proratedFixedAllowance
@@ -566,7 +619,13 @@ func (s *payrollService) Calculate(ctx context.Context, req PayrollRequest) (Pay
 		res.Breakdown.EmployerContributions.BpjsJkk +
 		res.Breakdown.EmployerContributions.BpjsJkm
 
-	pph21 := s.calculatePPh21TER(req.PTKPStatus, taxBruto)
+	isDecember := strings.HasSuffix(req.Period, "-12")
+	var pph21 float64
+	if isDecember {
+		pph21 = s.calculatePPh21Pasal17(req.PTKPStatus, taxBruto, res.Breakdown.Deductions.BpjsJhtEmployee, res.Breakdown.Deductions.BpjsJpEmployee)
+	} else {
+		pph21 = s.calculatePPh21TER(req.PTKPStatus, taxBruto)
+	}
 
 	// 7. Handle NET (Gross Up) Method
 	if req.Method == model.MethodNet {
@@ -579,22 +638,27 @@ func (s *payrollService) Calculate(ctx context.Context, req PayrollRequest) (Pay
 		grossIncome += bpjsEmployeeTotal
 		taxBruto += bpjsEmployeeTotal // BPJS Allowance is taxable
 
-		// B. Tax Gross-up Iteration
-		// We need to find TaxAllowance such that calculatePPh21(TaxBruto + TaxAllowance) == TaxAllowance
-		taxAllowance := pph21
-		for i := 0; i < 10; i++ {
-			newPph21 := s.calculatePPh21TER(req.PTKPStatus, taxBruto+taxAllowance)
-			if math.Abs(newPph21-taxAllowance) < 1.0 {
-				taxAllowance = newPph21
-				break
+		if isDecember {
+			// B. Tax Gross-up Iteration for Pasal 17 (Continuous function)
+			taxAllowance := pph21
+			for i := 0; i < 10; i++ {
+				newPph21 := s.calculatePPh21Pasal17(req.PTKPStatus, taxBruto+taxAllowance, res.Breakdown.Deductions.BpjsJhtEmployee, res.Breakdown.Deductions.BpjsJpEmployee)
+				if math.Abs(newPph21-taxAllowance) < 1.0 {
+					taxAllowance = newPph21
+					break
+				}
+				taxAllowance = (taxAllowance + newPph21) / 2
 			}
-			// Convergence helper: adjust allowance towards the new calculated tax
-			taxAllowance = (taxAllowance + newPph21) / 2
+			pph21 = s.calculatePPh21Pasal17(req.PTKPStatus, taxBruto+taxAllowance, res.Breakdown.Deductions.BpjsJhtEmployee, res.Breakdown.Deductions.BpjsJpEmployee)
+			res.Breakdown.Earnings.TaxAllowance = taxAllowance
+			grossIncome += taxAllowance
+		} else {
+			// B. Mathematically exact Tax Gross-up for TER
+			taxAllowance, _ := s.calculateGrossUpTER(req.PTKPStatus, taxBruto)
+			pph21 = taxAllowance
+			res.Breakdown.Earnings.TaxAllowance = taxAllowance
+			grossIncome += taxAllowance
 		}
-		// Final check to be sure
-		pph21 = s.calculatePPh21TER(req.PTKPStatus, taxBruto+taxAllowance)
-		res.Breakdown.Earnings.TaxAllowance = taxAllowance
-		grossIncome += taxAllowance
 	}
 
 	res.Breakdown.Earnings.GrossIncome = grossIncome
@@ -615,7 +679,123 @@ func (s *payrollService) Calculate(ctx context.Context, req PayrollRequest) (Pay
 	return res, nil
 }
 
-func (s *payrollService) calculatePPh21TER(ptkp string, bruto float64) float64 {
+type TERBracket struct {
+	MaxBruto float64
+	Rate     float64
+}
+
+var terA = []TERBracket{
+	{5400000, 0.0},
+	{5650000, 0.0025},
+	{5950000, 0.005},
+	{6300000, 0.0075},
+	{6750000, 0.01},
+	{7500000, 0.0125},
+	{8550000, 0.015},
+	{9650000, 0.0175},
+	{10950000, 0.02},
+	{13000000, 0.025},
+	{15000000, 0.03},
+	{20000000, 0.04},
+	{25000000, 0.05},
+	{30000000, 0.06},
+	{35000000, 0.07},
+	{40000000, 0.08},
+	{45000000, 0.09},
+	{54000000, 0.10},
+	{68000000, 0.11},
+	{83000000, 0.12},
+	{97000000, 0.13},
+	{118000000, 0.14},
+	{145000000, 0.15},
+	{180000000, 0.16},
+	{230000000, 0.17},
+	{290000000, 0.18},
+	{360000000, 0.19},
+	{440000000, 0.20},
+	{540000000, 0.21},
+	{660000000, 0.22},
+	{800000000, 0.23},
+	{1000000000, 0.24},
+	{1400000000, 0.25},
+	{math.MaxFloat64, 0.34},
+}
+
+var terB = []TERBracket{
+	{6200000, 0.0},
+	{6500000, 0.0025},
+	{6850000, 0.005},
+	{7300000, 0.0075},
+	{7800000, 0.01},
+	{8850000, 0.0125},
+	{9800000, 0.015},
+	{10950000, 0.0175},
+	{12200000, 0.02},
+	{14000000, 0.025},
+	{16000000, 0.03},
+	{21000000, 0.04},
+	{26000000, 0.05},
+	{31000000, 0.06},
+	{36000000, 0.07},
+	{41000000, 0.08},
+	{47000000, 0.09},
+	{56000000, 0.10},
+	{70000000, 0.11},
+	{85000000, 0.12},
+	{100000000, 0.13},
+	{121000000, 0.14},
+	{149000000, 0.15},
+	{184000000, 0.16},
+	{234000000, 0.17},
+	{293000000, 0.18},
+	{363000000, 0.19},
+	{441000000, 0.20},
+	{541000000, 0.21},
+	{661000000, 0.22},
+	{802000000, 0.23},
+	{1003000000, 0.24},
+	{1405000000, 0.25},
+	{math.MaxFloat64, 0.34},
+}
+
+var terC = []TERBracket{
+	{6600000, 0.0},
+	{6950000, 0.0025},
+	{7350000, 0.005},
+	{7800000, 0.0075},
+	{8350000, 0.01},
+	{9450000, 0.0125},
+	{10350000, 0.015},
+	{11350000, 0.0175},
+	{12700000, 0.02},
+	{14200000, 0.025},
+	{16300000, 0.03},
+	{21100000, 0.04},
+	{26200000, 0.05},
+	{31100000, 0.06},
+	{35800000, 0.07},
+	{40500000, 0.08},
+	{45600000, 0.09},
+	{55500000, 0.10},
+	{70400000, 0.11},
+	{85100000, 0.12},
+	{100200000, 0.13},
+	{120000000, 0.14},
+	{147700000, 0.15},
+	{181700000, 0.16},
+	{231400000, 0.17},
+	{290100000, 0.18},
+	{359700000, 0.19},
+	{437900000, 0.20},
+	{538200000, 0.21},
+	{657300000, 0.22},
+	{796200000, 0.23},
+	{995800000, 0.24},
+	{1395200000, 0.25},
+	{math.MaxFloat64, 0.34},
+}
+
+func (s *payrollService) getTERRate(ptkp string, bruto float64) float64 {
 	category := "A"
 	switch strings.ToUpper(ptkp) {
 	case "TK/0", "TK/1", "K/0":
@@ -626,91 +806,118 @@ func (s *payrollService) calculatePPh21TER(ptkp string, bruto float64) float64 {
 		category = "C"
 	}
 
-	rate := 0.0
+	var brackets []TERBracket
 	switch category {
 	case "A":
-		if bruto <= 5400000 {
-			rate = 0
-		} else if bruto <= 5650000 {
-			rate = 0.0025
-		} else if bruto <= 5950000 {
-			rate = 0.005
-		} else if bruto <= 6300000 {
-			rate = 0.0075
-		} else if bruto <= 6750000 {
-			rate = 0.01
-		} else if bruto <= 7500000 {
-			rate = 0.0125
-		} else if bruto <= 8550000 {
-			rate = 0.015
-		} else if bruto <= 9650000 {
-			rate = 0.0175
-		} else if bruto <= 10950000 {
-			rate = 0.02
-		} else if bruto <= 13000000 {
-			rate = 0.025
-		} else if bruto <= 15000000 {
-			rate = 0.03
-		} else if bruto <= 20000000 {
-			rate = 0.04
-		} else {
-			rate = 0.05 // Simplified cap for example
-		}
+		brackets = terA
 	case "B":
-		if bruto <= 6200000 {
-			rate = 0
-		} else if bruto <= 6500000 {
-			rate = 0.0025
-		} else if bruto <= 6900000 {
-			rate = 0.005
-		} else if bruto <= 7300000 {
-			rate = 0.0075
-		} else if bruto <= 7800000 {
-			rate = 0.01
-		} else if bruto <= 8850000 {
-			rate = 0.0125
-		} else if bruto <= 9800000 {
-			rate = 0.015
-		} else if bruto <= 10950000 {
-			rate = 0.0175
-		} else if bruto <= 12300000 {
-			rate = 0.02
-		} else if bruto <= 13000000 {
-			rate = 0.025
-		} else if bruto <= 15000000 {
-			rate = 0.03
-		} else {
-			rate = 0.05
-		}
-	default: // Category C
-		if bruto <= 6600000 {
-			rate = 0
-		} else if bruto <= 6950000 {
-			rate = 0.0025
-		} else if bruto <= 7350000 {
-			rate = 0.005
-		} else if bruto <= 7800000 {
-			rate = 0.0075
-		} else if bruto <= 8350000 {
-			rate = 0.01
-		} else if bruto <= 9450000 {
-			rate = 0.0125
-		} else if bruto <= 10350000 {
-			rate = 0.015
-		} else if bruto <= 11350000 {
-			rate = 0.0175
-		} else if bruto <= 12700000 {
-			rate = 0.02
-		} else if bruto <= 13000000 {
-			rate = 0.025
-		} else if bruto <= 15000000 {
-			rate = 0.03
-		} else {
-			rate = 0.05
-		}
+		brackets = terB
+	default:
+		brackets = terC
 	}
 
+	for _, b := range brackets {
+		if bruto <= b.MaxBruto {
+			return b.Rate
+		}
+	}
+	return 0.34
+}
+
+func (s *payrollService) calculatePPh21TER(ptkp string, bruto float64) float64 {
+	rate := s.getTERRate(ptkp, bruto)
 	return bruto * rate
+}
+
+func (s *payrollService) calculateGrossUpTER(ptkp string, taxBrutoBase float64) (float64, float64) {
+	category := "A"
+	switch strings.ToUpper(ptkp) {
+	case "TK/0", "TK/1", "K/0":
+		category = "A"
+	case "TK/2", "TK/3", "K/1", "K/2":
+		category = "B"
+	case "K/3":
+		category = "C"
+	}
+
+	var brackets []TERBracket
+	switch category {
+	case "A":
+		brackets = terA
+	case "B":
+		brackets = terB
+	default:
+		brackets = terC
+	}
+
+	var prevMax float64 = 0.0
+	for _, b := range brackets {
+		if b.Rate >= 1.0 {
+			continue
+		}
+		finalGross := taxBrutoBase / (1.0 - b.Rate)
+		if finalGross > prevMax && finalGross <= b.MaxBruto {
+			taxAllowance := finalGross - taxBrutoBase
+			return taxAllowance, b.Rate
+		}
+		prevMax = b.MaxBruto
+	}
+
+	highestRate := brackets[len(brackets)-1].Rate
+	finalGross := taxBrutoBase / (1.0 - highestRate)
+	return finalGross - taxBrutoBase, highestRate
+}
+
+func getPTKPValue(ptkp string) float64 {
+	switch strings.ToUpper(ptkp) {
+	case "TK/0":
+		return 54000000
+	case "TK/1", "K/0":
+		return 58500000
+	case "TK/2", "K/1":
+		return 63000000
+	case "TK/3", "K/2":
+		return 67500000
+	case "K/3":
+		return 72000000
+	default:
+		return 54000000
+	}
+}
+
+func (s *payrollService) calculatePPh21Pasal17(ptkp string, monthlyGross float64, monthlyJHT float64, monthlyJP float64) float64 {
+	annualGross := monthlyGross * 12
+
+	biayaJabatan := annualGross * 0.05
+	if biayaJabatan > 6000000 {
+		biayaJabatan = 6000000
+	}
+
+	annualJHT := monthlyJHT * 12
+	annualJP := monthlyJP * 12
+
+	netAnnual := annualGross - biayaJabatan - annualJHT - annualJP
+	ptkpVal := getPTKPValue(ptkp)
+
+	pkp := netAnnual - ptkpVal
+	if pkp <= 0 {
+		return 0
+	}
+
+	tax := 0.0
+	if pkp <= 60000000 {
+		tax = pkp * 0.05
+	} else if pkp <= 250000000 {
+		tax = (60000000 * 0.05) + ((pkp - 60000000) * 0.15)
+	} else if pkp <= 500000000 {
+		tax = (60000000 * 0.05) + (190000000 * 0.15) + ((pkp - 250000000) * 0.25)
+	} else if pkp <= 5000000000 {
+		tax = (60000000 * 0.05) + (190000000 * 0.15) + (250000000 * 0.25) + ((pkp - 500000000) * 0.30)
+	} else {
+		tax = (60000000 * 0.05) + (190000000 * 0.15) + (250000000 * 0.25) + (4500000000 * 0.30) + ((pkp - 5000000000) * 0.35)
+	}
+
+	return tax / 12
 }
 
 func (s *payrollService) calculateTenureMonths(joinDate time.Time) int {
@@ -742,12 +949,20 @@ func (s *payrollService) GeneratePayroll(ctx context.Context, tenantID uint, per
 		meal := 0.0
 		transport := 0.0
 
+		mealType := "variable"
+		transportType := "variable"
 		if profile != nil {
 			ptkp = string(profile.PtkpStatus)
 			basic = profile.BasicSalary
 			fixed = profile.FixedAllowance
 			meal = profile.DailyMealAllowance
 			transport = profile.DailyTransportAllowance
+			if profile.MealAllowanceType != "" {
+				mealType = profile.MealAllowanceType
+			}
+			if profile.TransportAllowanceType != "" {
+				transportType = profile.TransportAllowanceType
+			}
 		}
 
 		calcRes, _ := s.Calculate(ctx, PayrollRequest{
@@ -758,12 +973,15 @@ func (s *payrollService) GeneratePayroll(ctx context.Context, tenantID uint, per
 			FixedAllowances:         fixed,
 			DailyMealAllowance:      meal,
 			DailyTransportAllowance: transport,
+			MealAllowanceType:       mealType,
+			TransportAllowanceType:  transportType,
 			WorkingDaysInMonth:      sync.WorkingDaysInMonth,
 			AttendanceDays:          sync.AttendanceDays,
 			UnpaidLeaveDays:         sync.UnpaidLeaveDays,
 			OvertimeHours:           sync.OvertimeHours,
 			PTKPStatus:              ptkp,
 			CalculateTHR:            runType == model.RunTypeTHR || runType == model.RunTypeAll,
+			Period:                  period,
 		})
 
 		payroll := &model.Payroll{
@@ -1082,6 +1300,8 @@ func (s *payrollService) SaveIndividualPayroll(ctx context.Context, tenantID uin
 		FixedAllowances:          req.FixedAllowances,
 		DailyMealAllowance:       req.DailyMealAllowance,
 		DailyTransportAllowance:  req.DailyTransportAllowance,
+		MealAllowanceType:        req.MealAllowanceType,
+		TransportAllowanceType:   req.TransportAllowanceType,
 		VariableAllowances:       req.VariableAllowances,
 		CustomVariableAllowances: req.CustomVariableAllowances,
 		Incentives:               req.Incentives,
@@ -1093,6 +1313,7 @@ func (s *payrollService) SaveIndividualPayroll(ctx context.Context, tenantID uin
 		OvertimeHours:            req.OvertimeHours,
 		UnpaidLeaveDays:          req.UnpaidLeaveDays,
 		PTKPStatus:               req.PTKPStatus,
+		Period:                   req.Period,
 	})
 	if err != nil {
 		return err
@@ -1173,7 +1394,9 @@ func (s *payrollService) UpdateUserPayrollProfile(ctx context.Context, userID ui
 	profile.FixedAllowance = req.FixedAllowance
 	profile.DailyMealAllowance = req.DailyMealAllowance
 	profile.DailyTransportAllowance = req.DailyTransportAllowance
-
+	profile.MealAllowanceType = req.MealAllowanceType
+	profile.TransportAllowanceType = req.TransportAllowanceType
+ 
 	return s.profileRepo.Upsert(ctx, profile)
 }
 
