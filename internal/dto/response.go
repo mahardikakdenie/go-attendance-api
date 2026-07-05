@@ -51,10 +51,18 @@ type QuickInfoResponse struct {
 	NotificationsCount int `json:"notifications_count"`
 }
 
-type TodayAttendanceResponse struct {
+type AttendanceSession struct {
+	ID           string `json:"id"`
 	ClockInTime  string `json:"clock_in_time"`
 	ClockOutTime string `json:"clock_out_time"`
 	Status       string `json:"status"`
-	Duration     string `json:"duration"`
-	Date         string `json:"date"`
+}
+
+type TodayAttendanceResponse struct {
+	ClockInTime  string              `json:"clock_in_time"`
+	ClockOutTime string              `json:"clock_out_time"`
+	Status       string              `json:"status"`
+	Duration     string              `json:"duration"`
+	Date         string              `json:"date"`
+	Sessions     []AttendanceSession `json:"sessions"`
 }

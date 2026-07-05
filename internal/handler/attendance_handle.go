@@ -41,14 +41,15 @@ func (h *attendanceHandler) GetTodayAttendance(c *gin.Context) {
 	}
 
 	userID := userIDVal.(uint)
+	forceSync := c.Query("sync") == "true"
 
-	res, err := h.service.GetTodayAttendance(c.Request.Context(), userID)
+	res, err := h.service.GetTodayAttendance(c.Request.Context(), userID, forceSync)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, utils.BuildErrorResponse("Failed to fetch data", 500, "error", err.Error()))
 		return
 	}
 
-	if res == nil {
+	if len(res) == 0 {
 		c.JSON(http.StatusOK, gin.H{
 			"success": true,
 			"data":    nil,
@@ -56,36 +57,57 @@ func (h *attendanceHandler) GetTodayAttendance(c *gin.Context) {
 		return
 	}
 
-	// Transform to TodayAttendanceResponse
+	// Transform to TodayAttendanceResponse by aggregating all sessions today
+	firstSession := res[0]
+	lastSession := res[len(res)-1]
+
 	status := "On Time"
-	if res.Status == model.StatusLate {
+	if firstSession.Status == model.StatusLate {
 		status = "Late"
 	}
 
-	duration := "0h 0m"
+	// Calculate total accumulated duration of all sessions
+	var totalDuration time.Duration
+	var sessions []modelDto.AttendanceSession
+	for _, s := range res {
+		if s.ClockOutTime != nil {
+			totalDuration += s.ClockOutTime.Sub(s.ClockInTime)
+		} else {
+			// If still working in active session, calculate from its check-in to now
+			totalDuration += time.Since(s.ClockInTime)
+		}
+
+		sessionOutStr := ""
+		if s.ClockOutTime != nil {
+			sessionOutStr = s.ClockOutTime.In(utils.WIB).Format("03:04 PM")
+		}
+
+		sessions = append(sessions, modelDto.AttendanceSession{
+			ID:           s.ID.String(),
+			ClockInTime:  s.ClockInTime.In(utils.WIB).Format("03:04 PM"),
+			ClockOutTime: sessionOutStr,
+			Status:       string(s.Status),
+		})
+	}
+
+	hours := int(totalDuration.Hours())
+	mins := int(totalDuration.Minutes()) % 60
+	duration := strconv.Itoa(hours) + "h " + strconv.Itoa(mins) + "m"
+
 	clockOutStr := ""
-	if res.ClockOutTime != nil {
-		diff := res.ClockOutTime.Sub(res.ClockInTime)
-		hours := int(diff.Hours())
-		mins := int(diff.Minutes()) % 60
-		duration = strconv.Itoa(hours) + "h " + strconv.Itoa(mins) + "m"
-		clockOutStr = res.ClockOutTime.Format("03:04 PM")
-	} else {
-		// If still working, calculate duration from now
-		diff := time.Since(res.ClockInTime)
-		hours := int(diff.Hours())
-		mins := int(diff.Minutes()) % 60
-		duration = strconv.Itoa(hours) + "h " + strconv.Itoa(mins) + "m"
+	if lastSession.ClockOutTime != nil {
+		clockOutStr = lastSession.ClockOutTime.In(utils.WIB).Format("03:04 PM")
 	}
 
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"data": modelDto.TodayAttendanceResponse{
-			ClockInTime:  res.ClockInTime.Format("03:04 PM"),
+			ClockInTime:  firstSession.ClockInTime.In(utils.WIB).Format("03:04 PM"),
 			ClockOutTime: clockOutStr,
 			Status:       status,
 			Duration:     duration,
-			Date:         res.ClockInTime.Format("2006-01-02"),
+			Date:         firstSession.ClockInTime.In(utils.WIB).Format("2006-01-02"),
+			Sessions:     sessions,
 		},
 	})
 }
@@ -351,18 +373,18 @@ func (h *attendanceHandler) GetAttendanceHistory(c *gin.Context) {
 	for _, a := range data {
 		item := modelDto.AttendanceHistoryItem{
 			ID:       a.ID.String(),
-			Date:     a.ClockInTime.Format("2006-01-02"),
-			ClockIn:  a.ClockInTime.Format("03:04 PM"),
+			Date:     a.ClockInTime.In(utils.WIB).Format("2006-01-02"),
+			ClockIn:  a.ClockInTime.In(utils.WIB).Format("03:04 PM"),
 			Status:   string(a.Status),
 			Location: "Main Office", // Default mock as requested
 			Overtime: "0h 0m",       // Default mock as requested
 		}
 
 		if a.ClockOutTime != nil {
-			item.ClockOut = a.ClockOutTime.Format("03:04 PM")
+			item.ClockOut = a.ClockOutTime.In(utils.WIB).Format("03:04 PM")
 
 			// Simple overtime calculation: anything after 5:00 PM
-			fivePM := time.Date(a.ClockOutTime.Year(), a.ClockOutTime.Month(), a.ClockOutTime.Day(), 17, 0, 0, 0, a.ClockOutTime.Location())
+			fivePM := time.Date(a.ClockOutTime.Year(), a.ClockOutTime.Month(), a.ClockOutTime.Day(), 17, 0, 0, 0, utils.GetWIBLocation())
 			if a.ClockOutTime.After(fivePM) {
 				diff := a.ClockOutTime.Sub(fivePM)
 				hours := int(diff.Hours())

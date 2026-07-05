@@ -22,6 +22,7 @@ type SuperadminHandler interface {
 	// System Role Management
 	ListSystemRoles(c *gin.Context)
 	ListAllPermissions(c *gin.Context)
+	SyncPermissionsCache(c *gin.Context)
 	ListTenantModules(c *gin.Context)
 	CreateSystemRole(c *gin.Context)
 	UpdateSystemRole(c *gin.Context)
@@ -184,6 +185,16 @@ func (h *superadminHandler) ListAllPermissions(c *gin.Context) {
 	}
 
 	c.JSON(200, utils.BuildResponse("Success", 200, "success", permissions))
+}
+
+// @Summary Sync/Refresh Permissions Cache
+func (h *superadminHandler) SyncPermissionsCache(c *gin.Context) {
+	if err := h.service.SyncPermissionsCache(c.Request.Context()); err != nil {
+		h.handleError(c, "Failed to sync permissions", err)
+		return
+	}
+
+	c.JSON(200, utils.BuildResponse("Success", 200, "Permissions cache synced successfully", nil))
 }
 
 // @Summary List Tenant Modules

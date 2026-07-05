@@ -17,6 +17,7 @@ type AttendanceRepository interface {
 	Update(ctx context.Context, attendance *model.Attendance) error
 	FindByID(ctx context.Context, id uuid.UUID, includes []string) (*model.Attendance, error)
 	FindTodayByUser(ctx context.Context, userID uint, today time.Time) (*model.Attendance, error)
+	FindAllTodayByUser(ctx context.Context, userID uint, today time.Time) ([]model.Attendance, error)
 	FindAll(ctx context.Context, filter model.AttendanceFilter, includes []string, limit, offset int) ([]model.Attendance, int64, error)
 	GetSummaryCounts(ctx context.Context, filter model.AttendanceFilter) (map[model.AttendanceStatus]int64, error)
 	GetOldestDataDate(ctx context.Context, tenantID uint) (*time.Time, error)
@@ -127,11 +128,13 @@ func (r *attendanceRepository) GetOldestDataDate(ctx context.Context, tenantID u
 func (r *attendanceRepository) FindTodayByUser(ctx context.Context, userID uint, today time.Time) (*model.Attendance, error) {
 	var attendance model.Attendance
 
-	startOfDay := time.Date(today.Year(), today.Month(), today.Day(), 0, 0, 0, 0, today.Location())
+	wibLocation := utils.GetWIBLocation()
+	startOfDay := time.Date(today.Year(), today.Month(), today.Day(), 0, 0, 0, 0, wibLocation)
 	endOfDay := startOfDay.Add(24 * time.Hour)
-
+	yesterdayStart := startOfDay.Add(-24 * time.Hour)
 	err := r.db.WithContext(ctx).
-		Where("user_id = ? AND clock_in_time >= ? AND clock_in_time < ?", userID, startOfDay, endOfDay).
+		Where("user_id = ? AND ((clock_in_time >= ? AND clock_in_time < ?) OR (clock_in_time >= ? AND clock_out_time IS NULL))", 
+			userID, startOfDay, endOfDay, yesterdayStart).
 		Order("clock_in_time DESC").
 		First(&attendance).Error
 
@@ -144,6 +147,30 @@ func (r *attendanceRepository) FindTodayByUser(ctx context.Context, userID uint,
 	}
 
 	return &attendance, nil
+}
+
+func (r *attendanceRepository) FindAllTodayByUser(ctx context.Context, userID uint, today time.Time) ([]model.Attendance, error) {
+	var attendances []model.Attendance
+
+	wibLocation := utils.GetWIBLocation()
+	startOfDay := time.Date(today.Year(), today.Month(), today.Day(), 0, 0, 0, 0, wibLocation)
+	endOfDay := startOfDay.Add(24 * time.Hour)
+	yesterdayStart := startOfDay.Add(-24 * time.Hour)
+
+	err := r.db.WithContext(ctx).
+		Preload("Logs", func(db *gorm.DB) *gorm.DB {
+			return db.Order("log_time ASC")
+		}).
+		Where("user_id = ? AND ((clock_in_time >= ? AND clock_in_time < ?) OR (clock_in_time >= ? AND clock_out_time IS NULL))",
+			userID, startOfDay, endOfDay, yesterdayStart).
+		Order("clock_in_time ASC").
+		Find(&attendances).Error
+
+	if err != nil {
+		return nil, err
+	}
+
+	return attendances, nil
 }
 
 var attendancePreloadMap = map[string]string{
@@ -213,3 +240,21 @@ func (r *attendanceRepository) FindAll(
 
 	return attendances, total, nil
 }
+
+// AttendanceLogRepository handles saving individual attendance action logs.
+type AttendanceLogRepository interface {
+	Save(ctx context.Context, log *model.AttendanceLog) error
+}
+
+type attendanceLogRepository struct {
+	db *gorm.DB
+}
+
+func NewAttendanceLogRepository(db *gorm.DB) AttendanceLogRepository {
+	return &attendanceLogRepository{db: db}
+}
+
+func (r *attendanceLogRepository) Save(ctx context.Context, log *model.AttendanceLog) error {
+	return r.db.WithContext(ctx).Create(log).Error
+}
+

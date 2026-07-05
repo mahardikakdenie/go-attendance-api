@@ -17,6 +17,9 @@ func SeedRoles(db *gorm.DB) {
 		{ID: "attendance.edit", Module: "attendance", Action: "edit"},
 		{ID: "attendance.delete", Module: "attendance", Action: "delete"},
 		{ID: "attendance.export", Module: "attendance", Action: "export"},
+		{ID: "attendance.correction.view", Module: "attendance", Action: "view"},
+		{ID: "attendance.correction.create", Module: "attendance", Action: "create"},
+		{ID: "attendance.correction.review", Module: "attendance", Action: "approve"},
 
 		// Leave
 		{ID: "leave.view", Module: "leave", Action: "view"},
@@ -97,6 +100,13 @@ func SeedRoles(db *gorm.DB) {
 		// Performance
 		{ID: "performance.view", Module: "performance", Action: "view"},
 		{ID: "performance.manage", Module: "performance", Action: "manage"},
+
+		// Workspace Terminal
+		{ID: "workspace.absen.view", Module: "attendance", Action: "view"},
+		{ID: "workspace.timesheet.view", Module: "timesheet", Action: "view"},
+		{ID: "workspace.requests.view", Module: "timesheet", Action: "view"},
+		{ID: "workspace.actions.view", Module: "timesheet", Action: "view"},
+		{ID: "workspace.analytics.view", Module: "analytics", Action: "view"},
 	}
 
 	for _, p := range permissions {
@@ -184,12 +194,16 @@ func SeedRoles(db *gorm.DB) {
 		} else if role.Name == "hr" {
 			hrPerms := []string{
 				"attendance.view", "attendance.export",
+				"attendance.correction.view", "attendance.correction.review",
 				"leave.view", "leave.approve", "leave.reject",
 				"overtime.view", "overtime.approve",
 				"user.view", "user.create", "user.edit",
 				"project.view", "timesheet.manage",
 				"performance.manage", "performance.view",
 				"support.access", "employee.view",
+				"workspace.absen.view", "workspace.timesheet.view",
+				"workspace.requests.view", "workspace.actions.view",
+				"workspace.analytics.view",
 			}
 			// Clear old and re-add or just FirstOrCreate
 			for _, pID := range hrPerms {
@@ -202,6 +216,9 @@ func SeedRoles(db *gorm.DB) {
 				"finance.view", "finance.manage",
 				"project.view", "timesheet.view",
 				"support.access",
+				"workspace.absen.view", "workspace.timesheet.view",
+				"workspace.requests.view", "workspace.actions.view",
+				"workspace.analytics.view",
 			}
 			for _, pID := range finPerms {
 				rp := model.RolePermission{RoleID: role.ID, PermissionID: pID}
@@ -210,10 +227,13 @@ func SeedRoles(db *gorm.DB) {
 		} else if role.Name == "employee" {
 			empPerms := []string{
 				"attendance.view", "attendance.create",
+				"attendance.correction.view", "attendance.correction.create",
 				"leave.view", "leave.create",
 				"overtime.view", "overtime.create",
 				"project.view", "timesheet.view", "timesheet.create",
 				"performance.view", "support.access",
+				"workspace.absen.view", "workspace.timesheet.view",
+				"workspace.requests.view", "workspace.actions.view",
 			}
 			for _, pID := range empPerms {
 				rp := model.RolePermission{RoleID: role.ID, PermissionID: pID}

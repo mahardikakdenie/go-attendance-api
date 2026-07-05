@@ -35,6 +35,7 @@ func RegisterSuperadminRoutes(rg *gin.RouterGroup, superadminH handler.Superadmi
 			roles.DELETE("/:id", superadminH.DeleteSystemRole)
 		}
 		superadmin.GET("/permissions", superadminH.ListAllPermissions)
+		superadmin.POST("/permissions/sync", superadminH.SyncPermissionsCache)
 		superadmin.GET("/tenant-modules", superadminH.ListTenantModules)
 
 		subscriptions := superadmin.Group("/subscriptions")

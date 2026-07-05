@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	modelDto "go-attendance-api/internal/dto"
@@ -13,6 +14,7 @@ import (
 	"sort"
 	"time"
 
+	"github.com/redis/go-redis/v9"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -26,6 +28,7 @@ type SuperadminService interface {
 	// System Role Management
 	ListSystemRoles(ctx context.Context) ([]model.Role, error)
 	ListAllPermissions(ctx context.Context, scope string) ([]modelDto.PermissionModule, error)
+	SyncPermissionsCache(ctx context.Context) error
 	CreateSystemRole(ctx context.Context, req modelDto.CreateSystemRoleRequest, performerID uint) (model.Role, error)
 	UpdateSystemRole(ctx context.Context, id uint, req modelDto.CreateSystemRoleRequest, performerID uint) (model.Role, error)
 	PatchSystemRole(ctx context.Context, id uint, req modelDto.UpdateSystemRoleRequest, performerID uint) (model.Role, error)
@@ -41,6 +44,7 @@ type superadminService struct {
 	roleRepo       repository.RoleRepository
 	permissionRepo repository.PermissionRepository
 	activityRepo   repository.RecentActivityRepository
+	redis          *redis.Client
 }
 
 func NewSuperadminService(
@@ -49,6 +53,7 @@ func NewSuperadminService(
 	roleRepo repository.RoleRepository,
 	permissionRepo repository.PermissionRepository,
 	activityRepo repository.RecentActivityRepository,
+	redis *redis.Client,
 ) SuperadminService {
 	return &superadminService{
 		repo:           repo,
@@ -56,6 +61,7 @@ func NewSuperadminService(
 		roleRepo:       roleRepo,
 		permissionRepo: permissionRepo,
 		activityRepo:   activityRepo,
+		redis:          redis,
 	}
 }
 
@@ -240,6 +246,19 @@ func (s *superadminService) ListSystemRoles(ctx context.Context) ([]model.Role, 
 }
 
 func (s *superadminService) ListAllPermissions(ctx context.Context, scope string) ([]modelDto.PermissionModule, error) {
+	cacheKey := fmt.Sprintf("cache:permissions:%s", scope)
+
+	// Try to get from Redis
+	if s.redis != nil {
+		cachedData, err := s.redis.Get(ctx, cacheKey).Result()
+		if err == nil && cachedData != "" {
+			var cachedPermissions []modelDto.PermissionModule
+			if json.Unmarshal([]byte(cachedData), &cachedPermissions) == nil {
+				return cachedPermissions, nil
+			}
+		}
+	}
+
 	permissions, err := s.permissionRepo.FindAll(ctx)
 	if err != nil {
 		return nil, err
@@ -274,6 +293,8 @@ func (s *superadminService) ListAllPermissions(ctx context.Context, scope string
 		"user":         true, // Superadmin needs to manage platform accounts
 		"analytics":    true,
 		"superadmin":   true,
+		"attendance":   true, // Ditambahkan agar Module Attendance muncul di list response
+		"timesheet":    true,
 	}
 
 	tenantModules := map[string]bool{
@@ -332,7 +353,24 @@ func (s *superadminService) ListAllPermissions(ctx context.Context, scope string
 		return result[i].Key < result[j].Key
 	})
 
+	// Save to Redis
+	if s.redis != nil {
+		if jsonData, err := json.Marshal(result); err == nil {
+			s.redis.Set(ctx, cacheKey, string(jsonData), 24*time.Hour)
+		}
+	}
+
 	return result, nil
+}
+
+func (s *superadminService) SyncPermissionsCache(ctx context.Context) error {
+	if s.redis != nil {
+		err := s.redis.Del(ctx, "cache:permissions:system", "cache:permissions:tenant").Err()
+		if err != nil {
+			return fmt.Errorf("failed to sync permissions cache: %v", err)
+		}
+	}
+	return nil
 }
 
 func (s *superadminService) CreateSystemRole(ctx context.Context, req modelDto.CreateSystemRoleRequest, performerID uint) (model.Role, error) {

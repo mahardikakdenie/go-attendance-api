@@ -18,10 +18,10 @@ func RegisterAttendanceRoutes(rg *gin.RouterGroup, attendanceH handler.Attendanc
 
 		corrections := attendance.Group("/corrections")
 		{
-			corrections.POST("", correctionH.RequestCorrection)
-			corrections.GET("", correctionH.GetCorrections)
-			corrections.POST("/:id/approve", middleware.RequireRole("superadmin", "admin", "hr"), correctionH.ApproveCorrection)
-			corrections.POST("/:id/reject", middleware.RequireRole("superadmin", "admin", "hr"), correctionH.RejectCorrection)
+			corrections.POST("", middleware.HasPermission("attendance.correction.create"), correctionH.RequestCorrection)
+			corrections.GET("", middleware.HasPermission("attendance.correction.view"), correctionH.GetCorrections)
+			corrections.POST("/:id/approve", middleware.HasPermission("attendance.correction.review"), correctionH.ApproveCorrection)
+			corrections.POST("/:id/reject", middleware.HasPermission("attendance.correction.review"), correctionH.RejectCorrection)
 		}
 	}
 }

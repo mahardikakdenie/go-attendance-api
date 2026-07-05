@@ -22,12 +22,33 @@ const (
 	StatusLate    AttendanceStatus = "late"
 )
 
-type AttendanceRequest struct {
-	Action    AttendanceAction `json:"action" example:"clock_in" binding:"required,oneof=clock_in clock_out"`
-	Latitude  float64          `json:"latitude" example:"-6.1339179" binding:"required"`
-	Longitude float64          `json:"longitude" example:"106.8329504" binding:"required"`
-	MediaUrl  string           `json:"media_url" example:"https://i.pinimg.com/control1/736x/41/e7/99/41e799436291fdfb4c969b80913a19fe.jpg"`
+type AttendanceLog struct {
+	ID           uuid.UUID `gorm:"type:uuid;default:gen_random_uuid();primaryKey" json:"id"`
+	AttendanceID uuid.UUID `gorm:"type:uuid;not null;index" json:"attendance_id"`
+	Action       string    `gorm:"type:varchar(50);not null" json:"action"`
+	LogTime      time.Time `gorm:"not null" json:"log_time"`
+	Latitude     float64   `json:"latitude"`
+	Longitude    float64   `json:"longitude"`
+	MediaUrl     string    `gorm:"type:varchar(255)" json:"media_url"`
 }
+
+type AttendanceLogResponse struct {
+	ID           uuid.UUID `json:"id"`
+	AttendanceID uuid.UUID `json:"attendance_id"`
+	Action       string    `json:"action"`
+	LogTime      time.Time `json:"log_time"`
+	Latitude     float64   `json:"latitude"`
+	Longitude    float64   `json:"longitude"`
+	MediaUrl     string    `json:"media_url"`
+}
+
+type AttendanceRequest struct {
+	Action    string  `json:"action" example:"clock_in" binding:"required"`
+	Latitude  float64 `json:"latitude" example:"-6.1339179" binding:"required"`
+	Longitude float64 `json:"longitude" example:"106.8329504" binding:"required"`
+	MediaUrl  string  `json:"media_url" example:"https://i.pinimg.com/control1/736x/41/e7/99/41e799436291fdfb4c969b80913a19fe.jpg"`
+}
+
 type Attendance struct {
 	ID       uuid.UUID `gorm:"type:uuid;default:gen_random_uuid();primaryKey"`
 	UserID   uint      `gorm:"not null;index"`
@@ -46,6 +67,7 @@ type Attendance struct {
 	ClockOutMediaUrl  *string
 
 	Status AttendanceStatus `gorm:"type:varchar(50)"`
+	Logs   []AttendanceLog  `gorm:"foreignKey:AttendanceID" json:"logs,omitempty"`
 }
 
 type AttendanceResponse struct {
@@ -64,8 +86,9 @@ type AttendanceResponse struct {
 	ClockInMediaUrl  string  `json:"clock_in_media_url"`
 	ClockOutMediaUrl *string `json:"clock_out_media_url,omitempty"`
 
-	Status    AttendanceStatus `json:"status"`
-	CreatedAt time.Time        `json:"created_at"`
+	Status    AttendanceStatus        `json:"status"`
+	Logs      []AttendanceLogResponse `json:"logs,omitempty"`
+	CreatedAt time.Time               `json:"created_at"`
 }
 
 type AttendanceSummaryResponse struct {
@@ -108,6 +131,7 @@ type AttendanceCorrection struct {
 	UserID       uint             `gorm:"not null;index" json:"user_id"`
 	AttendanceID *uuid.UUID       `gorm:"type:uuid" json:"attendance_id"` // Null if user completely forgot to clock in and out
 	Date         time.Time        `gorm:"type:date;not null" json:"date"`
+	Type         string           `gorm:"type:varchar(20);not null;default:'both'" json:"type"` // clock_in, clock_out, both
 	ClockInTime  *time.Time       `json:"clock_in_time"`
 	ClockOutTime *time.Time       `json:"clock_out_time"`
 	Reason       string           `gorm:"type:text;not null" json:"reason"`
@@ -127,6 +151,7 @@ type AttendanceCorrection struct {
 type CreateCorrectionRequest struct {
 	AttendanceID *uuid.UUID `json:"attendance_id"`
 	Date         string     `json:"date" binding:"required"` // YYYY-MM-DD
+	Type         string     `json:"type" binding:"required,oneof=clock_in clock_out both"`
 	ClockInTime  *string    `json:"clock_in_time"`           // HH:mm:ss
 	ClockOutTime *string    `json:"clock_out_time"`          // HH:mm:ss
 	Reason       string     `json:"reason" binding:"required"`
@@ -141,6 +166,7 @@ type AttendanceCorrectionResponse struct {
 	UserID       uint             `json:"user_id"`
 	UserName     string           `json:"user_name"`
 	Date         string           `json:"date"`
+	Type         string           `json:"type"`
 	ClockInTime  *string          `json:"clock_in_time"`
 	ClockOutTime *string          `json:"clock_out_time"`
 	Reason       string           `json:"reason"`

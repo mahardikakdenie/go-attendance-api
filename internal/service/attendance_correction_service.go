@@ -3,12 +3,14 @@ package service
 import (
 	"context"
 	"errors"
+	"fmt"
 	"go-attendance-api/internal/model"
 	"go-attendance-api/internal/repository"
 	"go-attendance-api/internal/utils"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/redis/go-redis/v9"
 )
 
 type AttendanceCorrectionService interface {
@@ -23,6 +25,7 @@ type attendanceCorrectionService struct {
 	attendanceRepo repository.AttendanceRepository
 	userRepo       repository.UserRepository
 	activityRepo   repository.RecentActivityRepository
+	redis          *redis.Client
 }
 
 func NewAttendanceCorrectionService(
@@ -30,12 +33,14 @@ func NewAttendanceCorrectionService(
 	attendanceRepo repository.AttendanceRepository,
 	userRepo repository.UserRepository,
 	activityRepo repository.RecentActivityRepository,
+	redis *redis.Client,
 ) AttendanceCorrectionService {
 	return &attendanceCorrectionService{
 		repo:           repo,
 		attendanceRepo: attendanceRepo,
 		userRepo:       userRepo,
 		activityRepo:   activityRepo,
+		redis:          redis,
 	}
 }
 
@@ -47,6 +52,13 @@ func (s *attendanceCorrectionService) RequestCorrection(ctx context.Context, use
 
 	if parsedDate.After(utils.Now()) {
 		return model.AttendanceCorrectionResponse{}, errors.New("cannot request correction for future dates")
+	}
+
+	if (req.Type == "clock_in" || req.Type == "both") && (req.ClockInTime == nil || *req.ClockInTime == "") {
+		return model.AttendanceCorrectionResponse{}, errors.New("clock_in_time is required when type is clock_in or both")
+	}
+	if (req.Type == "clock_out" || req.Type == "both") && (req.ClockOutTime == nil || *req.ClockOutTime == "") {
+		return model.AttendanceCorrectionResponse{}, errors.New("clock_out_time is required when type is clock_out or both")
 	}
 
 	var clockIn, clockOut *time.Time
@@ -71,6 +83,7 @@ func (s *attendanceCorrectionService) RequestCorrection(ctx context.Context, use
 		TenantID:     tenantID,
 		AttendanceID: req.AttendanceID,
 		Date:         parsedDate,
+		Type:         req.Type,
 		ClockInTime:  clockIn,
 		ClockOutTime: clockOut,
 		Reason:       req.Reason,
@@ -123,21 +136,28 @@ func (s *attendanceCorrectionService) ApproveCorrection(ctx context.Context, req
 	}
 
 	if attendance != nil {
-		if correction.ClockInTime != nil {
+		if (correction.Type == "clock_in" || correction.Type == "both") && correction.ClockInTime != nil {
 			attendance.ClockInTime = *correction.ClockInTime
 		}
-		if correction.ClockOutTime != nil {
+		if (correction.Type == "clock_out" || correction.Type == "both") && correction.ClockOutTime != nil {
 			attendance.ClockOutTime = correction.ClockOutTime
 		}
 		attendance.Status = model.StatusDone
 		_ = s.attendanceRepo.Update(ctx, attendance)
 	} else {
 		// Create new attendance
+		var clockInTime time.Time
+		if correction.ClockInTime != nil {
+			clockInTime = *correction.ClockInTime
+		} else {
+			clockInTime = correction.Date
+		}
+
 		newAttendance := &model.Attendance{
 			ID:          uuid.New(),
 			UserID:      correction.UserID,
 			TenantID:    correction.TenantID,
-			ClockInTime: *correction.ClockInTime,
+			ClockInTime: clockInTime,
 			Status:      model.StatusDone,
 		}
 		if correction.ClockOutTime != nil {
@@ -156,6 +176,11 @@ func (s *attendanceCorrectionService) ApproveCorrection(ctx context.Context, req
 		Action: "CorrectionApproved",
 		Status: "success",
 	})
+
+	// Invalidate the cache for this user's attendance on this date
+	dateStr := correction.Date.Format("2006-01-02")
+	cacheKey := fmt.Sprintf("cache:attendance:today:%d:%s", correction.UserID, dateStr)
+	s.redis.Del(ctx, cacheKey)
 
 	return s.repo.Update(ctx, correction)
 }
@@ -200,6 +225,7 @@ func mapToCorrectionResponse(c *model.AttendanceCorrection) model.AttendanceCorr
 		UserID:       c.UserID,
 		UserName:     userName,
 		Date:         c.Date.Format("2006-01-02"),
+		Type:         c.Type,
 		ClockInTime:  clockIn,
 		ClockOutTime: clockOut,
 		Reason:       c.Reason,

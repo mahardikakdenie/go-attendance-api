@@ -32,11 +32,12 @@ type AttendanceService interface {
 
 	GetSummary(ctx context.Context, tenantID uint, filter model.AttendanceFilter) (model.AttendanceSummaryResponse, error)
 
-	GetTodayAttendance(ctx context.Context, userID uint) (*model.AttendanceResponse, error)
+	GetTodayAttendance(ctx context.Context, userID uint, forceSync bool) ([]model.AttendanceResponse, error)
 }
 
 type attendanceService struct {
 	repo         repository.AttendanceRepository
+	logRepo      repository.AttendanceLogRepository
 	userRepo     repository.UserRepository
 	settingRepo  repository.TenantSettingRepository
 	tenantRepo   repository.TenantRepository
@@ -59,6 +60,7 @@ type attendanceTask struct {
 
 func NewAttendanceService(
 	repo repository.AttendanceRepository,
+	logRepo repository.AttendanceLogRepository,
 	userRepo repository.UserRepository,
 	settingRepo repository.TenantSettingRepository,
 	tenantRepo repository.TenantRepository,
@@ -70,6 +72,7 @@ func NewAttendanceService(
 ) AttendanceService {
 	s := &attendanceService{
 		repo:         repo,
+		logRepo:      logRepo,
 		userRepo:     userRepo,
 		settingRepo:  settingRepo,
 		tenantRepo:   tenantRepo,
@@ -257,28 +260,36 @@ func (s *attendanceService) RecordAttendance(
 		return model.AttendanceResponse{}, errors.New("selfie is required")
 	}
 
-	switch req.Action {
+	// ── Dynamic Multi-Session Logic ───────────────────────────────────────────
+	//
+	// Rules:
+	//   1. If todayAttendance is nil (first action of the day), initialize a new
+	//      parent Attendance record using clock-in time + location.
+	//      Only 'clock_in' is allowed as the very first action.
+	//   2. For any subsequent action (break_start, break_end, clock_out, etc.)
+	//      a new AttendanceLog row is inserted under the same parent.
+	//   3. When action == 'clock_out', update ClockOutTime on the parent record.
+	//   4. When AllowMultipleCheck is false, standard one-in-one-out validation applies.
+	// ──────────────────────────────────────────────────────────────────────────
 
-	case model.ClockIn:
+	action := req.Action
 
-		if (todayAttendance != nil || isSubmitted != "") && !setting.AllowMultipleCheck {
-			return model.AttendanceResponse{}, errors.New("anda sudah clock-in hari ini")
+	if todayAttendance == nil && isSubmitted == "" {
+		// No existing record for today — this MUST be a clock_in action.
+		if action != string(model.ClockIn) {
+			return model.AttendanceResponse{}, errors.New("anda belum melakukan clock-in hari ini")
 		}
 
-		// Karena `now` sudah di UTC+7, pengecekan jam dan menit di fungsi ini akan langsung match
-		// dengan setting jam yang juga berasumsi waktu lokal (WIB).
+		// Validate clock-in time window.
 		ok, err := isWithinTimeRange(now, clockInStart, clockInEnd)
 		if err != nil || !ok {
 			return model.AttendanceResponse{}, fmt.Errorf(
 				"clock-in gagal, anda melakukan pada %s, batas clock-in %s - %s",
-				nowStr,
-				clockInStart,
-				clockInEnd,
+				nowStr, clockInStart, clockInEnd,
 			)
 		}
 
 		status := model.StatusWorking
-		// now.Hour() dan now.Minute() sekarang aman dari bias UTC 0 server
 		if now.Hour()*60+now.Minute() > lateMinutes {
 			status = model.StatusLate
 		}
@@ -286,100 +297,111 @@ func (s *attendanceService) RecordAttendance(
 		data := model.Attendance{
 			UserID:           userID,
 			TenantID:         user.TenantID,
-			ClockInTime:      now, // Disimpan ke struct/DB dengan timezone UTC+7
+			ClockInTime:      now,
 			ClockInLatitude:  req.Latitude,
 			ClockInLongitude: req.Longitude,
 			ClockInMediaUrl:  req.MediaUrl,
 			Status:           status,
 		}
 
-		// 2. Queue for background processing (Peak hour handling)
-		s.recordQueue <- attendanceTask{
-			ctx:      ctx,
-			userID:   userID,
-			tenantID: user.TenantID,
-			data:     &data,
-			isUpdate: false,
+		// Save parent record synchronously so we get an ID for the log.
+		if err := s.repo.Save(ctx, &data); err != nil {
+			return model.AttendanceResponse{}, fmt.Errorf("gagal menyimpan absensi: %v", err)
 		}
 
-		// Set Redis flag to prevent duplicate submission during background processing
-		s.redis.Set(ctx, submittedKey, "true", 24*time.Hour)
+		// Create AttendanceLog for the clock_in event synchronously.
+		attLog := model.AttendanceLog{
+			AttendanceID: data.ID,
+			Action:       action,
+			LogTime:      now,
+			Latitude:     req.Latitude,
+			Longitude:    req.Longitude,
+			MediaUrl:     req.MediaUrl,
+		}
+		if err := s.logRepo.Save(ctx, &attLog); err != nil {
+			return model.AttendanceResponse{}, fmt.Errorf("gagal menyimpan log absensi: %v", err)
+		}
+		data.Logs = append(data.Logs, attLog)
 
-		// Invalidate Cache immediately
+		// Set Redis flag and invalidate cache.
+		s.redis.Set(ctx, submittedKey, "true", 24*time.Hour)
 		cacheKey := fmt.Sprintf("cache:attendance:today:%d:%s", userID, now.Format("2006-01-02"))
 		s.redis.Del(ctx, cacheKey)
 
-		// Preload user to ensure it's returned in the response
 		userData, _ := s.userRepo.FindByID(ctx, userID, []string{})
 		if userData != nil {
 			data.User = *userData
 		}
 
 		return applyPreloads(&data, []string{"user"}), nil
+	}
 
-	case model.ClockOut:
+	// ── Subsequent actions (todayAttendance already exists) ───────────────────
 
-		if todayAttendance == nil && isSubmitted == "" {
-			return model.AttendanceResponse{}, errors.New("anda belum melakukan clock-in hari ini")
+	if todayAttendance == nil && isSubmitted != "" {
+		return model.AttendanceResponse{}, errors.New("data clock-in anda sedang diproses, harap tunggu sebentar")
+	}
+
+	// Standard mode: prevent duplicate clock_in or clock_out.
+	if !setting.AllowMultipleCheck {
+		if action == string(model.ClockIn) {
+			return model.AttendanceResponse{}, errors.New("anda sudah clock-in hari ini")
 		}
-
-		if todayAttendance != nil && todayAttendance.ClockOutTime != nil && !setting.AllowMultipleCheck {
+		if action == string(model.ClockOut) && todayAttendance.ClockOutTime != nil {
 			return model.AttendanceResponse{}, errors.New("anda sudah clock-out hari ini")
 		}
+	}
 
+	// For clock_out action: validate time window and update parent Attendance.
+	if action == string(model.ClockOut) {
 		ok, err := isWithinTimeRange(now, clockOutStart, clockOutEnd)
 		if err != nil || !ok {
 			return model.AttendanceResponse{}, fmt.Errorf(
 				"clock-out gagal, anda melakukan pada %s, batas clock-out %s - %s",
-				nowStr,
-				clockOutStart,
-				clockOutEnd,
+				nowStr, clockOutStart, clockOutEnd,
 			)
-		}
-
-		// If DB record doesn't exist yet but Redis says it was submitted, we have to wait or handle it.
-		// For simplicity, we error out and ask to wait 1-2 seconds.
-		if todayAttendance == nil && isSubmitted != "" {
-			return model.AttendanceResponse{}, errors.New("data clock-in anda sedang diproses, harap tunggu sebentar sebelum clock-out")
 		}
 
 		todayAttendance.ClockOutTime = &now
 		todayAttendance.ClockOutLatitude = &req.Latitude
 		todayAttendance.ClockOutLongitude = &req.Longitude
-
 		if req.MediaUrl != "" {
 			todayAttendance.ClockOutMediaUrl = &req.MediaUrl
 		}
-
-		// Maintain StatusLate if it was already late
 		if todayAttendance.Status != model.StatusLate {
 			todayAttendance.Status = model.StatusDone
 		}
 
-		// 2. Queue for background processing (Peak hour handling)
-		s.recordQueue <- attendanceTask{
-			ctx:      ctx,
-			userID:   userID,
-			tenantID: user.TenantID,
-			data:     todayAttendance,
-			isUpdate: true,
+		// Update parent record synchronously.
+		if err := s.repo.Update(ctx, todayAttendance); err != nil {
+			return model.AttendanceResponse{}, fmt.Errorf("gagal update absensi: %v", err)
 		}
-
-		// Invalidate Cache immediately
-		cacheKey := fmt.Sprintf("cache:attendance:today:%d:%s", userID, now.Format("2006-01-02"))
-		s.redis.Del(ctx, cacheKey)
-
-		// Preload user to ensure it's returned in the response
-		userData, _ := s.userRepo.FindByID(ctx, userID, []string{})
-		if userData != nil {
-			todayAttendance.User = *userData
-		}
-
-		return applyPreloads(todayAttendance, []string{"user"}), nil
-
-	default:
-		return model.AttendanceResponse{}, errors.New("invalid action")
 	}
+
+	// Always create an AttendanceLog entry for any action synchronously.
+	attLog := model.AttendanceLog{
+		AttendanceID: todayAttendance.ID,
+		Action:       action,
+		LogTime:      now,
+		Latitude:     req.Latitude,
+		Longitude:    req.Longitude,
+		MediaUrl:     req.MediaUrl,
+	}
+	if err := s.logRepo.Save(ctx, &attLog); err != nil {
+		return model.AttendanceResponse{}, fmt.Errorf("gagal menyimpan log absensi: %v", err)
+	}
+	todayAttendance.Logs = append(todayAttendance.Logs, attLog)
+
+	// Invalidate Cache immediately.
+	cacheKey := fmt.Sprintf("cache:attendance:today:%d:%s", userID, now.Format("2006-01-02"))
+	s.redis.Del(ctx, cacheKey)
+
+	userData, _ := s.userRepo.FindByID(ctx, userID, []string{})
+	if userData != nil {
+		todayAttendance.User = *userData
+	}
+
+	return applyPreloads(todayAttendance, []string{"user"}), nil
 }
 
 func (s *attendanceService) GetAllData(
@@ -472,36 +494,44 @@ func (s *attendanceService) GetSummary(ctx context.Context, tenantID uint, filte
 // @Summary Get Today Attendance
 // @Description Get today's attendance for the logged-in user
 // @Tags Attendance
-func (s *attendanceService) GetTodayAttendance(ctx context.Context, userID uint) (*model.AttendanceResponse, error) {
+func (s *attendanceService) GetTodayAttendance(ctx context.Context, userID uint, forceSync bool) ([]model.AttendanceResponse, error) {
 	now := utils.Now()
 	dateStr := now.Format("2006-01-02")
 	cacheKey := fmt.Sprintf("cache:attendance:today:%d:%s", userID, dateStr)
 
 	// 1. Try get from cache
-	cachedData, err := s.redis.Get(ctx, cacheKey).Result()
-	if err == nil && cachedData != "" {
-		var res model.AttendanceResponse
-		if err := json.Unmarshal([]byte(cachedData), &res); err == nil {
-			return &res, nil
+	if !forceSync {
+		cachedData, err := s.redis.Get(ctx, cacheKey).Result()
+		if err == nil && cachedData != "" {
+			var res []model.AttendanceResponse
+			if err := json.Unmarshal([]byte(cachedData), &res); err == nil {
+				return res, nil
+			}
 		}
 	}
 
 	// 2. Get from DB
-	attendance, err := s.repo.FindTodayByUser(ctx, userID, now)
+	attendances, err := s.repo.FindAllTodayByUser(ctx, userID, now)
 	if err != nil {
 		return nil, err
 	}
-	if attendance == nil {
+	if len(attendances) == 0 {
+		if forceSync {
+			s.redis.Del(ctx, cacheKey)
+		}
 		return nil, nil
 	}
 
-	res := applyPreloads(attendance, []string{})
+	var res []model.AttendanceResponse
+	for _, a := range attendances {
+		res = append(res, applyPreloads(&a, []string{}))
+	}
 
 	// 3. Save to cache (TTL 24h)
 	jsonData, _ := json.Marshal(res)
 	s.redis.Set(ctx, cacheKey, string(jsonData), 24*time.Hour)
 
-	return &res, nil
+	return res, nil
 }
 
 func calculateDiff(today, previous int64) float64 {
@@ -585,6 +615,19 @@ func applyPreloads(a *model.Attendance, includes []string) model.AttendanceRespo
 		ClockOutMediaUrl:  a.ClockOutMediaUrl,
 		Status:            a.Status,
 		CreatedAt:         a.ClockInTime, // Using ClockInTime as CreatedAt
+	}
+
+	// Map AttendanceLog entries to AttendanceLogResponse.
+	for _, l := range a.Logs {
+		res.Logs = append(res.Logs, model.AttendanceLogResponse{
+			ID:           l.ID,
+			AttendanceID: l.AttendanceID,
+			Action:       l.Action,
+			LogTime:      l.LogTime,
+			Latitude:     l.Latitude,
+			Longitude:    l.Longitude,
+			MediaUrl:     l.MediaUrl,
+		})
 	}
 
 	if hasAttendanceInclude(includes, "user") {
