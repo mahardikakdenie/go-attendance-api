@@ -31,6 +31,7 @@ type AttendanceService interface {
 
 	GetTodayAttendance(ctx context.Context, userID uint, forceSync bool) ([]model.AttendanceResponse, error)
 	EndSession(ctx context.Context, userID uint) error
+	CheckMultipleCheck(ctx context.Context, tenantID uint) bool
 }
 
 // attendanceService adalah implementasi konkret dari AttendanceService.
@@ -134,4 +135,12 @@ func (s *attendanceService) attendanceWorker() {
 			Status: "success",
 		})
 	}
+}
+
+func (s *attendanceService) CheckMultipleCheck(ctx context.Context, tenantID uint) bool {
+	setting, err := s.settingRepo.FindByTenantID(ctx, tenantID)
+	if err != nil || setting == nil {
+		return false
+	}
+	return setting.AllowMultipleCheck
 }

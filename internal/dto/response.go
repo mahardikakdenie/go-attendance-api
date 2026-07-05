@@ -37,6 +37,7 @@ type AttendanceHistoryItem struct {
 	Location string `json:"location"`
 	Status   string `json:"status"`
 	Overtime string `json:"overtime"`
+	Sessions []AttendanceSession `json:"sessions,omitempty"`
 }
 
 type AttendanceHistoryResponse struct {

@@ -12,6 +12,7 @@ var allowedAttendanceIncludes = map[string]bool{
 	"user":    true,
 	"tenant":  true,
 	"setting": true,
+	"logs":    true,
 }
 
 // filterAttendanceIncludes memfilter array string include dari request agar hanya menyisakan relasi yang diizinkan (whitelist).

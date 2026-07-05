@@ -195,6 +195,14 @@ func (r *attendanceRepository) FindAll(
 
 	query = utils.ApplyPreloads(query, includes, attendancePreloadMap)
 
+	for _, inc := range includes {
+		if inc == "logs" {
+			query = query.Preload("Logs", func(db *gorm.DB) *gorm.DB {
+				return db.Order("log_time ASC")
+			})
+		}
+	}
+
 	if filter.UserID != 0 {
 		query = query.Where("attendances.user_id = ?", filter.UserID)
 	}

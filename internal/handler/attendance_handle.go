@@ -403,8 +403,19 @@ func (h *attendanceHandler) GetAttendanceHistory(c *gin.Context) {
 
 	offset := (page - 1) * limit
 
+	// Check allow_multiple_check setting
+	allowMultiple := false
+	if tenantIDVal, exists := c.Get("tenant_id"); exists {
+		allowMultiple = h.service.CheckMultipleCheck(ctx, tenantIDVal.(uint))
+	}
+
+	includes := []string{"user"}
+	if allowMultiple {
+		includes = append(includes, "logs")
+	}
+
 	// 4. Fetch Data
-	data, total, err := h.service.GetAllData(ctx, userID, filter, []string{"user"}, limit, offset)
+	data, total, err := h.service.GetAllData(ctx, userID, filter, includes, limit, offset)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, utils.BuildErrorResponse("Failed to fetch history", http.StatusInternalServerError, "error", err.Error()))
 		return
@@ -449,6 +460,51 @@ func (h *attendanceHandler) GetAttendanceHistory(c *gin.Context) {
 			item.Status = "On Time"
 		case model.StatusLate:
 			item.Status = "Late"
+		}
+
+		if allowMultiple {
+			var sessions []modelDto.AttendanceSession
+			if len(a.Logs) > 0 {
+				var currentInTime *time.Time
+				var currentSessionID string
+
+				for _, log := range a.Logs {
+					if log.Action == "clock_in" {
+						t := log.LogTime
+						currentInTime = &t
+						currentSessionID = log.ID.String()
+					} else if log.Action == "clock_out" && currentInTime != nil {
+						sessions = append(sessions, modelDto.AttendanceSession{
+							ID:           currentSessionID,
+							ClockInTime:  currentInTime.In(utils.WIB).Format("03:04 PM"),
+							ClockOutTime: log.LogTime.In(utils.WIB).Format("03:04 PM"),
+							Status:       string(a.Status),
+						})
+						currentInTime = nil
+					}
+				}
+
+				if currentInTime != nil {
+					sessions = append(sessions, modelDto.AttendanceSession{
+						ID:           currentSessionID,
+						ClockInTime:  currentInTime.In(utils.WIB).Format("03:04 PM"),
+						ClockOutTime: "",
+						Status:       string(a.Status),
+					})
+				}
+			} else {
+				sessionOutStr := ""
+				if a.ClockOutTime != nil {
+					sessionOutStr = a.ClockOutTime.In(utils.WIB).Format("03:04 PM")
+				}
+				sessions = append(sessions, modelDto.AttendanceSession{
+					ID:           a.ID.String(),
+					ClockInTime:  a.ClockInTime.In(utils.WIB).Format("03:04 PM"),
+					ClockOutTime: sessionOutStr,
+					Status:       string(a.Status),
+				})
+			}
+			item.Sessions = sessions
 		}
 
 		items = append(items, item)
