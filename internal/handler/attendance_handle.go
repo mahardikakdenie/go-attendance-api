@@ -9,7 +9,7 @@ import (
 
 	modelDto "go-attendance-api/internal/dto"
 	"go-attendance-api/internal/model"
-	"go-attendance-api/internal/service"
+	"go-attendance-api/internal/service/attendance"
 	"go-attendance-api/internal/utils"
 
 	"github.com/gin-gonic/gin"
@@ -150,10 +150,10 @@ func (h *attendanceHandler) GetTodayAttendance(c *gin.Context) {
 }
 
 type attendanceHandler struct {
-	service service.AttendanceService
+	service attendance.AttendanceService
 }
 
-func NewAttendanceHandler(service service.AttendanceService) AttendanceHandler {
+func NewAttendanceHandler(service attendance.AttendanceService) AttendanceHandler {
 	return &attendanceHandler{
 		service: service,
 	}
@@ -561,6 +561,16 @@ func (h *attendanceHandler) GetGroupAttendance(c *gin.Context) {
 	c.JSON(http.StatusOK, response)
 }
 
+// @Summary End Attendance Session
+// @Description End the active multiple-check attendance session for the logged-in user
+// @Tags Attendance
+// @Produce json
+// @Security BearerAuth
+// @Security CookieAuth
+// @Success 200 {object} utils.APIResponse
+// @Failure 400 {object} utils.APIResponse
+// @Failure 401 {object} utils.APIResponse
+// @Router /api/v1/attendance/end-session [post]
 func (h *attendanceHandler) EndSession(c *gin.Context) {
 	userIDVal, exists := c.Get("user_id")
 	if !exists {

@@ -6,6 +6,7 @@ import (
 	"go-attendance-api/internal/handler"
 	"go-attendance-api/internal/repository"
 	"go-attendance-api/internal/service"
+	"go-attendance-api/internal/service/attendance"
 
 	"github.com/redis/go-redis/v9"
 	"gorm.io/gorm"
@@ -81,7 +82,7 @@ func initHandlers(db *gorm.DB, rdb *redis.Client) (*Handlers, service.CalendarCr
 	tenantService := service.NewTenantService(tenantRepo, subscriptionRepo, userRepo, notificationService)
 	tenantSettingService := service.NewTenantSettingService(tenantSettingRepo)
 	mediaService := service.NewMediaService(mediaRepo)
-	attendanceService := service.NewAttendanceService(attendanceRepo, attendanceLogRepo, userRepo, tenantSettingRepo, tenantRepo, activityRepo, hrOpsRepo, leaveRepo, userService, rdb)
+	attendanceService := attendance.NewAttendanceService(attendanceRepo, attendanceLogRepo, userRepo, tenantSettingRepo, tenantRepo, activityRepo, hrOpsRepo, leaveRepo, userService, rdb)
 	orgService := service.NewOrganizationService(userRepo, leaveRepo, positionRepo)
 	leaveService := service.NewLeaveService(leaveRepo, activityRepo, userRepo, orgService, userService, notificationService, rdb)
 	overtimeService := service.NewOvertimeService(overtimeRepo, userService, notificationService)
