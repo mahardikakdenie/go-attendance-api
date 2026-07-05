@@ -58,7 +58,15 @@ func (h *attendanceHandler) GetTodayAttendance(c *gin.Context) {
 		return
 	}
 
-	// Transform to TodayAttendanceResponse by aggregating all sessions today
+	responseData := mapToTodayAttendanceResponse(res)
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"data":    responseData,
+	})
+}
+
+func mapToTodayAttendanceResponse(res []model.AttendanceResponse) modelDto.TodayAttendanceResponse {
 	firstSession := res[0]
 	lastSession := res[len(res)-1]
 
@@ -136,17 +144,14 @@ func (h *attendanceHandler) GetTodayAttendance(c *gin.Context) {
 		clockOutStr = lastSession.ClockOutTime.In(utils.WIB).Format("03:04 PM")
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"data": modelDto.TodayAttendanceResponse{
-			ClockInTime:  firstSession.ClockInTime.In(utils.WIB).Format("03:04 PM"),
-			ClockOutTime: clockOutStr,
-			Status:       status,
-			Duration:     duration,
-			Date:         firstSession.ClockInTime.In(utils.WIB).Format("2006-01-02"),
-			Sessions:     sessions,
-		},
-	})
+	return modelDto.TodayAttendanceResponse{
+		ClockInTime:  firstSession.ClockInTime.In(utils.WIB).Format("03:04 PM"),
+		ClockOutTime: clockOutStr,
+		Status:       status,
+		Duration:     duration,
+		Date:         firstSession.ClockInTime.In(utils.WIB).Format("2006-01-02"),
+		Sessions:     sessions,
+	}
 }
 
 type attendanceHandler struct {
