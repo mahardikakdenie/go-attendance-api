@@ -21,6 +21,7 @@ type AttendanceHandler interface {
 	GetAttendanceHistory(c *gin.Context)
 	GetAttendanceSummary(c *gin.Context)
 	GetTodayAttendance(c *gin.Context)
+	EndSession(c *gin.Context)
 	HelloTest(c *gin.Context)
 }
 
@@ -69,25 +70,61 @@ func (h *attendanceHandler) GetTodayAttendance(c *gin.Context) {
 	// Calculate total accumulated duration of all sessions
 	var totalDuration time.Duration
 	var sessions []modelDto.AttendanceSession
+
 	for _, s := range res {
-		if s.ClockOutTime != nil {
-			totalDuration += s.ClockOutTime.Sub(s.ClockInTime)
+		if len(s.Logs) > 0 {
+			var currentInTime *time.Time
+			var currentSessionID string
+
+			// Iterate through logs to build sessions
+			for _, log := range s.Logs {
+				if log.Action == "clock_in" {
+					t := log.LogTime
+					currentInTime = &t
+					currentSessionID = log.ID.String()
+				} else if log.Action == "clock_out" && currentInTime != nil {
+					totalDuration += log.LogTime.Sub(*currentInTime)
+					sessions = append(sessions, modelDto.AttendanceSession{
+						ID:           currentSessionID,
+						ClockInTime:  currentInTime.In(utils.WIB).Format("03:04 PM"),
+						ClockOutTime: log.LogTime.In(utils.WIB).Format("03:04 PM"),
+						Status:       string(s.Status),
+					})
+					currentInTime = nil
+				}
+			}
+
+			// If there is an active session (clock_in without clock_out)
+			if currentInTime != nil {
+				totalDuration += time.Since(*currentInTime)
+				sessions = append(sessions, modelDto.AttendanceSession{
+					ID:           currentSessionID,
+					ClockInTime:  currentInTime.In(utils.WIB).Format("03:04 PM"),
+					ClockOutTime: "",
+					Status:       string(s.Status),
+				})
+			}
 		} else {
-			// If still working in active session, calculate from its check-in to now
-			totalDuration += time.Since(s.ClockInTime)
-		}
+			// Fallback for older data without logs
+			if s.ClockOutTime != nil {
+				totalDuration += s.ClockOutTime.Sub(s.ClockInTime)
+			} else {
+				// If still working in active session, calculate from its check-in to now
+				totalDuration += time.Since(s.ClockInTime)
+			}
 
-		sessionOutStr := ""
-		if s.ClockOutTime != nil {
-			sessionOutStr = s.ClockOutTime.In(utils.WIB).Format("03:04 PM")
-		}
+			sessionOutStr := ""
+			if s.ClockOutTime != nil {
+				sessionOutStr = s.ClockOutTime.In(utils.WIB).Format("03:04 PM")
+			}
 
-		sessions = append(sessions, modelDto.AttendanceSession{
-			ID:           s.ID.String(),
-			ClockInTime:  s.ClockInTime.In(utils.WIB).Format("03:04 PM"),
-			ClockOutTime: sessionOutStr,
-			Status:       string(s.Status),
-		})
+			sessions = append(sessions, modelDto.AttendanceSession{
+				ID:           s.ID.String(),
+				ClockInTime:  s.ClockInTime.In(utils.WIB).Format("03:04 PM"),
+				ClockOutTime: sessionOutStr,
+				Status:       string(s.Status),
+			})
+		}
 	}
 
 	hours := int(totalDuration.Hours())
@@ -522,6 +559,24 @@ func (h *attendanceHandler) GetGroupAttendance(c *gin.Context) {
 	)
 
 	c.JSON(http.StatusOK, response)
+}
+
+func (h *attendanceHandler) EndSession(c *gin.Context) {
+	userIDVal, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, utils.BuildErrorResponse("Unauthorized", http.StatusUnauthorized, "error", nil))
+		return
+	}
+
+	userID := userIDVal.(uint)
+
+	err := h.service.EndSession(c.Request.Context(), userID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, utils.BuildErrorResponse(err.Error(), http.StatusBadRequest, "error", nil))
+		return
+	}
+
+	c.JSON(http.StatusOK, utils.BuildResponse("Sesi absensi berhasil diakhiri", http.StatusOK, "success", nil))
 }
 
 // @Summary Health Check

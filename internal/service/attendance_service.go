@@ -33,6 +33,7 @@ type AttendanceService interface {
 	GetSummary(ctx context.Context, tenantID uint, filter model.AttendanceFilter) (model.AttendanceSummaryResponse, error)
 
 	GetTodayAttendance(ctx context.Context, userID uint, forceSync bool) ([]model.AttendanceResponse, error)
+	EndSession(ctx context.Context, userID uint) error
 }
 
 type attendanceService struct {
@@ -167,7 +168,7 @@ func (s *attendanceService) RecordAttendance(
 	// Release lock after process finishes
 	defer s.redis.Del(ctx, lockKey)
 
-	user, err := s.userRepo.FindByID(ctx, userID, []string{""})
+	user, err := s.userRepo.FindByID(ctx, userID, []string{"Setting"})
 	if err != nil {
 		return model.AttendanceResponse{}, errors.New("user not found")
 	}
@@ -235,9 +236,7 @@ func (s *attendanceService) RecordAttendance(
 		return model.AttendanceResponse{}, err
 	}
 
-	// Double Check with Redis to prevent race condition from Background Worker
-	submittedKey := fmt.Sprintf("attendance:submitted:%d:%s", userID, now.Format("2006-01-02"))
-	isSubmitted, _ := s.redis.Get(ctx, submittedKey).Result()
+	allowMultiple := resolveAllowMultipleCheck(setting, user.Setting)
 
 	if setting.RequireLocation && !setting.AllowRemote {
 		distance := calculateDistance(
@@ -261,20 +260,9 @@ func (s *attendanceService) RecordAttendance(
 	}
 
 	// ── Dynamic Multi-Session Logic ───────────────────────────────────────────
-	//
-	// Rules:
-	//   1. If todayAttendance is nil (first action of the day), initialize a new
-	//      parent Attendance record using clock-in time + location.
-	//      Only 'clock_in' is allowed as the very first action.
-	//   2. For any subsequent action (break_start, break_end, clock_out, etc.)
-	//      a new AttendanceLog row is inserted under the same parent.
-	//   3. When action == 'clock_out', update ClockOutTime on the parent record.
-	//   4. When AllowMultipleCheck is false, standard one-in-one-out validation applies.
-	// ──────────────────────────────────────────────────────────────────────────
-
 	action := req.Action
 
-	if todayAttendance == nil && isSubmitted == "" {
+	if todayAttendance == nil {
 		// No existing record for today — this MUST be a clock_in action.
 		if action != string(model.ClockIn) {
 			return model.AttendanceResponse{}, errors.New("anda belum melakukan clock-in hari ini")
@@ -323,8 +311,7 @@ func (s *attendanceService) RecordAttendance(
 		}
 		data.Logs = append(data.Logs, attLog)
 
-		// Set Redis flag and invalidate cache.
-		s.redis.Set(ctx, submittedKey, "true", 24*time.Hour)
+		// Invalidate cache.
 		cacheKey := fmt.Sprintf("cache:attendance:today:%d:%s", userID, now.Format("2006-01-02"))
 		s.redis.Del(ctx, cacheKey)
 
@@ -338,12 +325,8 @@ func (s *attendanceService) RecordAttendance(
 
 	// ── Subsequent actions (todayAttendance already exists) ───────────────────
 
-	if todayAttendance == nil && isSubmitted != "" {
-		return model.AttendanceResponse{}, errors.New("data clock-in anda sedang diproses, harap tunggu sebentar")
-	}
-
 	// Standard mode: prevent duplicate clock_in or clock_out.
-	if !setting.AllowMultipleCheck {
+	if !allowMultiple {
 		if action == string(model.ClockIn) {
 			return model.AttendanceResponse{}, errors.New("anda sudah clock-in hari ini")
 		}
@@ -368,8 +351,13 @@ func (s *attendanceService) RecordAttendance(
 		if req.MediaUrl != "" {
 			todayAttendance.ClockOutMediaUrl = &req.MediaUrl
 		}
-		if todayAttendance.Status != model.StatusLate {
-			todayAttendance.Status = model.StatusDone
+
+		// Only auto-set status to done if allowMultiple is false.
+		// If allowMultiple is true, it remains working/late until EndSession is called.
+		if !allowMultiple {
+			if todayAttendance.Status != model.StatusLate {
+				todayAttendance.Status = model.StatusDone
+			}
 		}
 
 		// Update parent record synchronously.
@@ -656,3 +644,49 @@ func applyPreloads(a *model.Attendance, includes []string) model.AttendanceRespo
 
 	return res
 }
+
+func resolveAllowMultipleCheck(tenantSetting *model.TenantSetting, userSetting *model.UserSetting) bool {
+	if userSetting != nil && userSetting.AllowMultipleCheck != nil {
+		return *userSetting.AllowMultipleCheck
+	}
+	return tenantSetting.AllowMultipleCheck
+}
+
+func (s *attendanceService) EndSession(ctx context.Context, userID uint) error {
+	now := utils.Now()
+	todayAttendance, err := s.repo.FindTodayByUser(ctx, userID, now)
+	if err != nil {
+		return err
+	}
+	if todayAttendance == nil {
+		return errors.New("tidak ada sesi absensi aktif hari ini")
+	}
+
+	// If status is already done, return early or error
+	if todayAttendance.Status == model.StatusDone {
+		return errors.New("sesi absensi hari ini sudah diakhiri")
+	}
+
+	// Update status to StatusDone (keep StatusLate if it was late? Wait, the plan says: "keep StatusLate if already late? Or change to StatusDone as complete." Let's check: "Mengubah status di tabel attendances dari working/late menjadi done (sebagai penanda shift/hari kerjanya benar-benar selesai)")
+	// Actually, wait, model.StatusDone means session completed. If it's model.StatusLate, is it considered done?
+	// Let's check what model.AttendanceStatus supports: StatusWorking, StatusDone, StatusLate.
+	// So if they were late, and they end session, changing it to StatusDone is standard.
+	todayAttendance.Status = model.StatusDone
+
+	// If ClockOutTime is not set, set it to now
+	if todayAttendance.ClockOutTime == nil {
+		todayAttendance.ClockOutTime = &now
+	}
+
+	if err := s.repo.Update(ctx, todayAttendance); err != nil {
+		return fmt.Errorf("gagal mengakhiri sesi absensi: %v", err)
+	}
+
+	// Invalidate Cache
+	cacheKey := fmt.Sprintf("cache:attendance:today:%d:%s", userID, now.Format("2006-01-02"))
+	s.redis.Del(ctx, cacheKey)
+
+	return nil
+}
+
+

@@ -21,6 +21,7 @@ type AttendanceRepository interface {
 	FindAll(ctx context.Context, filter model.AttendanceFilter, includes []string, limit, offset int) ([]model.Attendance, int64, error)
 	GetSummaryCounts(ctx context.Context, filter model.AttendanceFilter) (map[model.AttendanceStatus]int64, error)
 	GetOldestDataDate(ctx context.Context, tenantID uint) (*time.Time, error)
+	AutoEndPreviousSessions(ctx context.Context) error
 }
 
 type attendanceRepository struct {
@@ -237,8 +238,17 @@ func (r *attendanceRepository) FindAll(
 	if err != nil {
 		return nil, 0, err
 	}
-
 	return attendances, total, nil
+}
+
+func (r *attendanceRepository) AutoEndPreviousSessions(ctx context.Context) error {
+	todayMidnight := utils.Now().Truncate(24 * time.Hour)
+	return r.db.WithContext(ctx).Model(&model.Attendance{}).
+		Where("status IN ? AND clock_in_time < ?", []string{string(model.StatusWorking), string(model.StatusLate)}, todayMidnight).
+		Updates(map[string]interface{}{
+			"status":         string(model.StatusDone),
+			"clock_out_time": gorm.Expr("COALESCE(clock_out_time, clock_in_time)"),
+		}).Error
 }
 
 // AttendanceLogRepository handles saving individual attendance action logs.

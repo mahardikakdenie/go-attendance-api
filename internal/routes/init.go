@@ -100,7 +100,7 @@ func initHandlers(db *gorm.DB, rdb *redis.Client) (*Handlers, service.CalendarCr
 	billingService := service.NewBillingService(invoiceRepo, subscriptionRepo, supportRepo, tenantRepo, userRepo, notificationService)
 	allowancePresetService := service.NewAllowancePresetService(allowancePresetRepo)
 	menuService := service.NewMenuService(menuRepo, roleRepo, subscriptionRepo, permissionRepo, rdb)
-	calendarCronService := service.NewCalendarCronService(hrOpsRepo, userRepo, billingService)
+	calendarCronService := service.NewCalendarCronService(hrOpsRepo, userRepo, attendanceRepo, billingService)
 
 	// Register Event Handlers
 	events.RegisterHandlers(menuService, notificationService)

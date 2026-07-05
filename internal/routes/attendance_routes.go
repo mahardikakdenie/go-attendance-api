@@ -15,6 +15,7 @@ func RegisterAttendanceRoutes(rg *gin.RouterGroup, attendanceH handler.Attendanc
 		attendance.GET("/history", attendanceH.GetAttendanceHistory)
 		attendance.GET("/summary", attendanceH.GetAttendanceSummary)
 		attendance.GET("/today", attendanceH.GetTodayAttendance)
+		attendance.POST("/end-session", attendanceH.EndSession)
 
 		corrections := attendance.Group("/corrections")
 		{

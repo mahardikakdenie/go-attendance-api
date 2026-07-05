@@ -20,14 +20,21 @@ type CalendarCronService interface {
 type calendarCronService struct {
 	hrRepo         repository.HrOpsRepository
 	userRepo       repository.UserRepository
+	attendanceRepo repository.AttendanceRepository
 	billingService BillingService
 	cron           *cron.Cron
 }
 
-func NewCalendarCronService(hrRepo repository.HrOpsRepository, userRepo repository.UserRepository, billingService BillingService) CalendarCronService {
+func NewCalendarCronService(
+	hrRepo repository.HrOpsRepository,
+	userRepo repository.UserRepository,
+	attendanceRepo repository.AttendanceRepository,
+	billingService BillingService,
+) CalendarCronService {
 	return &calendarCronService{
 		hrRepo:         hrRepo,
 		userRepo:       userRepo,
+		attendanceRepo: attendanceRepo,
 		billingService: billingService,
 		cron:           cron.New(cron.WithLocation(utils.GetWIBLocation())),
 	}
@@ -56,8 +63,19 @@ func (s *calendarCronService) Run() {
 		log.Fatalf("[Cron] Failed to schedule invoice generation: %v\n", err)
 	}
 
+	// 3. Daily Auto-End Previous Day's Attendance Sessions (00:05 AM)
+	_, err = s.cron.AddFunc("5 0 * * *", func() {
+		log.Println("[Cron] Starting Auto-End Previous Day's Attendance Sessions...")
+		if err := s.attendanceRepo.AutoEndPreviousSessions(context.Background()); err != nil {
+			log.Printf("[Cron] Error auto-ending sessions: %v\n", err)
+		}
+	})
+	if err != nil {
+		log.Fatalf("[Cron] Failed to schedule auto-end sessions: %v\n", err)
+	}
+
 	s.cron.Start()
-	log.Println("[Cron] Services started successfully (Reminders + Billing).")
+	log.Println("[Cron] Services started successfully (Reminders + Billing + Attendance Sessions Auto-End).")
 }
 
 func (s *calendarCronService) SendUpcomingEventReminders() error {

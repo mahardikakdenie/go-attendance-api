@@ -48,6 +48,7 @@ type User struct {
 	RecentActivities []RecentActivity    `gorm:"foreignKey:UserID" json:"recent_activities,omitempty"`
 	LeaveBalances    []LeaveBalance      `gorm:"foreignKey:UserID" json:"leave_balances,omitempty"`
 	PayrollProfile   *UserPayrollProfile `gorm:"foreignKey:UserID" json:"payroll_profile,omitempty"`
+	Setting          *UserSetting        `gorm:"foreignKey:UserID" json:"setting,omitempty"`
 
 	MediaUrl string `gorm:"type:varchar(255)" json:"media_url" example:"https://cdn.example.com/profile/budi.jpg" binding:"omitempty,url"`
 
